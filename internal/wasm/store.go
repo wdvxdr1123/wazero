@@ -187,17 +187,6 @@ type (
 		FunctionTypeID FunctionTypeID
 	}
 
-	// MemoryInstance represents a memory instance in a store, and implements wasm.Memory.
-	//
-	// Note: In WebAssembly 1.0 (MVP), there may be up to one Memory per store, which means the precise memory is always
-	// wasm.Store Memories index zero: `store.Memories[0]`
-	// See https://www.w3.org/TR/wasm-core-1/#memory-instances%E2%91%A0.
-	MemoryInstance struct {
-		Buffer []byte
-		Min    uint32
-		Max    *uint32
-	}
-
 	// FunctionAddress is funcaddr (https://www.w3.org/TR/wasm-core-1/#syntax-funcaddr),
 	// and the index to Store.Functions.
 	FunctionAddress uint64
