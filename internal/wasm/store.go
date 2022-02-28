@@ -271,6 +271,113 @@ func newModuleInstance(name string, importedFunctions, functions []*FunctionInst
 	return instance
 }
 
+func (m *ModuleInstance) validateData(module *Module) (err error) {
+	for _, d := range module.DataSection {
+		offset := uint64(executeConstExpression(m.Globals, d.OffsetExpression).(int32))
+
+		size := offset + uint64(len(d.Init))
+		maxPage := MemoryMaxPages
+		if d.MemoryIndex < module.SectionElementCount(SectionIDMemory) && module.MemorySection[d.MemoryIndex].Max != nil {
+			maxPage = *module.MemorySection[d.MemoryIndex].Max
+		}
+		if size > memoryPagesToBytesNum(maxPage) {
+			return fmt.Errorf("memory size out of limit %d * 64Ki", int(*(module.MemorySection[d.MemoryIndex].Max)))
+		}
+
+		if size > uint64(len(m.MemoryInstance.Buffer)) {
+			return fmt.Errorf("out of bounds memory access")
+		}
+	}
+	return
+}
+
+func (m *ModuleInstance) applyData(data []*DataSegment) {
+	for _, d := range data {
+		offset := uint64(executeConstExpression(m.Globals, d.OffsetExpression).(int32))
+		copy(m.MemoryInstance.Buffer[offset:], d.Init)
+	}
+}
+
+func (m *ModuleInstance) validateElements(module *Module) (err error) {
+	for _, elem := range module.ElementSection {
+		if elem.TableIndex >= Index(len(m.Tables)) {
+			return fmt.Errorf("index out of range of index space")
+		}
+
+		offset := int(executeConstExpression(m.Globals, elem.OffsetExpr).(int32))
+		ceil := offset + len(elem.Init)
+
+		max := uint32(math.MaxUint32)
+		if elem.TableIndex < module.SectionElementCount(SectionIDTable) && module.TableSection[elem.TableIndex].Limit.Max != nil {
+			max = *module.TableSection[elem.TableIndex].Limit.Max
+		}
+
+		if ceil > int(max) {
+			return fmt.Errorf("table size out of limit of %d", max)
+		}
+
+		tableInst := m.Tables[elem.TableIndex]
+		if ceil > len(tableInst.Table) {
+			return fmt.Errorf("out of bounds table access %d > %v", ceil, len(tableInst.Table))
+		}
+		for i := range elem.Init {
+			i := i
+			elm := elem.Init[i]
+			if elm >= uint32(len(m.Functions)) {
+				return fmt.Errorf("unknown function specified by element")
+			}
+		}
+	}
+	return
+}
+
+func (m *ModuleInstance) applyElements(elements []*ElementSegment) (err error) {
+	for _, elem := range elements {
+		offset := int(executeConstExpression(m.Globals, elem.OffsetExpr).(int32))
+		tableInst := m.Tables[elem.TableIndex]
+		for i := range elem.Init {
+			i := i
+			elm := elem.Init[i]
+
+			// Setup the rollback function before mutating the table instance.
+			pos := i + offset
+			targetFunc := m.Functions[elm]
+			tableInst.Table[pos] = TableElement{
+				FunctionAddress: targetFunc.Address,
+				FunctionTypeID:  targetFunc.FunctionType.TypeID,
+			}
+		}
+	}
+	return
+}
+
+func (m *ModuleInstance) buildExportInstances(module *Module) {
+	m.Exports = make(map[string]*ExportInstance, module.SectionElementCount(SectionIDExport))
+	for _, exp := range module.ExportSection {
+		index := exp.Index
+		var ei *ExportInstance
+		switch exp.Type {
+		case ExternTypeFunc:
+			ei = &ExportInstance{Type: exp.Type, Function: m.Functions[index]}
+			// The module instance of the host function is a fake that only includes the function and its types.
+			// We need to assign the ModuleInstance when re-exporting so that any memory defined in the target is
+			// available to the wasm.ModuleContext Memory.
+			if ei.Function.HostFunction != nil {
+				ei.Function.ModuleInstance = m
+			}
+		case ExternTypeGlobal:
+			ei = &ExportInstance{Type: exp.Type, Global: m.Globals[index]}
+		case ExternTypeMemory:
+			ei = &ExportInstance{Type: exp.Type, Memory: m.MemoryInstance}
+		case ExternTypeTable:
+			ei = &ExportInstance{Type: exp.Type, Table: m.Tables[index]}
+		}
+
+		// We already validate the duplicates during module validation phase.
+		_ = m.addExport(exp.Name, ei)
+	}
+}
+
 // addExport adds and indexes the given export or errs if the name is already exported.
 func (m *ModuleInstance) addExport(name string, e *ExportInstance) error {
 	if _, ok := m.Exports[name]; ok {
@@ -349,7 +456,6 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 
 	// Now we are ready to compile functions.
 	s.addFunctionInstances(functions...) // Need to assign funcaddr to each instance before compilation.
-	// TODO: parallelize compilation by spawing goroutines.
 	for i, f := range functions {
 		if err := s.Engine.Compile(f); err != nil {
 			idx := module.SectionElementCount(SectionIDFunction) - 1
@@ -706,113 +812,6 @@ func executeConstExpression(globals []*GlobalInstance, expr *ConstantExpression)
 		}
 	}
 	return
-}
-
-func (m *ModuleInstance) validateData(module *Module) (err error) {
-	for _, d := range module.DataSection {
-		offset := uint64(executeConstExpression(m.Globals, d.OffsetExpression).(int32))
-
-		size := offset + uint64(len(d.Init))
-		maxPage := MemoryMaxPages
-		if d.MemoryIndex < module.SectionElementCount(SectionIDMemory) && module.MemorySection[d.MemoryIndex].Max != nil {
-			maxPage = *module.MemorySection[d.MemoryIndex].Max
-		}
-		if size > memoryPagesToBytesNum(maxPage) {
-			return fmt.Errorf("memory size out of limit %d * 64Ki", int(*(module.MemorySection[d.MemoryIndex].Max)))
-		}
-
-		if size > uint64(len(m.MemoryInstance.Buffer)) {
-			return fmt.Errorf("out of bounds memory access")
-		}
-	}
-	return
-}
-
-func (m *ModuleInstance) applyData(data []*DataSegment) {
-	for _, d := range data {
-		offset := uint64(executeConstExpression(m.Globals, d.OffsetExpression).(int32))
-		copy(m.MemoryInstance.Buffer[offset:], d.Init)
-	}
-}
-
-func (m *ModuleInstance) validateElements(module *Module) (err error) {
-	for _, elem := range module.ElementSection {
-		if elem.TableIndex >= Index(len(m.Tables)) {
-			return fmt.Errorf("index out of range of index space")
-		}
-
-		offset := int(executeConstExpression(m.Globals, elem.OffsetExpr).(int32))
-		ceil := offset + len(elem.Init)
-
-		max := uint32(math.MaxUint32)
-		if elem.TableIndex < module.SectionElementCount(SectionIDTable) && module.TableSection[elem.TableIndex].Limit.Max != nil {
-			max = *module.TableSection[elem.TableIndex].Limit.Max
-		}
-
-		if ceil > int(max) {
-			return fmt.Errorf("table size out of limit of %d", max)
-		}
-
-		tableInst := m.Tables[elem.TableIndex]
-		if ceil > len(tableInst.Table) {
-			return fmt.Errorf("out of bounds table access %d > %v", ceil, len(tableInst.Table))
-		}
-		for i := range elem.Init {
-			i := i
-			elm := elem.Init[i]
-			if elm >= uint32(len(m.Functions)) {
-				return fmt.Errorf("unknown function specified by element")
-			}
-		}
-	}
-	return
-}
-
-func (m *ModuleInstance) applyElements(elements []*ElementSegment) (err error) {
-	for _, elem := range elements {
-		offset := int(executeConstExpression(m.Globals, elem.OffsetExpr).(int32))
-		tableInst := m.Tables[elem.TableIndex]
-		for i := range elem.Init {
-			i := i
-			elm := elem.Init[i]
-
-			// Setup the rollback function before mutating the table instance.
-			pos := i + offset
-			targetFunc := m.Functions[elm]
-			tableInst.Table[pos] = TableElement{
-				FunctionAddress: targetFunc.Address,
-				FunctionTypeID:  targetFunc.FunctionType.TypeID,
-			}
-		}
-	}
-	return
-}
-
-func (m *ModuleInstance) buildExportInstances(module *Module) {
-	m.Exports = make(map[string]*ExportInstance, module.SectionElementCount(SectionIDExport))
-	for _, exp := range module.ExportSection {
-		index := exp.Index
-		var ei *ExportInstance
-		switch exp.Type {
-		case ExternTypeFunc:
-			ei = &ExportInstance{Type: exp.Type, Function: m.Functions[index]}
-			// The module instance of the host function is a fake that only includes the function and its types.
-			// We need to assign the ModuleInstance when re-exporting so that any memory defined in the target is
-			// available to the wasm.ModuleContext Memory.
-			if ei.Function.HostFunction != nil {
-				ei.Function.ModuleInstance = m
-			}
-		case ExternTypeGlobal:
-			ei = &ExportInstance{Type: exp.Type, Global: m.Globals[index]}
-		case ExternTypeMemory:
-			ei = &ExportInstance{Type: exp.Type, Memory: m.MemoryInstance}
-		case ExternTypeTable:
-			ei = &ExportInstance{Type: exp.Type, Table: m.Tables[index]}
-		}
-
-		// We already validate the duplicates during module validation phase.
-		_ = m.addExport(exp.Name, ei)
-	}
 }
 
 // DecodeBlockType is exported for use in the compiler

@@ -381,7 +381,7 @@ func TestModuleInstance_GetExport(t *testing.T) {
 	// TODO: backfill
 }
 
-func TestStore_ReleaseModuleInstance(t *testing.T) {
+func TestStore_releaseModuleInstance(t *testing.T) {
 	// TODO:
 }
 
