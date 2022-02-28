@@ -364,12 +364,10 @@ func newModuleInstance(name string, importedFunctions, functions []*FunctionInst
 	memory, importedMemory *MemoryInstance, typeInstances []*TypeInstance, importedModules map[*ModuleInstance]struct{}) *ModuleInstance {
 
 	inst := &ModuleInstance{Name: name, Types: typeInstances, importedModules: importedModules}
-
 	inst.Functions = append(inst.Functions, importedFunctions...)
 	for i, f := range functions {
 		f.FunctionType = typeInstances[i]
 		f.ModuleInstance = inst
-		// TODO: name.
 	}
 
 	inst.Globals = append(inst.Globals, importedGlobals...)
@@ -584,10 +582,6 @@ func (s *Store) resolveImports(module *Module) (
 	importedModules map[*ModuleInstance]struct{},
 	err error,
 ) {
-
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
 	importedModules = map[*ModuleInstance]struct{}{}
 	for _, is := range module.ImportSection {
 		m, ok := s.ModuleInstances[is.Module]

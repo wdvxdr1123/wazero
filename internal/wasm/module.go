@@ -394,18 +394,42 @@ func (m *Module) buildGlobalInstances() (globals []*GlobalInstance) {
 }
 
 func (m *Module) buildFunctionInstances() (functions []*FunctionInstance) {
+	var functionNames NameMap
+	if m.NameSection != nil {
+		functionNames = m.NameSection.FunctionNames
+	}
+
+	var importedCnt int
+	for _, imp := range m.ImportSection {
+		if imp.Type == ExternTypeFunc {
+			importedCnt++
+		}
+	}
+
+	n, nLen := 0, len(functionNames)
 	for codeIndex := range m.FunctionSection {
+		funcIdx := Index(importedCnt + len(functions))
+		// Seek to see if there's a better name than "unknown"
+		name := "unknown"
+		for ; n < nLen; n++ {
+			next := functionNames[n]
+			if next.Index > funcIdx {
+				break // we have function names, but starting at a later index
+			} else if next.Index == funcIdx {
+				name = next.Name
+				break
+			}
+		}
+
 		f := &FunctionInstance{
-			// Name:         name, TODO: do this in instantiation
+			Name:         name,
 			FunctionKind: FunctionKindWasm,
-			// FunctionType: typeInstances[typeIndex], TODO: do this in insntantiation
-			Body:       m.CodeSection[codeIndex].Body,
-			LocalTypes: m.CodeSection[codeIndex].LocalTypes,
-			// ModuleInstance: m, TODO: when to assign?
+			Body:         m.CodeSection[codeIndex].Body,
+			LocalTypes:   m.CodeSection[codeIndex].LocalTypes,
 		}
 		functions = append(functions, f)
 	}
-	return nil
+	return
 }
 
 func (module *Module) buildMemoryInstance() (mem *MemoryInstance) {

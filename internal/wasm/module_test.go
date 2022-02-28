@@ -638,11 +638,12 @@ func TestModule_buildFunctionInstances_FunctionNames(t *testing.T) {
 	nopCode := &Code{nil, []byte{OpcodeEnd}}
 	m := &Module{
 		FunctionSection: []Index{zero, zero, zero, zero, zero},
+		ImportSection:   []*Import{{Type: ExternTypeFunc}},
 		NameSection: &NameSection{
 			FunctionNames: NameMap{
-				{Index: Index(1), Name: "two"},
-				{Index: Index(3), Name: "four"},
-				{Index: Index(4), Name: "five"},
+				{Index: Index(2), Name: "two"},
+				{Index: Index(4), Name: "four"},
+				{Index: Index(5), Name: "five"},
 			},
 		},
 		CodeSection: []*Code{nopCode, nopCode, nopCode, nopCode, nopCode},

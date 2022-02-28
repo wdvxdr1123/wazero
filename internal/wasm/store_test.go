@@ -287,7 +287,7 @@ func TestStore_getTypeInstance(t *testing.T) {
 	})
 }
 
-func TestStore_executeConstExpression(t *testing.T) {
+func TestExecuteConstExpression(t *testing.T) {
 	t.Run("non global expr", func(t *testing.T) {
 		for _, vt := range []ValueType{ValueTypeI32, ValueTypeI64, ValueTypeF32, ValueTypeF64} {
 			t.Run(ValueTypeName(vt), func(t *testing.T) {
