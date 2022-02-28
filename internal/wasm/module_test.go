@@ -626,19 +626,38 @@ func TestModule_validateExports(t *testing.T) {
 }
 
 func TestModule_buildGlobalInstances(t *testing.T) {
-	// TODO:
+	data := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	binary.LittleEndian.PutUint64(data, math.Float64bits(1.0))
+	m := Module{GlobalSection: []*Global{
+		{
+			Type: &GlobalType{Mutable: true, ValType: ValueTypeF64},
+			Init: &ConstantExpression{Opcode: OpcodeF64Const,
+				Data: []byte{0, 0, 0, 0, 0, 0, 0xf0, 0x3f}}, // == float64(1.0)
+		},
+		{
+			Type: &GlobalType{Mutable: false, ValType: ValueTypeI32},
+			Init: &ConstantExpression{Opcode: OpcodeI32Const,
+				Data: []byte{1}},
+		},
+	}}
+
+	globals := m.buildGlobalInstances()
+	expectedGlobals := []*GlobalInstance{
+		{Type: &GlobalType{ValType: ValueTypeF64, Mutable: true}, Val: math.Float64bits(1.0)},
+		{Type: &GlobalType{ValType: ValueTypeI32, Mutable: false}, Val: uint64(1)},
+	}
+
+	require.Len(t, globals, len(expectedGlobals))
+	for i := range globals {
+		actual, expected := globals[i], expectedGlobals[i]
+		require.Equal(t, expected, actual)
+	}
 }
 
 func TestModule_buildFunctionInstances(t *testing.T) {
-	// TODO:
-}
-
-func TestModule_buildFunctionInstances_FunctionNames(t *testing.T) {
-	zero := Index(0)
 	nopCode := &Code{nil, []byte{OpcodeEnd}}
-	m := &Module{
-		FunctionSection: []Index{zero, zero, zero, zero, zero},
-		ImportSection:   []*Import{{Type: ExternTypeFunc}},
+	m := Module{
+		ImportSection: []*Import{{Type: ExternTypeFunc}},
 		NameSection: &NameSection{
 			FunctionNames: NameMap{
 				{Index: Index(2), Name: "two"},
@@ -649,18 +668,34 @@ func TestModule_buildFunctionInstances_FunctionNames(t *testing.T) {
 		CodeSection: []*Code{nopCode, nopCode, nopCode, nopCode, nopCode},
 	}
 
-	functions := m.buildFunctionInstances()
-
+	actual := m.buildFunctionInstances()
 	expectedNames := []string{"unknown", "two", "unknown", "four", "five"}
-	for i, f := range functions {
+	for i, f := range actual {
 		require.Equal(t, expectedNames[i], f.Name)
+		require.Equal(t, nopCode.Body, f.Body)
 	}
 }
 
 func TestModule_buildMemoryInstance(t *testing.T) {
-	// TODO:
+	t.Run("nil", func(t *testing.T) {
+		m := Module{MemorySection: []*MemoryType{}}
+		mem := m.buildMemoryInstance()
+		require.Nil(t, mem)
+	})
+	t.Run("non-nil", func(t *testing.T) {
+		min := uint32(1)
+		max := uint32(10)
+		m := Module{MemorySection: []*MemoryType{&LimitsType{Min: min, Max: &max}}}
+		mem := m.buildMemoryInstance()
+		require.Equal(t, min, mem.Min)
+		require.Equal(t, max, *mem.Max)
+	})
 }
 
 func TestModule_buildTableInstances(t *testing.T) {
-	// TODO:
+	m := Module{TableSection: []*TableType{{Limit: &LimitsType{Min: 1}}, {Limit: &LimitsType{Min: 2}}}}
+	tables := m.buildTableInstances()
+	for i, table := range tables {
+		require.Equal(t, uint32(i)+1, table.Min)
+	}
 }
