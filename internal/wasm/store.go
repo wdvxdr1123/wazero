@@ -599,7 +599,7 @@ func (s *Store) resolveImports(module *Module) (
 	for _, is := range module.ImportSection {
 		m, ok := s.ModuleInstances[is.Module]
 		if !ok {
-			err = fmt.Errorf("module %s not instantiated", is.Module)
+			err = fmt.Errorf("module \"%s\" not instantiated", is.Module)
 			return
 		}
 
@@ -607,7 +607,7 @@ func (s *Store) resolveImports(module *Module) (
 		moduleImports[m] = struct{}{}
 
 		var exp *ExportInstance
-		exp, err = m.GetExport(is.Module, is.Type)
+		exp, err = m.GetExport(is.Name, is.Type)
 		if err != nil {
 			return
 		}
@@ -615,27 +615,20 @@ func (s *Store) resolveImports(module *Module) (
 		switch is.Type {
 		case ExternTypeFunc:
 			typeIndex := is.DescFunc
-			if int(typeIndex) >= len(m.Types) {
+			if int(typeIndex) >= len(module.TypeSection) {
 				err = fmt.Errorf("unknown type for function import")
 				return
 			}
-			expectedType := m.Types[typeIndex].Type
+			expectedType := module.TypeSection[typeIndex]
 			f := exp.Function
-			if !bytes.Equal(expectedType.Results, f.FunctionType.Type.Results) {
-				err = fmt.Errorf("return signature mimatch: %#x != %#x", expectedType.Results, f.FunctionType.Type.Results)
-				return
-			} else if !bytes.Equal(expectedType.Params, f.FunctionType.Type.Params) {
-				err = fmt.Errorf("input signature mimatch: %#x != %#x", expectedType.Params, f.FunctionType.Type.Params)
+			if !bytes.Equal(expectedType.Results, f.FunctionType.Type.Results) || !bytes.Equal(expectedType.Params, f.FunctionType.Type.Params) {
+				err = fmt.Errorf("signature mimatch: %s != %s", expectedType, f.FunctionType.Type)
 				return
 			}
 			functions = append(functions, f)
 		case ExternTypeTable:
 			tableType := is.DescTable
 			table := exp.Table
-			if tableType == nil {
-				err = fmt.Errorf("table type is invalid")
-				return
-			}
 			if table.ElemType != tableType.ElemType {
 				err = fmt.Errorf("incompatible table imports: element type mismatch")
 				return
@@ -657,10 +650,6 @@ func (s *Store) resolveImports(module *Module) (
 			tables = append(tables, table)
 		case ExternTypeMemory:
 			memoryType := is.DescMem
-			if memoryType == nil {
-				err = fmt.Errorf("memory type is invalid")
-				return
-			}
 			memory = exp.Memory
 			if memory.Min < memoryType.Min {
 				err = fmt.Errorf("incompatible memory imports: minimum size mismatch")
@@ -677,10 +666,6 @@ func (s *Store) resolveImports(module *Module) (
 			}
 		case ExternTypeGlobal:
 			globalType := is.DescGlobal
-			if globalType == nil {
-				err = fmt.Errorf("global type is invalid")
-				return
-			}
 			g := exp.Global
 			if globalType.Mutable != g.Type.Mutable {
 				err = fmt.Errorf("incompatible global import: mutability mismatch")

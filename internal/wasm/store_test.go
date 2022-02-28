@@ -422,10 +422,53 @@ func TestStore_addMemoryInstance(t *testing.T) {
 }
 
 func TestStore_resolveImports(t *testing.T) {
-}
+	const moduleName = "test"
+	const name = "target"
 
-func TestModuleInstance_resolveImports(t *testing.T) {
-	// TODO:
+	t.Run("module not instantiated", func(t *testing.T) {
+		s := NewStore(context.Background(), &catchContext{})
+		_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: "unknown", Name: "unknown"}}})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "module \"unknown\" not instantiated")
+	})
+	t.Run("export instance not found", func(t *testing.T) {
+		s := NewStore(context.Background(), &catchContext{})
+		s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{}, Name: moduleName}
+		_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: "unknown"}}})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "\"unknown\" is not exported in module \"test\"")
+	})
+	t.Run("func", func(t *testing.T) {
+		t.Run("unknwon type", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {}}, Name: moduleName}
+			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeFunc, DescFunc: 100}}})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "unknown type for function import")
+		})
+		t.Run("signature mismatch", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Function: &FunctionInstance{FunctionType: &TypeInstance{Type: &FunctionType{}}},
+			}}, Name: moduleName}
+			m := &Module{
+				TypeSection:   []*FunctionType{{Results: []ValueType{ValueTypeF32}}},
+				ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeFunc, DescFunc: 0}},
+			}
+			_, _, _, _, _, err := s.resolveImports(m)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "signature mimatch: null_f32 != null_null")
+		})
+		t.Run("ok", func(t *testing.T) {
+
+		})
+	})
+	t.Run("table", func(t *testing.T) {
+	})
+	t.Run("memory", func(t *testing.T) {
+	})
+	t.Run("global", func(t *testing.T) {
+	})
 }
 
 func TestModuleInstance_validateData(t *testing.T) {
