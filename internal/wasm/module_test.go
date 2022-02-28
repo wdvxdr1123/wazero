@@ -651,13 +651,10 @@ func TestModule_buildFunctionInstances_FunctionNames(t *testing.T) {
 
 	functions := m.buildFunctionInstances()
 
-	var names []string
-	for _, f := range functions {
-		names = append(names, f.Name)
+	expectedNames := []string{"unknown", "two", "unknown", "four", "five"}
+	for i, f := range functions {
+		require.Equal(t, expectedNames[i], f.Name)
 	}
-
-	// We expect unknown for any functions missing data in the NameSection
-	require.Equal(t, []string{"unknown", "two", "unknown", "four", "five"}, names)
 }
 
 func TestModule_buildMemoryInstance(t *testing.T) {

@@ -99,8 +99,8 @@ type (
 		Types          []*TypeInstance
 
 		// TODO
-		refCount        referenceCounter
-		importedModules map[*ModuleInstance]struct{}
+		refCount      int
+		moduleImports map[*ModuleInstance]struct{}
 	}
 
 	// ExportInstance represents an exported instance in a Store.
@@ -244,6 +244,33 @@ const (
 	maximumFunctionTypes   = 1 << 27
 )
 
+func newModuleInstance(name string, importedFunctions, functions []*FunctionInstance,
+	importedGlobals, globals []*GlobalInstance, importedTables, tables []*TableInstance,
+	memory, importedMemory *MemoryInstance, typeInstances []*TypeInstance, moduleImports map[*ModuleInstance]struct{}) *ModuleInstance {
+
+	instance := &ModuleInstance{Name: name, Types: typeInstances, moduleImports: moduleImports}
+
+	instance.Functions = append(instance.Functions, importedFunctions...)
+	for i, f := range functions {
+		f.FunctionType = typeInstances[i]
+		f.ModuleInstance = instance
+		instance.Functions = append(instance.Functions, f)
+	}
+
+	instance.Globals = append(instance.Globals, importedGlobals...)
+	instance.Globals = append(instance.Globals, globals...)
+
+	instance.Tables = append(instance.Tables, importedTables...)
+	instance.Tables = append(instance.Tables, tables...)
+
+	if importedMemory != nil {
+		instance.MemoryInstance = importedMemory
+	} else {
+		instance.MemoryInstance = memory
+	}
+	return instance
+}
+
 // addExport adds and indexes the given export or errs if the name is already exported.
 func (m *ModuleInstance) addExport(name string, e *ExportInstance) error {
 	if _, ok := m.Exports[name]; ok {
@@ -298,7 +325,7 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 		return nil, err
 	}
 
-	importedFunctions, importedGlobals, importedTables, importedMemory, importedModules, err := s.resolveImports(module)
+	importedFunctions, importedGlobals, importedTables, importedMemory, moduleImports, err := s.resolveImports(module)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +337,7 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 
 	functions, globals, tables, memory := module.buildInstances()
 	instance := newModuleInstance(name, importedFunctions, functions, importedGlobals,
-		globals, importedTables, tables, importedMemory, memory, types, importedModules)
+		globals, importedTables, tables, importedMemory, memory, types, moduleImports)
 
 	if err = instance.validateElements(module); err != nil {
 		return nil, err
@@ -322,10 +349,11 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 
 	// Now we are ready to compile functions.
 	s.addFunctionInstances(functions...) // Need to assign funcaddr to each instance before compilation.
+	// TODO: parallelize compilation by spawing goroutines.
 	for i, f := range functions {
 		if err := s.Engine.Compile(f); err != nil {
 			idx := module.SectionElementCount(SectionIDFunction) - 1
-			// On the failure, release the assigned funcaddr for futur uses.
+			// On the failure, release the assigned funcaddr and already compiled functions.
 			if err := s.releaseFunctionInstances(functions...); err != nil {
 				return nil, err
 			}
@@ -333,14 +361,19 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 		}
 	}
 
-	// Now all the validation passes, we are safe to mutate store and memory/table instances (possibly imported ones).
+	// Now all the validation passes, we are safe to mutate memory/table instances (possibly imported ones).
 	instance.applyElements(module.ElementSection)
 	instance.applyData(module.DataSection)
 
-	// Also, persist the instances other than functions (which is already persisted before compilation).
+	// Persist the instances other than functions (which we already persisted before compilation).
 	s.addGlobalInstances(globals...)
 	s.addTableInstances(tables...)
 	s.addMemoryInstance(instance.MemoryInstance)
+
+	// Increase the reference count of imported modules.
+	for imported := range instance.moduleImports {
+		imported.refCount++
+	}
 
 	// Build the default context for calls to this module.
 	modCtx := NewModuleContext(s.ctx, s.Engine, instance)
@@ -359,44 +392,24 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 	return &ModuleExports{s, modCtx}, nil
 }
 
-func newModuleInstance(name string, importedFunctions, functions []*FunctionInstance,
-	importedGlobals, globals []*GlobalInstance, importedTables, tables []*TableInstance,
-	memory, importedMemory *MemoryInstance, typeInstances []*TypeInstance, importedModules map[*ModuleInstance]struct{}) *ModuleInstance {
-
-	inst := &ModuleInstance{Name: name, Types: typeInstances, importedModules: importedModules}
-	inst.Functions = append(inst.Functions, importedFunctions...)
-	for i, f := range functions {
-		f.FunctionType = typeInstances[i]
-		f.ModuleInstance = inst
-	}
-
-	inst.Globals = append(inst.Globals, importedGlobals...)
-	inst.Globals = append(inst.Globals, globals...)
-
-	inst.Tables = append(inst.Tables, importedTables...)
-	inst.Tables = append(inst.Tables, tables...)
-
-	if importedMemory != nil {
-		inst.MemoryInstance = importedMemory
-	} else {
-		inst.MemoryInstance = memory
-	}
-	return inst
-}
-
 func (s *Store) ReleaseModuleInstance(instance *ModuleInstance) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
+	return s.releaseModuleInstance(instance)
+}
 
-	for importingMod := range instance.importedModules {
-		if count := importingMod.refCount.dec(); count == 0 {
-			s.ReleaseModuleInstance(importingMod)
-		}
-	}
-
-	if count := instance.refCount.dec(); count > 0 {
+func (s *Store) releaseModuleInstance(instance *ModuleInstance) error {
+	instance.refCount--
+	if instance.refCount > 0 {
 		// This case other modules are importing this module instance and still alive.
 		return nil
+	}
+
+	// Recursively release the imported instances.
+	for mod := range instance.moduleImports {
+		if err := s.releaseModuleInstance(mod); err != nil {
+			return fmt.Errorf("unable to release imported module [%s]: %w", mod.Name, err)
+		}
 	}
 
 	if err := s.releaseFunctionInstances(instance.Functions...); err != nil {
@@ -579,10 +592,10 @@ func (s *Store) getExport(moduleName string, name string, et ExternType) (exp *E
 func (s *Store) resolveImports(module *Module) (
 	functions []*FunctionInstance, globals []*GlobalInstance,
 	tables []*TableInstance, memory *MemoryInstance,
-	importedModules map[*ModuleInstance]struct{},
+	moduleImports map[*ModuleInstance]struct{},
 	err error,
 ) {
-	importedModules = map[*ModuleInstance]struct{}{}
+	moduleImports = map[*ModuleInstance]struct{}{}
 	for _, is := range module.ImportSection {
 		m, ok := s.ModuleInstances[is.Module]
 		if !ok {
@@ -591,7 +604,7 @@ func (s *Store) resolveImports(module *Module) (
 		}
 
 		// Note: at this point we don't increase the ref count.
-		importedModules[m] = struct{}{}
+		moduleImports[m] = struct{}{}
 
 		var exp *ExportInstance
 		exp, err = m.GetExport(is.Module, is.Type)
