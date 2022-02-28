@@ -1,7 +1,6 @@
 package internalwasm
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"math"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tetratelabs/wazero/internal/leb128"
 	"github.com/tetratelabs/wazero/wasm"
 )
 
@@ -289,24 +287,6 @@ func TestStore_getTypeInstance(t *testing.T) {
 	})
 }
 
-func TestStore_buildGlobalInstances(t *testing.T) {
-	global := &Global{
-		Init: &ConstantExpression{Opcode: OpcodeI64Const, Data: []byte{0x11}},
-		Type: &GlobalType{ValType: ValueTypeI64},
-	}
-	expectedValue, _, err := leb128.DecodeUint64(bytes.NewReader(global.Init.Data))
-	require.NoError(t, err)
-
-	m := &Module{GlobalSection: []*Global{global}}
-
-	inst := &ModuleInstance{}
-	inst.buildGlobalInstances(m)
-	require.NoError(t, err)
-
-	require.Len(t, inst.Globals, 1)
-	require.Equal(t, expectedValue, inst.Globals[0].Val)
-}
-
 func TestStore_executeConstExpression(t *testing.T) {
 	t.Run("non global expr", func(t *testing.T) {
 		for _, vt := range []ValueType{ValueTypeI32, ValueTypeI64, ValueTypeF32, ValueTypeF64} {
@@ -444,60 +424,11 @@ func TestStore_addMemoryInstance(t *testing.T) {
 func TestStore_resolveImports(t *testing.T) {
 }
 
-func TestModuleInstance_resolveImport(t *testing.T) {
-	// TODO:
-}
-
-func TestModuleInstance_buildGlobalInstances(t *testing.T) {
-	// TODO:
-}
-
-func TestModuleInstance_buildFunctionInstances(t *testing.T) {
-	// TODO:
-}
-
-func TestModuleInstance_buildFunctionInstances_FunctionNames(t *testing.T) {
-	name := "test"
-	s := NewStore(context.Background(), &catchContext{})
-
-	zero := Index(0)
-	nopCode := &Code{nil, []byte{OpcodeEnd}}
-	m := &Module{
-		FunctionSection: []Index{zero, zero, zero, zero, zero},
-		NameSection: &NameSection{
-			FunctionNames: NameMap{
-				{Index: Index(1), Name: "two"},
-				{Index: Index(3), Name: "four"},
-				{Index: Index(4), Name: "five"},
-			},
-		},
-		CodeSection: []*Code{nopCode, nopCode, nopCode, nopCode, nopCode},
-	}
-
-	// Make a fake module for test
-	mi := &ModuleInstance{Name: name, Types: []*TypeInstance{{}}}
-	s.ModuleInstances[mi.Name] = mi
-
-	mi.buildFunctionInstances(m)
-
-	var names []string
-	for _, f := range mi.Functions {
-		names = append(names, f.Name)
-	}
-
-	// We expect unknown for any functions missing data in the NameSection
-	require.Equal(t, []string{"unknown", "two", "unknown", "four", "five"}, names)
-}
-
-func TestModuleInstance_buildMemoryInstances(t *testing.T) {
+func TestModuleInstance_resolveImports(t *testing.T) {
 	// TODO:
 }
 
 func TestModuleInstance_validateData(t *testing.T) {
-	// TODO:
-}
-
-func TestModuleInstance_buildTableInstances(t *testing.T) {
 	// TODO:
 }
 

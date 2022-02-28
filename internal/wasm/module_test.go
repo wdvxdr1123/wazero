@@ -563,50 +563,50 @@ func TestModule_validateExports(t *testing.T) {
 		{name: "empty export section", exportSection: map[string]*Export{}},
 		{
 			name:          "valid func",
-			exportSection: map[string]*Export{"": {Kind: ExportKindFunc, Index: 0}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeFunc, Index: 0}},
 			functions:     []Index{100 /* arbitrary type id*/},
 		},
 		{
 			name:          "invalid func",
-			exportSection: map[string]*Export{"": {Kind: ExportKindFunc, Index: 1}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeFunc, Index: 1}},
 			functions:     []Index{100 /* arbitrary type id*/},
 			expErr:        true,
 		},
 		{
 			name:          "valid global",
-			exportSection: map[string]*Export{"": {Kind: ExportKindGlobal, Index: 0}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeGlobal, Index: 0}},
 			globals:       []*GlobalType{{}},
 		},
 		{
 			name:          "invalid global",
-			exportSection: map[string]*Export{"": {Kind: ExportKindFunc, Index: 1}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeFunc, Index: 1}},
 			globals:       []*GlobalType{{}},
 			expErr:        true,
 		},
 		{
 			name:          "valid table",
-			exportSection: map[string]*Export{"": {Kind: ExportKindTable, Index: 0}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeTable, Index: 0}},
 			tables:        []*TableType{{}},
 		},
 		{
 			name:          "invalid table",
-			exportSection: map[string]*Export{"": {Kind: ExportKindTable, Index: 1}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeTable, Index: 1}},
 			tables:        []*TableType{{}},
 			expErr:        true,
 		},
 		{
 			name:          "valid memory",
-			exportSection: map[string]*Export{"": {Kind: ExportKindMemory, Index: 0}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeMemory, Index: 0}},
 			memories:      []*MemoryType{&LimitsType{}},
 		},
 		{
 			name:          "invalid memory index",
-			exportSection: map[string]*Export{"": {Kind: ExportKindMemory, Index: 1}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeMemory, Index: 1}},
 			expErr:        true,
 		},
 		{
 			name:          "invalid memory index",
-			exportSection: map[string]*Export{"": {Kind: ExportKindMemory, Index: 1}},
+			exportSection: map[string]*Export{"": {Type: ExternTypeMemory, Index: 1}},
 			// Multiple memories are not valid.
 			memories: []*MemoryType{&LimitsType{}, &LimitsType{}},
 			expErr:   true,
@@ -623,4 +623,46 @@ func TestModule_validateExports(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestModule_buildGlobalInstances(t *testing.T) {
+	// TODO:
+}
+
+func TestModule_buildFunctionInstances(t *testing.T) {
+	// TODO:
+}
+
+func TestModule_buildFunctionInstances_FunctionNames(t *testing.T) {
+	zero := Index(0)
+	nopCode := &Code{nil, []byte{OpcodeEnd}}
+	m := &Module{
+		FunctionSection: []Index{zero, zero, zero, zero, zero},
+		NameSection: &NameSection{
+			FunctionNames: NameMap{
+				{Index: Index(1), Name: "two"},
+				{Index: Index(3), Name: "four"},
+				{Index: Index(4), Name: "five"},
+			},
+		},
+		CodeSection: []*Code{nopCode, nopCode, nopCode, nopCode, nopCode},
+	}
+
+	functions := m.buildFunctionInstances()
+
+	var names []string
+	for _, f := range functions {
+		names = append(names, f.Name)
+	}
+
+	// We expect unknown for any functions missing data in the NameSection
+	require.Equal(t, []string{"unknown", "two", "unknown", "four", "five"}, names)
+}
+
+func TestModule_buildMemoryInstance(t *testing.T) {
+	// TODO:
+}
+
+func TestModule_buildTableInstances(t *testing.T) {
+	// TODO:
 }

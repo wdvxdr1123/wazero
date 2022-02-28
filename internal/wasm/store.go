@@ -716,69 +716,6 @@ func executeConstExpression(globals []*GlobalInstance, expr *ConstantExpression)
 	return
 }
 
-func (m *Module) buildInstances() (functions []*FunctionInstance, globals []*GlobalInstance, tables []*TableInstance, memory *MemoryInstance) {
-	functions = m.buildFunctionInstances()
-	globals = m.buildGlobalInstances()
-	tables = m.buildTableInstances()
-	memory = m.buildMemoryInstance()
-	return
-}
-
-func (m *Module) buildGlobalInstances() (globals []*GlobalInstance) {
-	for _, gs := range m.GlobalSection {
-		var gv uint64
-		switch v := executeConstExpression(globals, gs.Init).(type) {
-		case int32:
-			gv = uint64(v)
-		case int64:
-			gv = uint64(v)
-		case float32:
-			gv = publicwasm.EncodeF32(v)
-		case float64:
-			gv = publicwasm.EncodeF64(v)
-		}
-		globals = append(globals, &GlobalInstance{
-			Type: gs.Type,
-			Val:  gv,
-		})
-	}
-	return
-}
-
-func (m *Module) buildFunctionInstances() (functions []*FunctionInstance) {
-	for codeIndex := range m.FunctionSection {
-		f := &FunctionInstance{
-			// Name:         name, TODO: do this in instantiation
-			FunctionKind: FunctionKindWasm,
-			// FunctionType: typeInstances[typeIndex], TODO: do this in insntantiation
-			Body:       m.CodeSection[codeIndex].Body,
-			LocalTypes: m.CodeSection[codeIndex].LocalTypes,
-			// ModuleInstance: m, TODO: when to assign?
-		}
-		functions = append(functions, f)
-	}
-	return nil
-}
-
-func (module *Module) buildMemoryInstance() (mem *MemoryInstance) {
-	for _, memSec := range module.MemorySection {
-		mem = &MemoryInstance{
-			Buffer: make([]byte, memoryPagesToBytesNum(memSec.Min)),
-			Min:    memSec.Min,
-			Max:    memSec.Max,
-		}
-	}
-	return
-}
-
-func (module *Module) buildTableInstances() (tables []*TableInstance) {
-	for _, tableSeg := range module.TableSection {
-		instance := newTableInstance(tableSeg.Limit.Min, tableSeg.Limit.Max)
-		tables = append(tables, instance)
-	}
-	return
-}
-
 func (m *ModuleInstance) validateData(module *Module) (err error) {
 	for _, d := range module.DataSection {
 		offset := uint64(executeConstExpression(m.Globals, d.OffsetExpression).(int32))

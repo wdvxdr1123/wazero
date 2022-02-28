@@ -295,20 +295,20 @@ func (m *Module) validateMemories(memories []*MemoryType, globals []*GlobalType)
 func (m *Module) validateExports(functions []Index, globals []*GlobalType, memories []*MemoryType, tables []*TableType) error {
 	for name, exp := range m.ExportSection {
 		index := exp.Index
-		switch exp.Kind {
-		case ExportKindFunc:
+		switch exp.Type {
+		case ExternTypeFunc:
 			if index >= uint32(len(functions)) {
 				return fmt.Errorf("unknown function for export[%s]", name)
 			}
-		case ExportKindGlobal:
+		case ExternTypeGlobal:
 			if index >= uint32(len(globals)) {
 				return fmt.Errorf("unknown global for export[%s]", name)
 			}
-		case ExportKindMemory:
+		case ExternTypeMemory:
 			if index != 0 || len(memories) == 0 {
 				return fmt.Errorf("unknown memory for export[%s]", name)
 			}
-		case ExportKindTable:
+		case ExternTypeTable:
 			if index >= uint32(len(tables)) {
 				return fmt.Errorf("unknown table for export[%s]", name)
 			}
@@ -362,6 +362,69 @@ func validateConstExpression(globals []*GlobalType, expr *ConstantExpression, ex
 		return fmt.Errorf("const expression type mismatch")
 	}
 	return nil
+}
+
+func (m *Module) buildInstances() (functions []*FunctionInstance, globals []*GlobalInstance, tables []*TableInstance, memory *MemoryInstance) {
+	functions = m.buildFunctionInstances()
+	globals = m.buildGlobalInstances()
+	tables = m.buildTableInstances()
+	memory = m.buildMemoryInstance()
+	return
+}
+
+func (m *Module) buildGlobalInstances() (globals []*GlobalInstance) {
+	for _, gs := range m.GlobalSection {
+		var gv uint64
+		switch v := executeConstExpression(globals, gs.Init).(type) {
+		case int32:
+			gv = uint64(v)
+		case int64:
+			gv = uint64(v)
+		case float32:
+			gv = publicwasm.EncodeF32(v)
+		case float64:
+			gv = publicwasm.EncodeF64(v)
+		}
+		globals = append(globals, &GlobalInstance{
+			Type: gs.Type,
+			Val:  gv,
+		})
+	}
+	return
+}
+
+func (m *Module) buildFunctionInstances() (functions []*FunctionInstance) {
+	for codeIndex := range m.FunctionSection {
+		f := &FunctionInstance{
+			// Name:         name, TODO: do this in instantiation
+			FunctionKind: FunctionKindWasm,
+			// FunctionType: typeInstances[typeIndex], TODO: do this in insntantiation
+			Body:       m.CodeSection[codeIndex].Body,
+			LocalTypes: m.CodeSection[codeIndex].LocalTypes,
+			// ModuleInstance: m, TODO: when to assign?
+		}
+		functions = append(functions, f)
+	}
+	return nil
+}
+
+func (module *Module) buildMemoryInstance() (mem *MemoryInstance) {
+	for _, memSec := range module.MemorySection {
+		mem = &MemoryInstance{
+			Buffer: make([]byte, memoryPagesToBytesNum(memSec.Min)),
+			Min:    memSec.Min,
+			Max:    memSec.Max,
+		}
+	}
+	return
+}
+
+func (module *Module) buildTableInstances() (tables []*TableInstance) {
+	for _, tableSeg := range module.TableSection {
+		instance := newTableInstance(tableSeg.Limit.Min, tableSeg.Limit.Max)
+		tables = append(tables, instance)
+	}
+	return
 }
 
 // Index is the offset in an index namespace, not necessarily an absolute position in a Module section. This is because
