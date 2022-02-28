@@ -549,6 +549,41 @@ func TestStore_resolveImports(t *testing.T) {
 		})
 	})
 	t.Run("memory", func(t *testing.T) {
+		t.Run("minimum size mismatch", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			importMemoryType := &MemoryType{Min: 2}
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:   ExternTypeMemory,
+				Memory: &MemoryInstance{Min: importMemoryType.Min - 1},
+			}}, Name: moduleName}
+			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeMemory, DescMem: importMemoryType}}})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "incompatible memory import: minimum size mismatch")
+		})
+		t.Run("maximum size mismatch", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			max := uint32(10)
+			importMemoryType := &MemoryType{Max: &max}
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:   ExternTypeMemory,
+				Memory: &MemoryInstance{},
+			}}, Name: moduleName}
+			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeMemory, DescMem: importMemoryType}}})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "incompatible memory import: maximum size mismatch")
+		})
+		t.Run("ok", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			max := uint32(10)
+			memoryInst := &MemoryInstance{Max: &max}
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:   ExternTypeMemory,
+				Memory: memoryInst,
+			}}, Name: moduleName}
+			_, _, _, memory, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeMemory, DescMem: &MemoryType{Max: &max}}}})
+			require.NoError(t, err)
+			require.Equal(t, memory, memoryInst)
+		})
 	})
 }
 
