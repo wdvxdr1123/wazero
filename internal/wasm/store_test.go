@@ -381,10 +381,6 @@ func TestModuleInstance_GetExport(t *testing.T) {
 	// TODO: backfill
 }
 
-func TestStore_addModuleInstance(t *testing.T) {
-	// TODO:
-}
-
 func TestStore_ReleaseModuleInstance(t *testing.T) {
 	// TODO:
 }
@@ -476,6 +472,34 @@ func TestStore_resolveImports(t *testing.T) {
 		})
 	})
 	t.Run("global", func(t *testing.T) {
+		t.Run("mutability mismatch", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:   ExternTypeGlobal,
+				Global: &GlobalInstance{Type: &GlobalType{Mutable: false}},
+			}}, Name: moduleName}
+			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeGlobal, DescGlobal: &GlobalType{Mutable: true}}}})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "incompatible global import: mutability mismatch")
+		})
+		t.Run("type mismatch", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:   ExternTypeGlobal,
+				Global: &GlobalInstance{Type: &GlobalType{ValType: ValueTypeI32}},
+			}}, Name: moduleName}
+			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeGlobal, DescGlobal: &GlobalType{ValType: ValueTypeF64}}}})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "incompatible global import: value type mismatch")
+		})
+		t.Run("ok", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			inst := &GlobalInstance{Type: &GlobalType{ValType: ValueTypeI32}}
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {Type: ExternTypeGlobal, Global: inst}}, Name: moduleName}
+			_, globals, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeGlobal, DescGlobal: inst.Type}}})
+			require.NoError(t, err)
+			require.Contains(t, globals, inst)
+		})
 	})
 	t.Run("table", func(t *testing.T) {
 		t.Run("element type", func(t *testing.T) {
@@ -509,7 +533,7 @@ func TestStore_resolveImports(t *testing.T) {
 			}}, Name: moduleName}
 			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeTable, DescTable: importTableType}}})
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "incompatible table imports: maximum size mismatch")
+			require.Contains(t, err.Error(), "incompatible table import: maximum size mismatch")
 		})
 		t.Run("ok", func(t *testing.T) {
 			s := NewStore(context.Background(), &catchContext{})
@@ -526,7 +550,6 @@ func TestStore_resolveImports(t *testing.T) {
 	})
 	t.Run("memory", func(t *testing.T) {
 	})
-
 }
 
 func TestModuleInstance_validateData(t *testing.T) {

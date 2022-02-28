@@ -640,10 +640,10 @@ func (s *Store) resolveImports(module *Module) (
 
 			if tableType.Limit.Max != nil {
 				if table.Max == nil {
-					err = fmt.Errorf("incompatible table imports: maximum size mismatch")
+					err = fmt.Errorf("incompatible table import: maximum size mismatch")
 					return
 				} else if *table.Max > *tableType.Limit.Max {
-					err = fmt.Errorf("incompatible table imports: maximum size mismatch")
+					err = fmt.Errorf("incompatible table import: maximum size mismatch")
 					return
 				}
 			}
@@ -652,15 +652,15 @@ func (s *Store) resolveImports(module *Module) (
 			memoryType := is.DescMem
 			memory = exp.Memory
 			if memory.Min < memoryType.Min {
-				err = fmt.Errorf("incompatible memory imports: minimum size mismatch")
+				err = fmt.Errorf("incompatible memory import: minimum size mismatch")
 				return
 			}
 			if memoryType.Max != nil {
 				if memory.Max == nil {
-					err = fmt.Errorf("incompatible memory imports: maximum size mismatch")
+					err = fmt.Errorf("incompatible memory import: maximum size mismatch")
 					return
 				} else if *memory.Max > *memoryType.Max {
-					err = fmt.Errorf("incompatible memory imports: maximum size mismatch")
+					err = fmt.Errorf("incompatible memory import: maximum size mismatch")
 					return
 				}
 			}
