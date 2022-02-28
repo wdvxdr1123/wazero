@@ -26,11 +26,11 @@ func TestValidateFunction_valueStackLimit(t *testing.T) {
 	body = append(body, OpcodeEnd)
 
 	t.Run("not exceed", func(t *testing.T) {
-		err := validateFunctionInstance(&FunctionType{}, body, nil, nil, nil, nil, nil, nil, max+1)
+		err := validateFunction(&FunctionType{}, body, nil, nil, nil, nil, nil, nil, max+1)
 		require.NoError(t, err)
 	})
 	t.Run("exceed", func(t *testing.T) {
-		err := validateFunctionInstance(&FunctionType{}, body, nil, nil, nil, nil, nil, nil, max)
+		err := validateFunction(&FunctionType{}, body, nil, nil, nil, nil, nil, nil, max)
 		require.Error(t, err)
 		expMsg := fmt.Sprintf("function may have %d stack values, which exceeds limit %d", valuesNum, max)
 		require.Equal(t, expMsg, err.Error())

@@ -244,7 +244,7 @@ const (
 	maximumFunctionTypes   = 1 << 27
 )
 
-func newModuleInstance(name string, importedFunctions, functions []*FunctionInstance,
+func newModuleInstance(name string, module *Module, importedFunctions, functions []*FunctionInstance,
 	importedGlobals, globals []*GlobalInstance, importedTables, tables []*TableInstance,
 	memory, importedMemory *MemoryInstance, typeInstances []*TypeInstance, moduleImports map[*ModuleInstance]struct{}) *ModuleInstance {
 
@@ -260,6 +260,7 @@ func newModuleInstance(name string, importedFunctions, functions []*FunctionInst
 	instance.Globals = append(instance.Globals, importedGlobals...)
 	instance.Globals = append(instance.Globals, globals...)
 
+	// TODO: refactor to enforce at most one table like memory.
 	instance.Tables = append(instance.Tables, importedTables...)
 	instance.Tables = append(instance.Tables, tables...)
 
@@ -268,7 +269,36 @@ func newModuleInstance(name string, importedFunctions, functions []*FunctionInst
 	} else {
 		instance.MemoryInstance = memory
 	}
+
+	instance.buildExportInstances(module)
 	return instance
+}
+
+func (m *ModuleInstance) buildExportInstances(module *Module) {
+	m.Exports = make(map[string]*ExportInstance, module.SectionElementCount(SectionIDExport))
+	for _, exp := range module.ExportSection {
+		index := exp.Index
+		var ei *ExportInstance
+		switch exp.Type {
+		case ExternTypeFunc:
+			ei = &ExportInstance{Type: exp.Type, Function: m.Functions[index]}
+			// The module instance of the host function is a fake that only includes the function and its types.
+			// We need to assign the ModuleInstance when re-exporting so that any memory defined in the target is
+			// available to the wasm.ModuleContext Memory.
+			if ei.Function.HostFunction != nil {
+				ei.Function.ModuleInstance = m
+			}
+		case ExternTypeGlobal:
+			ei = &ExportInstance{Type: exp.Type, Global: m.Globals[index]}
+		case ExternTypeMemory:
+			ei = &ExportInstance{Type: exp.Type, Memory: m.MemoryInstance}
+		case ExternTypeTable:
+			ei = &ExportInstance{Type: exp.Type, Table: m.Tables[index]}
+		}
+
+		// We already validate the duplicates during module validation phase.
+		_ = m.addExport(exp.Name, ei)
+	}
 }
 
 func (m *ModuleInstance) validateData(module *Module) (err error) {
@@ -293,7 +323,7 @@ func (m *ModuleInstance) validateData(module *Module) (err error) {
 
 func (m *ModuleInstance) applyData(data []*DataSegment) {
 	for _, d := range data {
-		offset := uint64(executeConstExpression(m.Globals, d.OffsetExpression).(int32))
+		offset := executeConstExpression(m.Globals, d.OffsetExpression).(int32)
 		copy(m.MemoryInstance.Buffer[offset:], d.Init)
 	}
 }
@@ -349,33 +379,6 @@ func (m *ModuleInstance) applyElements(elements []*ElementSegment) (err error) {
 		}
 	}
 	return
-}
-
-func (m *ModuleInstance) buildExportInstances(module *Module) {
-	m.Exports = make(map[string]*ExportInstance, module.SectionElementCount(SectionIDExport))
-	for _, exp := range module.ExportSection {
-		index := exp.Index
-		var ei *ExportInstance
-		switch exp.Type {
-		case ExternTypeFunc:
-			ei = &ExportInstance{Type: exp.Type, Function: m.Functions[index]}
-			// The module instance of the host function is a fake that only includes the function and its types.
-			// We need to assign the ModuleInstance when re-exporting so that any memory defined in the target is
-			// available to the wasm.ModuleContext Memory.
-			if ei.Function.HostFunction != nil {
-				ei.Function.ModuleInstance = m
-			}
-		case ExternTypeGlobal:
-			ei = &ExportInstance{Type: exp.Type, Global: m.Globals[index]}
-		case ExternTypeMemory:
-			ei = &ExportInstance{Type: exp.Type, Memory: m.MemoryInstance}
-		case ExternTypeTable:
-			ei = &ExportInstance{Type: exp.Type, Table: m.Tables[index]}
-		}
-
-		// We already validate the duplicates during module validation phase.
-		_ = m.addExport(exp.Name, ei)
-	}
 }
 
 // addExport adds and indexes the given export or errs if the name is already exported.
@@ -443,7 +446,7 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 	}
 
 	functions, globals, tables, memory := module.buildInstances()
-	instance := newModuleInstance(name, importedFunctions, functions, importedGlobals,
+	instance := newModuleInstance(name, module, importedFunctions, functions, importedGlobals,
 		globals, importedTables, tables, importedMemory, memory, types, moduleImports)
 
 	if err = instance.validateElements(module); err != nil {
@@ -458,11 +461,11 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 	s.addFunctionInstances(functions...) // Need to assign funcaddr to each instance before compilation.
 	for i, f := range functions {
 		if err := s.Engine.Compile(f); err != nil {
-			idx := module.SectionElementCount(SectionIDFunction) - 1
 			// On the failure, release the assigned funcaddr and already compiled functions.
 			if err := s.releaseFunctionInstances(functions...); err != nil {
 				return nil, err
 			}
+			idx := module.SectionElementCount(SectionIDFunction) - 1
 			return nil, fmt.Errorf("compilation failed at index %d/%d: %w", i, idx, err)
 		}
 	}
@@ -493,8 +496,6 @@ func (s *Store) Instantiate(module *Module, name string) (*ModuleExports, error)
 			return nil, fmt.Errorf("module[%s] start function failed: %w", name, err)
 		}
 	}
-
-	instance.buildExportInstances(module)
 	return &ModuleExports{s, modCtx}, nil
 }
 

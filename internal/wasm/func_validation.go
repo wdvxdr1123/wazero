@@ -8,7 +8,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/leb128"
 )
 
-// validateFunctionInstance validates the instruction sequence of a function instance.
+// validateFunction validates the instruction sequence of a function.
 // following the specification https://www.w3.org/TR/2019/REC-wasm-core-1-20191205/#instructions%E2%91%A2.
 //
 // f is the validation target function instance.
@@ -21,7 +21,7 @@ import (
 //
 // Returns an error if the instruction sequence is not valid,
 // or potentially it can exceed the maximum number of values on the stack.
-func validateFunctionInstance(
+func validateFunction(
 	functionType *FunctionType,
 	body []byte,
 	localTypes []ValueType,

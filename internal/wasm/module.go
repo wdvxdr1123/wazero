@@ -244,7 +244,7 @@ func (m *Module) validateFunctions(functions []Index, globals []*GlobalType, mem
 			return fmt.Errorf("code index out of range")
 		}
 
-		if err := validateFunctionInstance(
+		if err := validateFunction(
 			m.TypeSection[typeIndex],
 			m.CodeSection[codeIndex].Body,
 			m.CodeSection[codeIndex].LocalTypes,

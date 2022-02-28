@@ -598,3 +598,7 @@ func TestModuleInstance_validateElements(t *testing.T) {
 func TestModuleInstance_buildExportInstances(t *testing.T) {
 	// TODO:
 }
+
+func Test_newModuleInstance(t *testing.T) {
+
+}
