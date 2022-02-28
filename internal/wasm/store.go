@@ -630,11 +630,11 @@ func (s *Store) resolveImports(module *Module) (
 			tableType := is.DescTable
 			table := exp.Table
 			if table.ElemType != tableType.ElemType {
-				err = fmt.Errorf("incompatible table imports: element type mismatch")
+				err = fmt.Errorf("incompatible table improt: element type mismatch")
 				return
 			}
 			if table.Min < tableType.Limit.Min {
-				err = fmt.Errorf("incompatible table imports: minimum size mismatch")
+				err = fmt.Errorf("incompatible table import: minimum size mismatch")
 				return
 			}
 

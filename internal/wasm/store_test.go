@@ -460,15 +460,73 @@ func TestStore_resolveImports(t *testing.T) {
 			require.Contains(t, err.Error(), "signature mimatch: null_f32 != null_null")
 		})
 		t.Run("ok", func(t *testing.T) {
-
+			s := NewStore(context.Background(), &catchContext{})
+			f := &FunctionInstance{FunctionType: &TypeInstance{Type: &FunctionType{Results: []ValueType{ValueTypeF32}}}}
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Function: f,
+			}}, Name: moduleName}
+			m := &Module{
+				TypeSection:   []*FunctionType{{Results: []ValueType{ValueTypeF32}}},
+				ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeFunc, DescFunc: 0}},
+			}
+			functions, _, _, _, moduleImports, err := s.resolveImports(m)
+			require.NoError(t, err)
+			require.Contains(t, moduleImports, s.ModuleInstances[moduleName])
+			require.Contains(t, functions, f)
 		})
-	})
-	t.Run("table", func(t *testing.T) {
-	})
-	t.Run("memory", func(t *testing.T) {
 	})
 	t.Run("global", func(t *testing.T) {
 	})
+	t.Run("table", func(t *testing.T) {
+		t.Run("element type", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:  ExternTypeTable,
+				Table: &TableInstance{ElemType: 0x00}, // Unknown!
+			}}, Name: moduleName}
+			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeTable, DescTable: &TableType{ElemType: 0x1}}}})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "incompatible table improt: element type mismatch")
+		})
+		t.Run("minimum size mismatch", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			importTableType := &TableType{Limit: &LimitsType{Min: 2}}
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:  ExternTypeTable,
+				Table: &TableInstance{Min: importTableType.Limit.Min - 1},
+			}}, Name: moduleName}
+			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeTable, DescTable: importTableType}}})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "incompatible table import: minimum size mismatch")
+		})
+		t.Run("maximum size mismatch", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			max := uint32(10)
+			importTableType := &TableType{Limit: &LimitsType{Max: &max}}
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:  ExternTypeTable,
+				Table: &TableInstance{Min: importTableType.Limit.Min - 1},
+			}}, Name: moduleName}
+			_, _, _, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeTable, DescTable: importTableType}}})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "incompatible table imports: maximum size mismatch")
+		})
+		t.Run("ok", func(t *testing.T) {
+			s := NewStore(context.Background(), &catchContext{})
+			max := uint32(10)
+			tableInst := &TableInstance{Max: &max}
+			s.ModuleInstances[moduleName] = &ModuleInstance{Exports: map[string]*ExportInstance{name: {
+				Type:  ExternTypeTable,
+				Table: tableInst,
+			}}, Name: moduleName}
+			_, _, tables, _, _, err := s.resolveImports(&Module{ImportSection: []*Import{{Module: moduleName, Name: name, Type: ExternTypeTable, DescTable: &TableType{Limit: &LimitsType{Max: &max}}}}})
+			require.NoError(t, err)
+			require.Contains(t, tables, tableInst)
+		})
+	})
+	t.Run("memory", func(t *testing.T) {
+	})
+
 }
 
 func TestModuleInstance_validateData(t *testing.T) {
