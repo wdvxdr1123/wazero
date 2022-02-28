@@ -132,6 +132,10 @@ type interpreterOp struct {
 	rs     []*wazeroir.InclusiveRange
 }
 
+func (e *engine) Release(f *wasm.FunctionInstance) error {
+	panic("TODO")
+}
+
 // Compile Implements wasm.Engine for engine.
 func (e *engine) Compile(f *wasm.FunctionInstance) error {
 	funcaddr := f.Address

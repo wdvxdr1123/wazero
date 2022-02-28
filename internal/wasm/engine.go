@@ -9,4 +9,7 @@ type Engine interface {
 
 	// Compile compiles down the function instance.
 	Compile(f *FunctionInstance) error
+
+	// TODO
+	Release(f *FunctionInstance) error
 }

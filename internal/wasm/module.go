@@ -1,8 +1,11 @@
 package internalwasm
 
 import (
+	"bytes"
 	"fmt"
 
+	"github.com/tetratelabs/wazero/internal/ieee754"
+	"github.com/tetratelabs/wazero/internal/leb128"
 	publicwasm "github.com/tetratelabs/wazero/wasm"
 )
 
@@ -167,6 +170,198 @@ func (m *Module) TypeOfFunction(funcIdx Index) *FunctionType {
 		return nil
 	}
 	return m.TypeSection[typeIdx]
+}
+
+func (m *Module) Validate() error {
+	if err := m.validateStartSection(); err != nil {
+		return err
+	}
+
+	functions, globals, memories, tables := m.allDeclarations()
+
+	// The wazero specific limitation described at RATIONALE.md.
+	const maximumGlobals = 1 << 27
+	if err := m.validateGlobals(globals, maximumGlobals); err != nil {
+		return err
+	}
+
+	if err := m.validateTables(tables, globals); err != nil {
+		return err
+	}
+
+	if err := m.validateMemories(memories, globals); err != nil {
+		return err
+	}
+
+	if err := m.validateFunctions(functions, globals, memories, tables); err != nil {
+		return err
+	}
+
+	if err := m.validateExports(functions, globals, memories, tables); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Module) validateStartSection() error {
+	// Check the start function is valid.
+	// TODO: this should be verified during decode so that errors have the correct source positions
+	if m.StartSection != nil {
+		startIndex := *m.StartSection
+		ft := m.TypeOfFunction(startIndex)
+		if ft == nil { // TODO: move this check to that a module can never be decoded invalidly
+			return fmt.Errorf("start function has an invalid type")
+		}
+		if len(ft.Params) > 0 || len(ft.Results) > 0 {
+			return fmt.Errorf("start function must have an empty (nullary) signature: %s", ft.String())
+		}
+	}
+	return nil
+}
+
+func (m *Module) validateGlobals(globals []*GlobalType, maxGlobals int) error {
+	if len(globals) > maxGlobals {
+		return fmt.Errorf("too many globals in a module")
+	}
+
+	for _, g := range m.GlobalSection {
+		if err := validateConstExpression(globals, g.Init, g.Type.ValType); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *Module) validateFunctions(functions []Index, globals []*GlobalType, memories []*MemoryType, tables []*TableType) error {
+	// The wazero specific limitation described at RATIONALE.md.
+	const maximumValuesOnStack = 1 << 27
+
+	for codeIndex, typeIndex := range m.FunctionSection {
+		if typeIndex >= m.SectionElementCount(SectionIDType) {
+			return fmt.Errorf("function type index out of range")
+		} else if uint32(codeIndex) >= m.SectionElementCount(SectionIDCode) {
+			return fmt.Errorf("code index out of range")
+		}
+
+		if err := validateFunctionInstance(
+			m.TypeSection[typeIndex],
+			m.CodeSection[codeIndex].Body,
+			m.CodeSection[codeIndex].LocalTypes,
+			functions, globals, memories, tables, m.TypeSection, maximumValuesOnStack); err != nil {
+			idx := m.SectionElementCount(SectionIDFunction) - 1
+			return fmt.Errorf("invalid function (%d/%d): %v", codeIndex, idx, err)
+		}
+	}
+	return nil
+}
+
+func (m *Module) validateTables(tables []*TableType, globals []*GlobalType) error {
+	if len(tables) > 1 {
+		return fmt.Errorf("multiple tables are not supported")
+	}
+
+	for _, elem := range m.ElementSection {
+		if int(elem.TableIndex) >= len(tables) {
+			return fmt.Errorf("table index out of range")
+		}
+		err := validateConstExpression(globals, elem.OffsetExpr, ValueTypeI32)
+		if err != nil {
+			return fmt.Errorf("invalid const expression for element: %w", err)
+		}
+	}
+	return nil
+}
+
+func (m *Module) validateMemories(memories []*MemoryType, globals []*GlobalType) error {
+	if len(memories) > 1 {
+		// The current Wasm spec doesn't allow multiple memories.
+		return fmt.Errorf("multiple memories are not supported")
+	} else if len(m.DataSection) > 0 && len(memories) == 0 {
+		return fmt.Errorf("unknown memory")
+	}
+
+	for _, d := range m.DataSection {
+		if d.MemoryIndex != 0 {
+			return fmt.Errorf("memory index must be zero")
+		}
+		if err := validateConstExpression(globals, d.OffsetExpression, ValueTypeI32); err != nil {
+			return fmt.Errorf("calculate offset: %w", err)
+		}
+	}
+	return nil
+}
+
+func (m *Module) validateExports(functions []Index, globals []*GlobalType, memories []*MemoryType, tables []*TableType) error {
+	for name, exp := range m.ExportSection {
+		index := exp.Index
+		switch exp.Kind {
+		case ExportKindFunc:
+			if index >= uint32(len(functions)) {
+				return fmt.Errorf("unknown function for export[%s]", name)
+			}
+		case ExportKindGlobal:
+			if index >= uint32(len(globals)) {
+				return fmt.Errorf("unknown global for export[%s]", name)
+			}
+		case ExportKindMemory:
+			if index != 0 || len(memories) == 0 {
+				return fmt.Errorf("unknown memory for export[%s]", name)
+			}
+		case ExportKindTable:
+			if index >= uint32(len(tables)) {
+				return fmt.Errorf("unknown table for export[%s]", name)
+			}
+		}
+	}
+	return nil
+}
+
+func validateConstExpression(globals []*GlobalType, expr *ConstantExpression, expectedType ValueType) (err error) {
+	var actualType ValueType
+	r := bytes.NewBuffer(expr.Data)
+	switch expr.Opcode {
+	case OpcodeI32Const:
+		_, _, err = leb128.DecodeInt32(r)
+		if err != nil {
+			return fmt.Errorf("read i32: %w", err)
+		}
+		actualType = ValueTypeI32
+	case OpcodeI64Const:
+		_, _, err = leb128.DecodeInt64(r)
+		if err != nil {
+			return fmt.Errorf("read i64: %w", err)
+		}
+		actualType = ValueTypeI64
+	case OpcodeF32Const:
+		_, err = ieee754.DecodeFloat32(r)
+		if err != nil {
+			return fmt.Errorf("read f32: %w", err)
+		}
+		actualType = ValueTypeF32
+	case OpcodeF64Const:
+		_, err = ieee754.DecodeFloat64(r)
+		if err != nil {
+			return fmt.Errorf("read f64: %w", err)
+		}
+		actualType = ValueTypeF64
+	case OpcodeGlobalGet:
+		id, _, err := leb128.DecodeUint32(r)
+		if err != nil {
+			return fmt.Errorf("read index of global: %w", err)
+		}
+		if uint32(len(globals)) <= id {
+			return fmt.Errorf("global index out of range")
+		}
+		actualType = globals[id].ValType
+	default:
+		return fmt.Errorf("invalid opcode for const expression: 0x%x", expr.Opcode)
+	}
+
+	if actualType != expectedType {
+		return fmt.Errorf("const expression type mismatch")
+	}
+	return nil
 }
 
 // Index is the offset in an index namespace, not necessarily an absolute position in a Module section. This is because

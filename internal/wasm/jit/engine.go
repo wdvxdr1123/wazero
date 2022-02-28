@@ -316,6 +316,10 @@ func (c *callFrame) String() string {
 	)
 }
 
+func (e *engine) Release(f *wasm.FunctionInstance) error {
+	panic("TODO")
+}
+
 func (e *engine) Compile(f *wasm.FunctionInstance) (err error) {
 	var compiled *compiledFunction
 	if f.FunctionKind == wasm.FunctionKindWasm {
