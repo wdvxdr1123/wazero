@@ -34,7 +34,7 @@ var passes = []pass{
 	// passDeadCodeEliminationOpt could be more accurate if we do this after other optimizations.
 	{"dead-code-elimination", deadcode},
 
-	// Block layout pass
+	// layout pass
 	{"layout-blocks", layoutBlocks},
 
 	// Post block layout passes
@@ -236,11 +236,11 @@ func deadcode(b *builder) {
 	// relevant to dead code elimination, but we need in the backend.
 	var gid InstructionGroupID
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		for cur := blk.rootInstr; cur != nil; cur = cur.next {
+		for cur := blk.Root(); cur != nil; cur = cur.next {
 			cur.gid = gid
 			switch cur.sideEffect() {
 			case sideEffectTraps:
-				// The trappable should always be alive.
+				// The trampoline should always be alive.
 				liveInstructions = append(liveInstructions, cur)
 			case sideEffectStrict:
 				liveInstructions = append(liveInstructions, cur)
@@ -297,19 +297,19 @@ func deadcode(b *builder) {
 
 	// Now that all the live instructions are flagged as live=true, we eliminate all dead instructions.
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		for cur := blk.rootInstr; cur != nil; cur = cur.next {
+		var instrs []*Instruction
+		for cur := blk.Root(); cur != nil; cur = cur.next {
 			if !cur.live {
 				// Remove the instruction from the list.
 				if prev := cur.prev; prev != nil {
 					prev.next = cur.next
-				} else {
-					blk.rootInstr = cur.next
 				}
 				if next := cur.next; next != nil {
 					next.prev = cur.prev
 				}
 				continue
 			}
+			instrs = append(instrs, cur)
 
 			// If the value alive, we can be sure that arguments are used definitely.
 			// Hence, we can increment the value reference counts.
@@ -327,6 +327,8 @@ func deadcode(b *builder) {
 				b.incRefCount(v.ID(), cur)
 			}
 		}
+		// Finally, we need to update the instruction list in the block.
+		blk.instr = instrs
 	}
 
 	b.instStack = liveInstructions // we reuse the stack for the next iteration.
@@ -343,7 +345,7 @@ func (b *builder) incRefCount(id ValueID, from *Instruction) {
 // nopElimination eliminates the instructions which is essentially a no-op.
 func nopElimination(b *builder) {
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		for cur := blk.rootInstr; cur != nil; cur = cur.next {
+		for cur := blk.Root(); cur != nil; cur = cur.next {
 			switch cur.Opcode() {
 			// TODO: add more logics here.
 			case OpcodeIshl, OpcodeSshr, OpcodeUshr:

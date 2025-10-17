@@ -17,7 +17,7 @@ func sortBlocks(blocks []*basicBlock) {
 		if iIsReturn {
 			return -1
 		}
-		iRoot, jRoot := i.rootInstr, j.rootInstr
+		iRoot, jRoot := i.Root(), j.Root()
 		if iRoot == nil && jRoot == nil { // For testing.
 			return 0
 		}
@@ -27,6 +27,6 @@ func sortBlocks(blocks []*basicBlock) {
 		if iRoot == nil {
 			return -1
 		}
-		return i.rootInstr.id - j.rootInstr.id
+		return iRoot.id - jRoot.id
 	})
 }

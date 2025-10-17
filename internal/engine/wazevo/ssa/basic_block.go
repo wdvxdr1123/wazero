@@ -74,8 +74,8 @@ type BasicBlock interface {
 type (
 	// basicBlock is a basic block in a SSA-transformed function.
 	basicBlock struct {
-		id                      BasicBlockID
-		rootInstr, currentInstr *Instruction
+		id    BasicBlockID
+		instr []*Instruction
 		// params are Values that represent parameters to a basicBlock.
 		// Each parameter can be considered as an output of PHI instruction in traditional SSA.
 		params  Values
@@ -207,14 +207,12 @@ func (bb *basicBlock) Sealed() bool {
 
 // insertInstruction implements BasicBlock.InsertInstruction.
 func (bb *basicBlock) insertInstruction(b *builder, next *Instruction) {
-	current := bb.currentInstr
+	current := bb.Tail()
 	if current != nil {
 		current.next = next
 		next.prev = current
-	} else {
-		bb.rootInstr = next
 	}
-	bb.currentInstr = next
+	bb.instr = append(bb.instr, next)
 
 	switch next.opcode {
 	case OpcodeJump, OpcodeBrz, OpcodeBrnz:
@@ -255,18 +253,23 @@ func (bb *basicBlock) Succ(i int) BasicBlock {
 
 // Root implements BasicBlock.Root.
 func (bb *basicBlock) Root() *Instruction {
-	return bb.rootInstr
+	if len(bb.instr) == 0 {
+		return nil
+	}
+	return bb.instr[0]
 }
 
-// Tail implements BasicBlock.Tail.
 func (bb *basicBlock) Tail() *Instruction {
-	return bb.currentInstr
+	if len(bb.instr) == 0 {
+		return nil
+	}
+	return bb.instr[len(bb.instr)-1]
 }
 
 // reset resets the basicBlock to its initial state so that it can be reused for another function.
 func resetBasicBlock(bb *basicBlock) {
 	bb.params = ValuesNil
-	bb.rootInstr, bb.currentInstr = nil, nil
+	bb.instr = bb.instr[:0]
 	bb.preds = bb.preds[:0]
 	bb.success = bb.success[:0]
 	bb.invalid, bb.sealed = false, false

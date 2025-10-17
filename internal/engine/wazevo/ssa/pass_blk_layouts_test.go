@@ -37,7 +37,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				inst := b.AllocateInstruction()
 				// TODO: we haven't implemented AsBrTable on Instruction.
 				inst.opcode = OpcodeBrTable
-				now.currentInstr = inst
+				now.instr = append(now.instr, inst)
 				verify = func(t *testing.T) { require.Equal(t, OpcodeBrTable, inst.opcode) }
 				return
 			},
@@ -48,7 +48,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, now, next)
 				verify = func(t *testing.T) {
-					tail := now.currentInstr
+					tail := now.Tail()
 					require.Equal(t, OpcodeJump, tail.opcode)
 				}
 				return
@@ -64,7 +64,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				b.InsertInstruction(prev)
 				insertJump(b, now, next)
 				verify = func(t *testing.T) {
-					tail := now.currentInstr
+					tail := now.Tail()
 					require.Equal(t, OpcodeJump, tail.opcode)
 					require.Equal(t, prev, tail.prev)
 				}
@@ -79,7 +79,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				insertBrz(b, now, dummy)
 				insertJump(b, now, loopHeader)
 				verify = func(t *testing.T) {
-					tail := now.currentInstr
+					tail := now.Tail()
 					conditionalBr := tail.prev
 					require.Equal(t, OpcodeJump, tail.opcode)
 					require.Equal(t, OpcodeBrz, conditionalBr.opcode) // intact.
@@ -95,7 +95,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				insertBrz(b, now, dummy)
 				insertJump(b, now, next)
 				verify = func(t *testing.T) {
-					tail := now.currentInstr
+					tail := now.Tail()
 					conditionalBr := tail.prev
 					require.Equal(t, OpcodeJump, tail.opcode)
 					require.Equal(t, OpcodeBrz, conditionalBr.opcode) // intact.
@@ -112,7 +112,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				insertBrz(b, now, loopHeader) // jump to loop, which needs inversion.
 				insertJump(b, now, next)
 
-				tail := now.currentInstr
+				tail := now.Tail()
 				conditionalBr := tail.prev
 
 				// Sanity check before inversion.
@@ -141,7 +141,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				insertBrz(b, now, next) // jump to the next block in conditional, which needs inversion.
 				insertJump(b, now, nowTarget)
 
-				tail := now.currentInstr
+				tail := now.Tail()
 				conditionalBr := tail.prev
 
 				// Sanity check before inversion.
@@ -196,11 +196,11 @@ func TestBuilder_splitCriticalEdge(t *testing.T) {
 
 	require.Equal(t, trampoline, predInfo.blk)
 	require.Equal(t, originalBrz, predInfo.branch)
-	require.Equal(t, trampoline.rootInstr, predInfo.branch)
-	require.Equal(t, trampoline.currentInstr, predInfo.branch)
+	require.Equal(t, trampoline.Root(), predInfo.branch)
+	require.Equal(t, trampoline.Tail(), predInfo.branch)
 	require.Equal(t, trampoline.success[0], dummyBlk)
 
-	replacedBrz := predBlk.rootInstr.next
+	replacedBrz := predBlk.Root().next
 	require.Equal(t, OpcodeBrz, replacedBrz.opcode)
 	require.Equal(t, trampoline, b.basicBlock(BasicBlockID(replacedBrz.rValue)))
 }
@@ -215,10 +215,10 @@ func Test_swapInstruction(t *testing.T) {
 		old := b.AllocateInstruction()
 		old.next, dummy.prev = dummy, old
 		newi := b.AllocateInstruction()
-		blk.rootInstr = old
-		swapInstruction(blk, old, newi)
+		blk.instr = []*Instruction{old}
+		replaceInstruction(blk, old, newi)
 
-		require.Equal(t, newi, blk.rootInstr)
+		require.Equal(t, newi, blk.Root())
 		require.Equal(t, dummy, newi.next)
 		require.Equal(t, dummy.prev, newi)
 		require.Nil(t, old.next)
@@ -238,9 +238,9 @@ func Test_swapInstruction(t *testing.T) {
 
 		newi := b.AllocateInstruction()
 		newi.AsIconst32(100)
-		swapInstruction(blk, i2, newi)
+		replaceInstruction(blk, i2, newi)
 
-		require.Equal(t, i1, blk.rootInstr)
+		require.Equal(t, i1, blk.Root())
 		require.Equal(t, newi, i1.next)
 		require.Equal(t, i3, newi.next)
 		require.Equal(t, i1, newi.prev)
@@ -260,10 +260,10 @@ func Test_swapInstruction(t *testing.T) {
 
 		newi := b.AllocateInstruction()
 		newi.AsIconst32(100)
-		swapInstruction(blk, i2, newi)
+		replaceInstruction(blk, i2, newi)
 
-		require.Equal(t, i1, blk.rootInstr)
-		require.Equal(t, newi, blk.currentInstr)
+		require.Equal(t, i1, blk.Root())
+		require.Equal(t, newi, blk.Tail())
 		require.Equal(t, newi, i1.next)
 		require.Equal(t, i1, newi.prev)
 		require.Nil(t, newi.next)

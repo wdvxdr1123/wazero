@@ -63,7 +63,7 @@ func layoutBlocks(b *builder) {
 		if len(blk.success) < 2 {
 			// There won't be critical edge originating from this block.
 			continue
-		} else if blk.currentInstr.opcode == OpcodeBrTable {
+		} else if blk.Tail().opcode == OpcodeBrTable {
 			// We don't split critical edges here, because at the construction site of BrTable, we already split the edges.
 			continue
 		}
@@ -110,7 +110,7 @@ func layoutBlocks(b *builder) {
 					blk.ID(), trampoline.ID(), succ.ID())
 			}
 
-			fallthroughBranch := blk.currentInstr
+			fallthroughBranch := blk.Tail()
 			if fallthroughBranch.opcode == OpcodeJump && BasicBlockID(fallthroughBranch.rValue) == trampoline.id {
 				// This can be lowered as fallthrough at the end of the block.
 				b.reversePostOrderedBasicBlocks = append(b.reversePostOrderedBasicBlocks, trampoline)
@@ -159,7 +159,7 @@ func markFallthroughJumps(b *builder) {
 	l := len(b.reversePostOrderedBasicBlocks) - 1
 	for i, blk := range b.reversePostOrderedBasicBlocks {
 		if i < l {
-			cur := blk.currentInstr
+			cur := blk.Tail()
 			if cur.opcode == OpcodeJump && BasicBlockID(cur.rValue) == b.reversePostOrderedBasicBlocks[i+1].id {
 				cur.AsFallthroughJump()
 			}
@@ -172,7 +172,7 @@ func markFallthroughJumps(b *builder) {
 //
 // Returns true if the branch is inverted for testing purpose.
 func maybeInvertBranches(b *builder, now *basicBlock, nextInRPO *basicBlock) bool {
-	fallthroughBranch := now.currentInstr
+	fallthroughBranch := now.Tail()
 	if fallthroughBranch.opcode == OpcodeBrTable {
 		return false
 	}
@@ -289,11 +289,10 @@ func (b *builder) splitCriticalEdge(pred, succ *basicBlock, predInfo *basicBlock
 	default:
 		panic("BUG: critical edge shouldn't be originated from br_table")
 	}
-	swapInstruction(pred, originalBranch, newBranch)
+	replaceInstruction(pred, originalBranch, newBranch)
 
 	// Replace the original branch with the new branch.
-	trampoline.rootInstr = originalBranch
-	trampoline.currentInstr = originalBranch
+	trampoline.instr = []*Instruction{originalBranch}
 	trampoline.success = append(trampoline.success, succ) // Do not use []*basicBlock{pred} because we might have already allocated the slice.
 	trampoline.preds = append(trampoline.preds,           // same as ^.
 		basicBlockPredecessorInfo{blk: pred, branch: newBranch})
@@ -316,22 +315,25 @@ func (b *builder) splitCriticalEdge(pred, succ *basicBlock, predInfo *basicBlock
 	return trampoline
 }
 
-// swapInstruction replaces `old` in the block `blk` with `New`.
-func swapInstruction(blk *basicBlock, old, New *Instruction) {
-	if blk.rootInstr == old {
-		blk.rootInstr = New
-		next := old.next
-		New.next = next
-		next.prev = New
-	} else {
-		if blk.currentInstr == old {
-			blk.currentInstr = New
+// replaceInstruction replaces `old` in the block `blk` with `New`.
+func replaceInstruction(blk *basicBlock, old, New *Instruction) {
+	oid := -1
+	for i := range blk.instr {
+		if blk.instr[i] == old {
+			oid = i
 		}
-		prev := old.prev
+	}
+	if oid == -1 {
+		panic("BUG: old instruction not found in the block")
+	}
+
+	blk.instr[oid] = New
+	prev := old.prev
+	if prev != nil {
 		prev.next, New.prev = New, prev
-		if next := old.next; next != nil {
-			New.next, next.prev = next, New
-		}
+	}
+	if next := old.next; next != nil {
+		New.next, next.prev = next, New
 	}
 	old.prev, old.next = nil, nil
 }
