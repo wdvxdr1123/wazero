@@ -66,7 +66,6 @@ func Test_maybeInvertBranch(t *testing.T) {
 				verify = func(t *testing.T) {
 					tail := now.Tail()
 					require.Equal(t, OpcodeJump, tail.opcode)
-					require.Equal(t, prev, tail.prev)
 				}
 				return
 			},
@@ -80,10 +79,9 @@ func Test_maybeInvertBranch(t *testing.T) {
 				insertJump(b, now, loopHeader)
 				verify = func(t *testing.T) {
 					tail := now.Tail()
-					conditionalBr := tail.prev
+					conditionalBr := now.instr[len(now.instr)-2]
 					require.Equal(t, OpcodeJump, tail.opcode)
 					require.Equal(t, OpcodeBrz, conditionalBr.opcode) // intact.
-					require.Equal(t, conditionalBr, tail.prev)
 				}
 				return
 			},
@@ -96,10 +94,9 @@ func Test_maybeInvertBranch(t *testing.T) {
 				insertJump(b, now, next)
 				verify = func(t *testing.T) {
 					tail := now.Tail()
-					conditionalBr := tail.prev
+					conditionalBr := now.instr[len(now.instr)-2]
 					require.Equal(t, OpcodeJump, tail.opcode)
 					require.Equal(t, OpcodeBrz, conditionalBr.opcode) // intact.
-					require.Equal(t, conditionalBr, tail.prev)
 				}
 				return
 			},
@@ -113,7 +110,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				insertJump(b, now, next)
 
 				tail := now.Tail()
-				conditionalBr := tail.prev
+				conditionalBr := now.instr[len(now.instr)-2]
 
 				// Sanity check before inversion.
 				require.Equal(t, conditionalBr, loopHeader.preds[0].branch)
@@ -123,7 +120,6 @@ func Test_maybeInvertBranch(t *testing.T) {
 					require.Equal(t, OpcodeBrnz, conditionalBr.opcode)                       // inversion.
 					require.Equal(t, loopHeader, b.basicBlock(BasicBlockID(tail.rValue)))    // swapped.
 					require.Equal(t, next, b.basicBlock(BasicBlockID(conditionalBr.rValue))) // swapped.
-					require.Equal(t, conditionalBr, tail.prev)
 
 					// Predecessor info should correctly point to the inverted jump instruction.
 					require.Equal(t, tail, loopHeader.preds[0].branch)
@@ -142,7 +138,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 				insertJump(b, now, nowTarget)
 
 				tail := now.Tail()
-				conditionalBr := tail.prev
+				conditionalBr := now.instr[len(now.instr)-2]
 
 				// Sanity check before inversion.
 				require.Equal(t, tail, nowTarget.preds[0].branch)
@@ -153,7 +149,6 @@ func Test_maybeInvertBranch(t *testing.T) {
 					require.Equal(t, OpcodeBrnz, conditionalBr.opcode)                            // inversion.
 					require.Equal(t, next, b.basicBlock(BasicBlockID(tail.rValue)))               // swapped.
 					require.Equal(t, nowTarget, b.basicBlock(BasicBlockID(conditionalBr.rValue))) // swapped.
-					require.Equal(t, conditionalBr, tail.prev)
 
 					require.Equal(t, conditionalBr, nowTarget.preds[0].branch)
 					require.Equal(t, tail, next.preds[0].branch)
@@ -200,30 +195,12 @@ func TestBuilder_splitCriticalEdge(t *testing.T) {
 	require.Equal(t, trampoline.Tail(), predInfo.branch)
 	require.Equal(t, trampoline.success[0], dummyBlk)
 
-	replacedBrz := predBlk.Root().next
+	replacedBrz := predBlk.instr[1] // predBlk.Root().Next
 	require.Equal(t, OpcodeBrz, replacedBrz.opcode)
 	require.Equal(t, trampoline, b.basicBlock(BasicBlockID(replacedBrz.rValue)))
 }
 
 func Test_swapInstruction(t *testing.T) {
-	t.Run("swap root", func(t *testing.T) {
-		b := NewBuilder().(*builder)
-		blk := b.allocateBasicBlock()
-
-		dummy := b.AllocateInstruction()
-
-		old := b.AllocateInstruction()
-		old.next, dummy.prev = dummy, old
-		newi := b.AllocateInstruction()
-		blk.instr = []*Instruction{old}
-		replaceInstruction(blk, old, newi)
-
-		require.Equal(t, newi, blk.Root())
-		require.Equal(t, dummy, newi.next)
-		require.Equal(t, dummy.prev, newi)
-		require.Nil(t, old.next)
-		require.Nil(t, old.prev)
-	})
 	t.Run("swap middle", func(t *testing.T) {
 		b := NewBuilder().(*builder)
 		blk := b.allocateBasicBlock()
@@ -241,12 +218,6 @@ func Test_swapInstruction(t *testing.T) {
 		replaceInstruction(blk, i2, newi)
 
 		require.Equal(t, i1, blk.Root())
-		require.Equal(t, newi, i1.next)
-		require.Equal(t, i3, newi.next)
-		require.Equal(t, i1, newi.prev)
-		require.Equal(t, newi, i3.prev)
-		require.Nil(t, i2.next)
-		require.Nil(t, i2.prev)
 	})
 	t.Run("swap tail", func(t *testing.T) {
 		b := NewBuilder().(*builder)
@@ -264,11 +235,6 @@ func Test_swapInstruction(t *testing.T) {
 
 		require.Equal(t, i1, blk.Root())
 		require.Equal(t, newi, blk.Tail())
-		require.Equal(t, newi, i1.next)
-		require.Equal(t, i1, newi.prev)
-		require.Nil(t, newi.next)
-		require.Nil(t, i2.next)
-		require.Nil(t, i2.prev)
 	})
 }
 

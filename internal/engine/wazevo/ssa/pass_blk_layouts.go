@@ -177,7 +177,10 @@ func maybeInvertBranches(b *builder, now *basicBlock, nextInRPO *basicBlock) boo
 		return false
 	}
 
-	condBranch := fallthroughBranch.prev
+	if len(now.instr) < 2 {
+		return false
+	}
+	condBranch := now.instr[len(now.instr)-2]
 	if condBranch == nil || (condBranch.opcode != OpcodeBrnz && condBranch.opcode != OpcodeBrz) {
 		return false
 	}
@@ -328,12 +331,4 @@ func replaceInstruction(blk *basicBlock, old, New *Instruction) {
 	}
 
 	blk.instr[oid] = New
-	prev := old.prev
-	if prev != nil {
-		prev.next, New.prev = New, prev
-	}
-	if next := old.next; next != nil {
-		New.next, next.prev = next, New
-	}
-	old.prev, old.next = nil, nil
 }

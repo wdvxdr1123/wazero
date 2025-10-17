@@ -34,6 +34,9 @@ type BasicBlock interface {
 	// The returned Value is the definition of the param in this block.
 	Param(i int) Value
 
+	// Instructions returns the list of instructions in this block.
+	Instructions() []*Instruction
+
 	// Root returns the root instruction of this block.
 	Root() *Instruction
 
@@ -43,7 +46,7 @@ type BasicBlock interface {
 	// EntryBlock returns true if this block represents the function entry.
 	EntryBlock() bool
 
-	// ReturnBlock returns ture if this block represents the function return.
+	// ReturnBlock returns true if this block represents the function return.
 	ReturnBlock() bool
 
 	// Valid is true if this block is still valid even after optimizations.
@@ -207,11 +210,6 @@ func (bb *basicBlock) Sealed() bool {
 
 // insertInstruction implements BasicBlock.InsertInstruction.
 func (bb *basicBlock) insertInstruction(b *builder, next *Instruction) {
-	current := bb.Tail()
-	if current != nil {
-		current.next = next
-		next.prev = current
-	}
 	bb.instr = append(bb.instr, next)
 
 	switch next.opcode {
@@ -249,6 +247,10 @@ func (bb *basicBlock) Succs() int {
 // Succ implements BasicBlock.Succ.
 func (bb *basicBlock) Succ(i int) BasicBlock {
 	return bb.success[i]
+}
+
+func (bb *basicBlock) Instructions() []*Instruction {
+	return bb.instr
 }
 
 // Root implements BasicBlock.Root.

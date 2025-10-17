@@ -236,7 +236,7 @@ func deadcode(b *builder) {
 	// relevant to dead code elimination, but we need in the backend.
 	var gid InstructionGroupID
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		for cur := blk.Root(); cur != nil; cur = cur.next {
+		for _, cur := range blk.Instructions() {
 			cur.gid = gid
 			switch cur.sideEffect() {
 			case sideEffectTraps:
@@ -297,19 +297,17 @@ func deadcode(b *builder) {
 
 	// Now that all the live instructions are flagged as live=true, we eliminate all dead instructions.
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		var instrs []*Instruction
-		for cur := blk.Root(); cur != nil; cur = cur.next {
+		// TODO(wdvxdr1123): use inplace algorithm to avoid extra allocation.
+		j := 0
+		for i, cur := range blk.Instructions() {
 			if !cur.live {
 				// Remove the instruction from the list.
-				if prev := cur.prev; prev != nil {
-					prev.next = cur.next
-				}
-				if next := cur.next; next != nil {
-					next.prev = cur.prev
-				}
 				continue
 			}
-			instrs = append(instrs, cur)
+			if i != j {
+				blk.instr[j] = cur
+			}
+			j++
 
 			// If the value alive, we can be sure that arguments are used definitely.
 			// Hence, we can increment the value reference counts.
@@ -328,7 +326,10 @@ func deadcode(b *builder) {
 			}
 		}
 		// Finally, we need to update the instruction list in the block.
-		blk.instr = instrs
+		if j < len(blk.instr) {
+			clear(blk.instr[j:])
+		}
+		blk.instr = blk.instr[:j]
 	}
 
 	b.instStack = liveInstructions // we reuse the stack for the next iteration.
@@ -345,7 +346,7 @@ func (b *builder) incRefCount(id ValueID, from *Instruction) {
 // nopElimination eliminates the instructions which is essentially a no-op.
 func nopElimination(b *builder) {
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		for cur := blk.Root(); cur != nil; cur = cur.next {
+		for _, cur := range blk.Instructions() {
 			switch cur.Opcode() {
 			// TODO: add more logics here.
 			case OpcodeIshl, OpcodeSshr, OpcodeUshr:

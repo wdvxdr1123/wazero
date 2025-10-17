@@ -36,16 +36,17 @@ func (c *compiler) lowerBlock(blk ssa.BasicBlock) {
 
 	// We traverse the instructions in reverse order because we might want to lower multiple
 	// instructions together.
-	cur := blk.Tail()
+	insts := blk.Instructions()
+	cur := len(insts) - 1
 
 	// First gather the branching instructions at the end of the blocks.
 	var br0, br1 *ssa.Instruction
-	if cur.IsBranching() {
-		br0 = cur
-		cur = cur.Prev()
-		if cur != nil && cur.IsBranching() {
-			br1 = cur
-			cur = cur.Prev()
+	if insts[cur].IsBranching() {
+		br0 = insts[cur]
+		cur--
+		if cur >= 0 && insts[cur].IsBranching() {
+			br1 = insts[cur]
+			cur--
 		}
 	}
 
@@ -58,21 +59,22 @@ func (c *compiler) lowerBlock(blk ssa.BasicBlock) {
 	}
 
 	// Now start lowering the non-branching instructions.
-	for ; cur != nil; cur = cur.Prev() {
-		c.setCurrentGroupID(cur.GroupID())
-		if cur.Lowered() {
+	for ; cur >= 0; cur-- {
+		inst := insts[cur]
+		c.setCurrentGroupID(inst.GroupID())
+		if inst.Lowered() {
 			continue
 		}
 
-		switch cur.Opcode() {
+		switch inst.Opcode() {
 		case ssa.OpcodeReturn:
-			rets := cur.ReturnVals()
+			rets := inst.ReturnVals()
 			if len(rets) > 0 {
 				c.mach.LowerReturns(rets)
 			}
 			c.mach.InsertReturn()
 		default:
-			mach.LowerInstr(cur)
+			mach.LowerInstr(inst)
 		}
 		mach.FlushPendingInstructions()
 	}

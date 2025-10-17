@@ -600,7 +600,7 @@ func (b *builder) Format() string {
 		str.WriteString(bb.formatHeader(b))
 		str.WriteByte('\n')
 
-		for cur := bb.Root(); cur != nil; cur = cur.Next() {
+		for _, cur := range bb.Instructions() {
 			str.WriteByte('\t')
 			str.WriteString(cur.Format(b))
 			str.WriteByte('\n')

@@ -223,7 +223,7 @@ func (c *compiler) assignVirtualRegisters() {
 		}
 
 		// Assigns each value to a virtual register produced by instructions.
-		for cur := blk.Root(); cur != nil; cur = cur.Next() {
+		for _, cur := range blk.Instructions() {
 			r, rs := cur.Returns()
 			if r.Valid() {
 				id := r.ID()

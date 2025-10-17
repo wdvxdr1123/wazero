@@ -17,15 +17,14 @@ type Opcode uint32
 // depending on Opcode.
 type Instruction struct {
 	// id is the unique ID of this instruction which ascends from 0 following the order of program.
-	id         int
-	opcode     Opcode
-	u1, u2     uint64
-	v          Value
-	v2         Value
-	v3         Value
-	vs         Values
-	typ        Type
-	prev, next *Instruction
+	id     int
+	opcode Opcode
+	u1, u2 uint64
+	v      Value
+	v2     Value
+	v3     Value
+	vs     Values
+	typ    Type
 
 	// rValue is the (first) return value of this instruction.
 	// For branching instructions except for OpcodeBrTable, they hold BlockID to jump cast to Value.
@@ -156,16 +155,6 @@ func (i *Instruction) ShuffleData() (v Value, v2 Value, lo uint64, hi uint64) {
 // Arg3 returns the first three arguments to this instruction.
 func (i *Instruction) Arg3() (Value, Value, Value) {
 	return i.v, i.v2, i.v3
-}
-
-// Next returns the next instruction laid out next to itself.
-func (i *Instruction) Next() *Instruction {
-	return i.next
-}
-
-// Prev returns the previous instruction laid out prior to itself.
-func (i *Instruction) Prev() *Instruction {
-	return i.prev
 }
 
 // IsBranching returns true if this instruction is a branching instruction.
