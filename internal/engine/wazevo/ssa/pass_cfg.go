@@ -8,12 +8,12 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
-// passCalculateImmediateDominators calculates immediate dominators for each basic block.
+// calculateImmediateDominators calculates immediate dominators for each basic block.
 // The result is stored in b.dominators. This make it possible for the following passes to
 // use builder.isDominatedBy to check if a block is dominated by another block.
 //
 // At the last of pass, this function also does the loop detection and sets the basicBlock.loop flag.
-func passCalculateImmediateDominators(b *builder) {
+func calculateImmediateDominators(b *builder) {
 	reversePostOrder := b.reversePostOrderedBasicBlocks[:0]
 
 	// Store the reverse postorder from the entrypoint into reversePostOrder slice.
@@ -168,7 +168,7 @@ func subPassLoopDetection(b *builder) {
 
 // buildLoopNestingForest builds the loop nesting forest for the function.
 // This must be called after branch splitting since it relies on the CFG.
-func passBuildLoopNestingForest(b *builder) {
+func buildLoopNestingForest(b *builder) {
 	ent := b.entryBlk()
 	doms := b.dominators
 	for _, blk := range b.reversePostOrderedBasicBlocks {
@@ -209,8 +209,8 @@ type dominatorSparseTree struct {
 	table        [][]int32
 }
 
-// passBuildDominatorTree builds the dominator tree for the function, and constructs builder.sparseTree.
-func passBuildDominatorTree(b *builder) {
+// buildDominatorTree builds the dominator tree for the function, and constructs builder.sparseTree.
+func buildDominatorTree(b *builder) {
 	// First we materialize the children of each node in the dominator tree.
 	idoms := b.dominators
 	for _, blk := range b.reversePostOrderedBasicBlocks {

@@ -75,7 +75,7 @@ func TestMachine_setupPrologue(t *testing.T) {
 			root.next = udf
 			udf.prev = root
 
-			m.setupPrologue()
+			m.prologue()
 			require.Equal(t, root, m.rootInstr)
 			err := m.Encode(context.Background())
 			require.NoError(t, err)

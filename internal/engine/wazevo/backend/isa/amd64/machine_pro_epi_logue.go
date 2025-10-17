@@ -7,11 +7,11 @@ import (
 
 // PostRegAlloc implements backend.Machine.
 func (m *machine) PostRegAlloc() {
-	m.setupPrologue()
+	m.prologue()
 	m.postRegAlloc()
 }
 
-func (m *machine) setupPrologue() {
+func (m *machine) prologue() {
 	cur := m.rootInstr
 	prevInitInst := cur.next
 

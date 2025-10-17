@@ -6,27 +6,19 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
-// RunPasses implements Builder.RunPasses.
-//
-// The order here matters; some pass depends on the previous ones.
-//
-// Note that passes suffixed with "Opt" are the optimization passes, meaning that they edit the instructions and blocks
-// while the other passes are not, like passEstimateBranchProbabilities does not edit them, but only calculates the additional information.
-func (b *builder) RunPasses() {
-	b.runPreBlockLayoutPasses()
-	b.runBlockLayoutPass()
-	b.runPostBlockLayoutPasses()
-	b.runFinalizingPasses()
+type pass struct {
+	name string
+	fn   func(b *builder)
 }
 
-func (b *builder) runPreBlockLayoutPasses() {
-	passSortSuccessors(b)
-	passDeadBlockEliminationOpt(b)
+var passes = []pass{
+	// Pre block layout passes
+	{"sort-successors", sortSuccessors},
+	{"dead-block-elimination", deadBlockElim},
 	// The result of passCalculateImmediateDominators will be used by various passes below.
-	passCalculateImmediateDominators(b)
-	passRedundantPhiEliminationOpt(b)
-	passNopInstElimination(b)
-
+	{"calculate-immediate-dominators", calculateImmediateDominators},
+	{"redundant-phi-elimination", redundantPhiElimination},
+	{"nop-inst-elimination", nopElimination},
 	// TODO: implement either conversion of irreducible CFG into reducible one, or irreducible CFG detection where we panic.
 	// 	WebAssembly program shouldn't result in irreducible CFG, but we should handle it properly in just in case.
 	// 	See FixIrreducible pass in LLVM: https://llvm.org/doxygen/FixIrreducible_8cpp_source.html
@@ -40,43 +32,37 @@ func (b *builder) runPreBlockLayoutPasses() {
 	// 	and more!
 
 	// passDeadCodeEliminationOpt could be more accurate if we do this after other optimizations.
-	passDeadCodeEliminationOpt(b)
-	b.donePreBlockLayoutPasses = true
-}
+	{"dead-code-elimination", deadcode},
 
-func (b *builder) runBlockLayoutPass() {
-	if !b.donePreBlockLayoutPasses {
-		panic("runBlockLayoutPass must be called after all pre passes are done")
-	}
-	passLayoutBlocks(b)
-	b.doneBlockLayout = true
-}
+	// Block layout pass
+	{"layout-blocks", layoutBlocks},
 
-// runPostBlockLayoutPasses runs the post block layout passes. After this point, CFG is somewhat stable,
-// but still can be modified before finalizing passes. At this point, critical edges are split by passLayoutBlocks.
-func (b *builder) runPostBlockLayoutPasses() {
-	if !b.doneBlockLayout {
-		panic("runPostBlockLayoutPasses must be called after block layout pass is done")
-	}
+	// Post block layout passes
 	// TODO: Do more. e.g. tail duplication, loop unrolling, etc.
 
-	b.donePostBlockLayoutPasses = true
+	// Finalizing passes
+	{"build-loop-nesting-forest", buildLoopNestingForest},
+	{"build-dominator-tree", buildDominatorTree},
+	{"mark-fallthrough-jumps", markFallthroughJumps},
 }
 
-// runFinalizingPasses runs the finalizing passes. After this point, CFG should not be modified.
-func (b *builder) runFinalizingPasses() {
-	if !b.donePostBlockLayoutPasses {
-		panic("runFinalizingPasses must be called after post block layout passes are done")
+// RunPasses implements Builder.RunPasses.
+//
+// The order here matters; some pass depends on the previous ones.
+//
+// Note that passes suffixed with "Opt" are the optimization passes, meaning that they edit the instructions and blocks
+// while the other passes are not, like passEstimateBranchProbabilities does not edit them, but only calculates the additional information.
+func (b *builder) RunPasses() {
+	for _, p := range passes {
+		if wazevoapi.SSALoggingEnabled {
+			fmt.Printf("Running pass: %s\n", p.name)
+		}
+		p.fn(b)
 	}
-	// Critical edges are split, so we fix the loop nesting forest.
-	passBuildLoopNestingForest(b)
-	passBuildDominatorTree(b)
-	// Now that we know the final placement of the blocks, we can explicitly mark the fallthrough jumps.
-	b.markFallthroughJumps()
 }
 
-// passDeadBlockEliminationOpt searches the unreachable blocks, and sets the basicBlock.invalid flag true if so.
-func passDeadBlockEliminationOpt(b *builder) {
+// deadBlockElim searches the unreachable blocks, and sets the basicBlock.invalid flag true if so.
+func deadBlockElim(b *builder) {
 	entryBlk := b.entryBlk()
 	b.blkStack = append(b.blkStack, entryBlk)
 	for len(b.blkStack) > 0 {
@@ -108,10 +94,10 @@ func passDeadBlockEliminationOpt(b *builder) {
 	}
 }
 
-// passRedundantPhiEliminationOpt eliminates the redundant PHIs (in our terminology, parameters of a block).
+// redundantPhiElimination eliminates the redundant PHIs (in our terminology, parameters of a block).
 // This requires the reverse post-order traversal to be calculated before calling this function,
 // hence passCalculateImmediateDominators must be called before this.
-func passRedundantPhiEliminationOpt(b *builder) {
+func redundantPhiElimination(b *builder) {
 	redundantParams := b.redundantParams[:0] // reuse the slice from previous iterations.
 
 	// TODO: this might be costly for large programs, but at least, as far as I did the experiment, it's almost the
@@ -226,14 +212,14 @@ func passRedundantPhiEliminationOpt(b *builder) {
 	b.redundantParams = redundantParams
 }
 
-// passDeadCodeEliminationOpt traverses all the instructions, and calculates the reference count of each Value, and
+// deadcode traverses all the instructions, and calculates the reference count of each Value, and
 // eliminates all the unnecessary instructions whose ref count is zero.
 // The results are stored at builder.valueRefCounts. This also assigns a InstructionGroupID to each Instruction
 // during the process. This is the last SSA-level optimization pass and after this,
 // the SSA function is ready to be used by backends.
 //
 // TODO: the algorithm here might not be efficient. Get back to this later.
-func passDeadCodeEliminationOpt(b *builder) {
+func deadcode(b *builder) {
 	nvid := int(b.nextValueID)
 	if nvid >= len(b.valuesInfo) {
 		l := nvid - len(b.valuesInfo) + 1
@@ -354,8 +340,8 @@ func (b *builder) incRefCount(id ValueID, from *Instruction) {
 	info.RefCount++
 }
 
-// passNopInstElimination eliminates the instructions which is essentially a no-op.
-func passNopInstElimination(b *builder) {
+// nopElimination eliminates the instructions which is essentially a no-op.
+func nopElimination(b *builder) {
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
 		for cur := blk.rootInstr; cur != nil; cur = cur.next {
 			switch cur.Opcode() {
@@ -384,8 +370,8 @@ func passNopInstElimination(b *builder) {
 	}
 }
 
-// passSortSuccessors sorts the successors of each block in the natural program order.
-func passSortSuccessors(b *builder) {
+// sortSuccessors sorts the successors of each block in the natural program order.
+func sortSuccessors(b *builder) {
 	for i := 0; i < b.basicBlocksPool.Allocated(); i++ {
 		blk := b.basicBlocksPool.View(i)
 		sortBlocks(blk.success)

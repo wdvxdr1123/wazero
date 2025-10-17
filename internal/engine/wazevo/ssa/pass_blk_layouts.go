@@ -7,7 +7,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
-// passLayoutBlocks implements Builder.LayoutBlocks. This re-organizes builder.reversePostOrderedBasicBlocks.
+// layoutBlocks implements Builder.LayoutBlocks. This re-organizes builder.reversePostOrderedBasicBlocks.
 //
 // TODO: there are tons of room for improvement here. e.g. LLVM has BlockPlacementPass using BlockFrequencyInfo,
 // BranchProbabilityInfo, and LoopInfo to do a much better job. Also, if we have the profiling instrumentation
@@ -22,7 +22,7 @@ import (
 //  2. we invert the brz and brnz if it makes the fallthrough more likely.
 //
 // This heuristic is done in maybeInvertBranches function.
-func passLayoutBlocks(b *builder) {
+func layoutBlocks(b *builder) {
 	// We might end up splitting critical edges which adds more basic blocks,
 	// so we store the currently existing basic blocks in nonSplitBlocks temporarily.
 	// That way we can iterate over the original basic blocks while appending new ones into reversePostOrderedBasicBlocks.
@@ -149,10 +149,13 @@ func passLayoutBlocks(b *builder) {
 
 	// Reuse the stack for the next iteration.
 	b.blkStack2 = uninsertedTrampolines[:0]
+
+	// Finally, mark done.
+	b.doneBlockLayout = true
 }
 
 // markFallthroughJumps finds the fallthrough jumps and marks them as such.
-func (b *builder) markFallthroughJumps() {
+func markFallthroughJumps(b *builder) {
 	l := len(b.reversePostOrderedBasicBlocks) - 1
 	for i, blk := range b.reversePostOrderedBasicBlocks {
 		if i < l {

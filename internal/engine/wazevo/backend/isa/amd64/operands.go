@@ -65,22 +65,18 @@ func (o *operand) format(_64 bool) string {
 	}
 }
 
-//go:inline
 func (o *operand) reg() regalloc.VReg {
 	return regalloc.VReg(o.data)
 }
 
-//go:inline
 func (o *operand) setReg(r regalloc.VReg) {
 	o.data = uint64(r)
 }
 
-//go:inline
 func (o *operand) addressMode() *amode {
 	return wazevoapi.PtrFromUintptr[amode](uintptr(o.data))
 }
 
-//go:inline
 func (o *operand) imm32() uint32 {
 	return uint32(o.data)
 }

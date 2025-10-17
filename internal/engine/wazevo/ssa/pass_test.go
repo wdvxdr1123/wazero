@@ -27,7 +27,7 @@ func TestBuilder_passes(t *testing.T) {
 	}{
 		{
 			name: "dead block",
-			pass: passDeadBlockEliminationOpt,
+			pass: deadBlockElim,
 			setup: func(b *builder) func(*testing.T) {
 				entry := b.AllocateBasicBlock()
 				value := entry.AddParam(b, TypeI32)
@@ -115,7 +115,7 @@ blk3: () <-- (blk1,blk2)
 		},
 		{
 			name: "redundant phis",
-			pass: passRedundantPhiEliminationOpt,
+			pass: redundantPhiElimination,
 			setup: func(b *builder) func(*testing.T) {
 				entry, loopHeader, end := b.AllocateBasicBlock(), b.AllocateBasicBlock(), b.AllocateBasicBlock()
 
@@ -169,7 +169,7 @@ blk3: () <-- (blk1,blk2)
 				}
 
 				// passRedundantPhiEliminationOpt requires the reverse post-order traversal to be calculated.
-				passCalculateImmediateDominators(b)
+				calculateImmediateDominators(b)
 				return nil
 			},
 			before: `
@@ -201,7 +201,7 @@ blk2: () <-- (blk1)
 		},
 		{
 			name: "dead code",
-			pass: passDeadCodeEliminationOpt,
+			pass: deadcode,
 			setup: func(b *builder) func(*testing.T) {
 				entry, end := b.AllocateBasicBlock(), b.AllocateBasicBlock()
 
@@ -295,8 +295,8 @@ blk1: () <-- (blk0)
 		},
 		{
 			name:     "nop elimination",
-			pass:     passNopInstElimination,
-			postPass: passDeadCodeEliminationOpt,
+			pass:     nopElimination,
+			postPass: deadcode,
 			setup: func(b *builder) (verifier func(t *testing.T)) {
 				entry := b.AllocateBasicBlock()
 				b.SetCurrentBlock(entry)

@@ -193,12 +193,8 @@ type builder struct {
 	// blockIterCur is used to implement blockIteratorBegin and blockIteratorNext.
 	blockIterCur int
 
-	// donePreBlockLayoutPasses is true if all the passes before LayoutBlocks are called.
-	donePreBlockLayoutPasses bool
 	// doneBlockLayout is true if LayoutBlocks is called.
 	doneBlockLayout bool
-	// donePostBlockLayoutPasses is true if all the passes after LayoutBlocks are called.
-	donePostBlockLayoutPasses bool
 
 	currentSourceOffset SourceOffset
 
@@ -276,9 +272,7 @@ func (b *builder) Init(s *Signature) {
 	b.basicBlocksPool.Reset()
 	b.varLengthPool.Reset()
 	b.varLengthBasicBlockPool.Reset()
-	b.donePreBlockLayoutPasses = false
 	b.doneBlockLayout = false
-	b.donePostBlockLayoutPasses = false
 	for _, sig := range b.signatures {
 		sig.used = false
 	}
