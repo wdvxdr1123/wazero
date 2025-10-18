@@ -3,8 +3,6 @@ package ssa
 import (
 	"fmt"
 	"math"
-
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
 // Variable is a unique identifier for a source program's variable and will correspond to
@@ -99,9 +97,3 @@ func (v Value) setInstructionID(id int) Value {
 func (v Value) instructionID() int {
 	return int(v>>32) & 0x0fffffff
 }
-
-// Values is a slice of Value. Use this instead of []Value to reuse the underlying memory.
-type Values = wazevoapi.VarLength[Value]
-
-// ValuesNil is a nil Values.
-var ValuesNil = wazevoapi.NewNilVarLength[Value]()

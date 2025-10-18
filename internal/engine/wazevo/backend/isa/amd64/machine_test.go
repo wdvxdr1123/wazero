@@ -70,7 +70,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 				c := builder.AllocateInstruction()
 				sig := &ssa.Signature{Results: []ssa.Type{ssa.TypeI64}}
 				builder.DeclareSignature(sig)
-				c.AsCall(ssa.FuncRef(0), sig, ssa.ValuesNil)
+				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
 				r := c.Return()
 				ctx.vRegMap[r] = regalloc.VReg(50)
@@ -84,7 +84,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 				c := builder.AllocateInstruction()
 				sig := &ssa.Signature{Results: []ssa.Type{ssa.TypeI64, ssa.TypeF64, ssa.TypeF64}}
 				builder.DeclareSignature(sig)
-				c.AsCall(ssa.FuncRef(0), sig, ssa.ValuesNil)
+				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
 				_, rs := c.Returns()
 				ctx.vRegMap[rs[1]] = regalloc.VReg(50)

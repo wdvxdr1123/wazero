@@ -330,15 +330,15 @@ func (m *machine) LowerSingleBranch(b *ssa.Instruction) {
 	}
 }
 
-func (m *machine) addJmpTableTarget(targets ssa.Values) (index int) {
+func (m *machine) addJmpTableTarget(targets []ssa.Value) (index int) {
 	if m.jmpTableTargetsNext == len(m.jmpTableTargets) {
-		m.jmpTableTargets = append(m.jmpTableTargets, make([]uint32, 0, len(targets.View())))
+		m.jmpTableTargets = append(m.jmpTableTargets, make([]uint32, 0, len(targets)))
 	}
 
 	index = m.jmpTableTargetsNext
 	m.jmpTableTargetsNext++
 	m.jmpTableTargets[index] = m.jmpTableTargets[index][:0]
-	for _, targetBlockID := range targets.View() {
+	for _, targetBlockID := range targets {
 		target := m.c.SSABuilder().BasicBlock(ssa.BasicBlockID(targetBlockID))
 		m.jmpTableTargets[index] = append(m.jmpTableTargets[index], uint32(ssaBlockLabel(target)))
 	}
@@ -347,11 +347,11 @@ func (m *machine) addJmpTableTarget(targets ssa.Values) (index int) {
 
 var condBranchMatches = [...]ssa.Opcode{ssa.OpcodeIcmp, ssa.OpcodeFcmp}
 
-func (m *machine) lowerBrTable(index ssa.Value, targets ssa.Values) {
+func (m *machine) lowerBrTable(index ssa.Value, targets []ssa.Value) {
 	_v := m.getOperand_Reg(m.c.ValueDefinition(index))
 	v := m.copyToTmp(_v.reg())
 
-	targetCount := len(targets.View())
+	targetCount := len(targets)
 
 	// First, we need to do the bounds check.
 	maxIndex := m.c.AllocateVReg(ssa.TypeI32)

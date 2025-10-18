@@ -51,9 +51,9 @@ func TestMachine_LowerConditionalBranch(t *testing.T) {
 		ctx.definitions[cmpVal] = backend.SSAValueDefinition{Instr: cmpInstr}
 		b := builder.AllocateInstruction()
 		if brz {
-			b.AsBrz(cmpVal, ssa.ValuesNil, builder.AllocateBasicBlock())
+			b.AsBrz(cmpVal, nil, builder.AllocateBasicBlock())
 		} else {
-			b.AsBrnz(cmpVal, ssa.ValuesNil, builder.AllocateBasicBlock())
+			b.AsBrnz(cmpVal, nil, builder.AllocateBasicBlock())
 		}
 		builder.InsertInstruction(b)
 		return b, func(t *testing.T) {
@@ -80,9 +80,9 @@ func TestMachine_LowerConditionalBranch(t *testing.T) {
 		ctx.vRegMap[v1], ctx.vRegMap[v2], ctx.vRegMap[icmpVal] = intToVReg(1), intToVReg(2), intToVReg(3)
 		b := builder.AllocateInstruction()
 		if brz {
-			b.AsBrz(icmpVal, ssa.ValuesNil, builder.AllocateBasicBlock())
+			b.AsBrz(icmpVal, nil, builder.AllocateBasicBlock())
 		} else {
-			b.AsBrnz(icmpVal, ssa.ValuesNil, builder.AllocateBasicBlock())
+			b.AsBrnz(icmpVal, nil, builder.AllocateBasicBlock())
 		}
 		builder.InsertInstruction(b)
 		return b, func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestMachine_LowerConditionalBranch(t *testing.T) {
 				ctx.vRegMap[v1], ctx.vRegMap[v2], ctx.vRegMap[icmpVal] = intToVReg(1), intToVReg(2), intToVReg(3)
 
 				brz := builder.AllocateInstruction()
-				brz.AsBrz(icmpVal, ssa.ValuesNil, builder.AllocateBasicBlock())
+				brz.AsBrz(icmpVal, nil, builder.AllocateBasicBlock())
 				builder.InsertInstruction(brz)
 
 				// Indicate that currently compiling in the different group.
@@ -202,7 +202,7 @@ func TestMachine_LowerSingleBranch(t *testing.T) {
 			name: "jump-fallthrough",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (instr *ssa.Instruction) {
 				jump := builder.AllocateInstruction()
-				jump.AsJump(ssa.ValuesNil, builder.AllocateBasicBlock())
+				jump.AsJump(nil, builder.AllocateBasicBlock())
 				builder.InsertInstruction(jump)
 				jump.AsFallthroughJump()
 				return jump
@@ -213,7 +213,7 @@ func TestMachine_LowerSingleBranch(t *testing.T) {
 			name: "b",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (instr *ssa.Instruction) {
 				jump := builder.AllocateInstruction()
-				jump.AsJump(ssa.ValuesNil, builder.AllocateBasicBlock())
+				jump.AsJump(nil, builder.AllocateBasicBlock())
 				builder.InsertInstruction(jump)
 				return jump
 			},
@@ -223,7 +223,7 @@ func TestMachine_LowerSingleBranch(t *testing.T) {
 			name: "ret",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (instr *ssa.Instruction) {
 				jump := builder.AllocateInstruction()
-				jump.AsJump(ssa.ValuesNil, builder.ReturnBlock())
+				jump.AsJump(nil, builder.ReturnBlock())
 				builder.InsertInstruction(jump)
 				return jump
 			},

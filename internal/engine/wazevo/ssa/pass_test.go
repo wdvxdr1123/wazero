@@ -38,25 +38,25 @@ func TestBuilder_passes(t *testing.T) {
 				b.SetCurrentBlock(entry)
 				{
 					brz := b.AllocateInstruction()
-					brz.AsBrz(value, ValuesNil, middle1)
+					brz.AsBrz(value, nil, middle1)
 					b.InsertInstruction(brz)
 
 					jmp := b.AllocateInstruction()
-					jmp.AsJump(ValuesNil, middle2)
+					jmp.AsJump(nil, middle2)
 					b.InsertInstruction(jmp)
 				}
 
 				b.SetCurrentBlock(middle1)
 				{
 					jmp := b.AllocateInstruction()
-					jmp.AsJump(ValuesNil, end)
+					jmp.AsJump(nil, end)
 					b.InsertInstruction(jmp)
 				}
 
 				b.SetCurrentBlock(middle2)
 				{
 					jmp := b.AllocateInstruction()
-					jmp.AsJump(ValuesNil, end)
+					jmp.AsJump(nil, end)
 					b.InsertInstruction(jmp)
 				}
 
@@ -64,14 +64,14 @@ func TestBuilder_passes(t *testing.T) {
 					unreachable := b.AllocateBasicBlock()
 					b.SetCurrentBlock(unreachable)
 					jmp := b.AllocateInstruction()
-					jmp.AsJump(ValuesNil, end)
+					jmp.AsJump(nil, end)
 					b.InsertInstruction(jmp)
 				}
 
 				b.SetCurrentBlock(end)
 				{
 					jmp := b.AllocateInstruction()
-					jmp.AsJump(ValuesNil, middle1)
+					jmp.AsJump(nil, middle1)
 					b.InsertInstruction(jmp)
 				}
 
@@ -131,8 +131,7 @@ blk3: () <-- (blk1,blk2)
 					b.DefineVariable(var1, iConst, entry)
 
 					jmp := b.AllocateInstruction()
-					args := b.varLengthPool.Allocate(1)
-					args = args.Append(&b.varLengthPool, iConst)
+					args := []Value{iConst}
 					jmp.AsJump(args, loopHeader)
 					b.InsertInstruction(jmp)
 				}
@@ -149,14 +148,13 @@ blk3: () <-- (blk1,blk2)
 					b.InsertInstruction(tmpInst)
 					tmp := tmpInst.Return()
 
-					args := b.varLengthPool.Allocate(0)
-					args = args.Append(&b.varLengthPool, tmp)
+					args := []Value{tmp}
 					brz := b.AllocateInstruction()
 					brz.AsBrz(value, args, loopHeader) // Loop to itself.
 					b.InsertInstruction(brz)
 
 					jmp := b.AllocateInstruction()
-					jmp.AsJump(ValuesNil, end)
+					jmp.AsJump(nil, end)
 					b.InsertInstruction(jmp)
 				}
 				b.Seal(loopHeader)
@@ -164,7 +162,7 @@ blk3: () <-- (blk1,blk2)
 				b.SetCurrentBlock(end)
 				{
 					ret := b.AllocateInstruction()
-					ret.AsReturn(ValuesNil)
+					ret.AsReturn(nil)
 					b.InsertInstruction(ret)
 				}
 
@@ -226,7 +224,7 @@ blk2: () <-- (blk1)
 				refOnceVal := iconstRefOnceInst.Return()
 
 				jmp := b.AllocateInstruction()
-				jmp.AsJump(ValuesNil, end)
+				jmp.AsJump(nil, end)
 				b.InsertInstruction(jmp)
 
 				b.SetCurrentBlock(end)
@@ -240,8 +238,7 @@ blk2: () <-- (blk1)
 				addRes := add.Return()
 
 				ret := b.AllocateInstruction()
-				args := b.varLengthPool.Allocate(1)
-				args = args.Append(&b.varLengthPool, addRes)
+				args := []Value{addRes}
 				ret.AsReturn(args)
 				b.InsertInstruction(ret)
 				return func(t *testing.T) {
@@ -320,11 +317,7 @@ blk1: () <-- (blk0)
 				nonZeroSshr := b.AllocateInstruction().AsSshr(i64Param, nonZeroI64).Insert(b).Return()
 
 				ret := b.AllocateInstruction()
-				args := b.varLengthPool.Allocate(4)
-				args = args.Append(&b.varLengthPool, nopIshl)
-				args = args.Append(&b.varLengthPool, nopUshr)
-				args = args.Append(&b.varLengthPool, nonZeroIshl)
-				args = args.Append(&b.varLengthPool, nonZeroSshr)
+				args := []Value{nopIshl, nopUshr, nonZeroIshl, nonZeroSshr}
 				ret.AsReturn(args)
 				b.InsertInstruction(ret)
 				return nil

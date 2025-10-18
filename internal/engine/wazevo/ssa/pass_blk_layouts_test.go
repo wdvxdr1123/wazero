@@ -10,7 +10,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 	insertJump := func(b *builder, src, dst *BasicBlock) {
 		b.SetCurrentBlock(src)
 		jump := b.AllocateInstruction()
-		jump.AsJump(ValuesNil, dst)
+		jump.AsJump(nil, dst)
 		b.InsertInstruction(jump)
 	}
 
@@ -21,7 +21,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		b.InsertInstruction(vinst)
 		v := vinst.Return()
 		brz := b.AllocateInstruction()
-		brz.AsBrz(v, ValuesNil, dst)
+		brz.AsBrz(v, nil, dst)
 		b.InsertInstruction(brz)
 	}
 
@@ -178,10 +178,10 @@ func TestBuilder_splitCriticalEdge(t *testing.T) {
 	b.InsertInstruction(inst)
 	v := inst.Return()
 	originalBrz := b.AllocateInstruction() // This is the split edge.
-	originalBrz.AsBrz(v, ValuesNil, dummyBlk)
+	originalBrz.AsBrz(v, nil, dummyBlk)
 	b.InsertInstruction(originalBrz)
 	dummyJump := b.AllocateInstruction()
-	dummyJump.AsJump(ValuesNil, dummyBlk2)
+	dummyJump.AsJump(nil, dummyBlk2)
 	b.InsertInstruction(dummyJump)
 
 	predInfo := &PredInfo{Block: predBlk, Branch: originalBrz}
@@ -242,9 +242,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 	insertJump := func(b *builder, src, dst *BasicBlock, vs ...Value) {
 		b.SetCurrentBlock(src)
 		jump := b.AllocateInstruction()
-		args := b.varLengthPool.Allocate(len(vs))
-		args = args.Append(&b.varLengthPool, vs...)
-		jump.AsJump(args, dst)
+		jump.AsJump(vs, dst)
 		b.InsertInstruction(jump)
 	}
 
@@ -253,9 +251,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 		vinst := b.AllocateInstruction().AsIconst32(0)
 		b.InsertInstruction(vinst)
 		brz := b.AllocateInstruction()
-		args := b.varLengthPool.Allocate(len(vs))
-		args = args.Append(&b.varLengthPool, vs...)
-		brz.AsBrz(condVal, args, dst)
+		brz.AsBrz(condVal, vs, dst)
 		b.InsertInstruction(brz)
 	}
 
@@ -506,8 +502,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				}
 				b.SetCurrentBlock(b1)
 				{
-					args := b.varLengthPool.Allocate(1)
-					args = args.Append(&b.varLengthPool, retval)
+					args := []Value{retval}
 					b.AllocateInstruction().AsReturn(args).Insert(b)
 				}
 				b.SetCurrentBlock(b2)

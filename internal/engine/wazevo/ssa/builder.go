@@ -124,9 +124,6 @@ type Builder interface {
 	// Idom returns the immediate dominator of the given BasicBlock.
 	Idom(blk *BasicBlock) *BasicBlock
 
-	// VarLengthPool returns the VarLengthPool of Value.
-	VarLengthPool() *wazevoapi.VarLengthPool[Value]
-
 	// InsertZeroValue inserts a zero value constant instruction of the given type.
 	InsertZeroValue(t Type)
 
@@ -140,10 +137,9 @@ type Builder interface {
 // NewBuilder returns a new Builder implementation.
 func NewBuilder() Builder {
 	return &builder{
-		instructionsPool:        wazevoapi.NewPool[Instruction](resetInstruction),
-		basicBlocksPool:         wazevoapi.NewPool[BasicBlock](resetBasicBlock),
+		instructionsPool:        wazevoapi.NewPool(resetInstruction),
+		basicBlocksPool:         wazevoapi.NewPool(resetBasicBlock),
 		varLengthBasicBlockPool: wazevoapi.NewVarLengthPool[*BasicBlock](),
-		varLengthPool:           wazevoapi.NewVarLengthPool[Value](),
 		valueAnnotations:        make(map[ValueID]string),
 		signatures:              make(map[SignatureID]*Signature),
 		returnBlk:               &BasicBlock{id: basicBlockIDReturnBlock},
@@ -154,7 +150,6 @@ func NewBuilder() Builder {
 type builder struct {
 	basicBlocksPool  wazevoapi.Pool[BasicBlock]
 	instructionsPool wazevoapi.Pool[Instruction]
-	varLengthPool    wazevoapi.VarLengthPool[Value]
 	signatures       map[SignatureID]*Signature
 	currentSignature *Signature
 
@@ -253,10 +248,6 @@ func (b *builder) InsertZeroValue(t Type) {
 	b.zeros[t] = zeroInst.Insert(b).Return()
 }
 
-func (b *builder) VarLengthPool() *wazevoapi.VarLengthPool[Value] {
-	return &b.varLengthPool
-}
-
 // ReturnBlock implements Builder.ReturnBlock.
 func (b *builder) ReturnBlock() *BasicBlock {
 	return b.returnBlk
@@ -270,7 +261,6 @@ func (b *builder) Init(s *Signature) {
 	resetBasicBlock(b.returnBlk)
 	b.instructionsPool.Reset()
 	b.basicBlocksPool.Reset()
-	b.varLengthPool.Reset()
 	b.varLengthBasicBlockPool.Reset()
 	b.doneBlockLayout = false
 	for _, sig := range b.signatures {
@@ -399,10 +389,10 @@ func (b *builder) InsertInstruction(instr *Instruction) {
 		return
 	}
 
-	rValues := b.varLengthPool.Allocate(tsl)
+	rValues := make([]Value, 0, tsl)
 	for i := 0; i < tsl; i++ {
 		rn := b.allocateValue(ts[i])
-		rValues = rValues.Append(&b.varLengthPool, rn.setInstructionID(instr.id))
+		rValues = append(rValues, rn.setInstructionID(instr.id))
 	}
 	instr.rValues = rValues
 }
@@ -700,7 +690,7 @@ func (b *builder) resolveArgumentAlias(instr *Instruction) {
 		instr.v3 = b.resolveAlias(instr.v3)
 	}
 
-	view := instr.vs.View()
+	view := instr.vs
 	for i, v := range view {
 		view[i] = b.resolveAlias(v)
 	}

@@ -40,7 +40,7 @@ func (m *machine) LowerSingleBranch(br *ssa.Instruction) {
 
 func (m *machine) lowerBrTable(i *ssa.Instruction) {
 	index, targetBlockIDs := i.BrTableData()
-	targetBlockCount := len(targetBlockIDs.View())
+	targetBlockCount := len(targetBlockIDs)
 	indexOperand := m.getOperand_NR(m.compiler.ValueDefinition(index), extModeNone)
 
 	// Firstly, we have to do the bounds check of the index, and

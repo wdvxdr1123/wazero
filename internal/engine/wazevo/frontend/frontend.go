@@ -465,14 +465,6 @@ func (k *knownSafeBound) valid() bool {
 	return k != nil && k.bound > 0
 }
 
-func (c *Compiler) allocateVarLengthValues(_cap int, vs ...ssa.Value) ssa.Values {
-	builder := c.ssaBuilder
-	pool := builder.VarLengthPool()
-	args := pool.Allocate(_cap)
-	args = args.Append(builder.VarLengthPool(), vs...)
-	return args
-}
-
 func (c *Compiler) finalizeKnownSafeBoundsAtTheEndOfBlock(bID ssa.BasicBlockID) {
 	_bID := int(bID)
 	if l := len(c.knownSafeBoundsAtTheEndOfBlocks); _bID >= l {

@@ -114,7 +114,7 @@ func redundantPhiElimination(b *builder) {
 		_ = b.blockIteratorReversePostOrderBegin() // skip entry block!
 		// Below, we intentionally use the named iteration variable name, as this comes with inevitable nested for loops!
 		for blk := b.blockIteratorReversePostOrderNext(); blk != nil; blk = b.blockIteratorReversePostOrderNext() {
-			params := blk.params.View()
+			params := blk.params
 			paramNum := len(params)
 
 			for paramIndex := 0; paramIndex < paramNum; paramIndex++ {
@@ -126,7 +126,7 @@ func redundantPhiElimination(b *builder) {
 					br := blk.Pred[predIndex].Branch
 					// Resolve the alias in the arguments so that we could use the previous iteration's result.
 					b.resolveArgumentAlias(br)
-					pred := br.vs.View()[paramIndex]
+					pred := br.vs[paramIndex]
 					if pred == phiValue {
 						// This is self-referencing: PHI from the same PHI.
 						continue
@@ -165,7 +165,7 @@ func redundantPhiElimination(b *builder) {
 				redundantParamsCur, predParamCur := 0, 0
 				predBlk := blk.Pred[predIndex]
 				branchInst := predBlk.Branch
-				view := branchInst.vs.View()
+				view := branchInst.vs
 				for argIndex, value := range view {
 					if len(redundantParams) == redundantParamsCur ||
 						redundantParams[redundantParamsCur].index != argIndex {
@@ -175,7 +175,7 @@ func redundantPhiElimination(b *builder) {
 						redundantParamsCur++
 					}
 				}
-				branchInst.vs.Cut(predParamCur)
+				branchInst.vs = view[:predParamCur]
 			}
 
 			// Still need to have the definition of the value of the PHI (previously as the parameter).
@@ -197,7 +197,7 @@ func redundantPhiElimination(b *builder) {
 					redundantParamsCur++
 				}
 			}
-			blk.params.Cut(paramsCur)
+			blk.params = blk.params[:paramsCur]
 
 			// Clears the map for the next iteration.
 			redundantParams = redundantParams[:0]

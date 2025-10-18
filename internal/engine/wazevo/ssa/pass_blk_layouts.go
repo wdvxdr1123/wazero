@@ -184,7 +184,7 @@ func maybeInvertBranches(b *builder, now *BasicBlock, nextInRPO *BasicBlock) boo
 		return false
 	}
 
-	if len(fallthroughBranch.vs.View()) != 0 || len(condBranch.vs.View()) != 0 {
+	if len(fallthroughBranch.vs) != 0 || len(condBranch.vs) != 0 {
 		// If either one of them has arguments, we don't invert the branches.
 		return false
 	}
@@ -308,7 +308,7 @@ func (b *builder) splitCriticalEdge(pred, succ *BasicBlock, predInfo *PredInfo) 
 		trampoline.validate(b)
 	}
 
-	if len(trampoline.params.View()) > 0 {
+	if len(trampoline.params) > 0 {
 		panic("trampoline should not have params")
 	}
 

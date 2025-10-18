@@ -3242,7 +3242,7 @@ func TestCompiler_initializeCurrentBlockKnownBounds(t *testing.T) {
 			c.recordKnownSafeBound(1, 99, 9999)
 			c.recordKnownSafeBound(2, 150, 9999)
 			c.recordKnownSafeBound(5, 666, 54321)
-			builder.AllocateInstruction().AsJump(ssa.ValuesNil, child).Insert(builder)
+			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
 			c.finalizeKnownSafeBoundsAtTheEndOfBlock(parent.ID())
 		}
 
@@ -3273,7 +3273,7 @@ func TestCompiler_initializeCurrentBlockKnownBounds(t *testing.T) {
 			c.recordKnownSafeBound(1, 99, 9999)
 			c.recordKnownSafeBound(2, 150, 9999)
 			c.recordKnownSafeBound(5, 666, 54321)
-			builder.AllocateInstruction().AsJump(ssa.ValuesNil, child).Insert(builder)
+			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
 			c.finalizeKnownSafeBoundsAtTheEndOfBlock(parent.ID())
 		}
 
@@ -3304,7 +3304,7 @@ func TestCompiler_initializeCurrentBlockKnownBounds(t *testing.T) {
 			c.recordKnownSafeBound(2, 150, 9999)
 			c.recordKnownSafeBound(5, 666, 54321)
 			c.recordKnownSafeBound(592131, 666, 54321)
-			builder.AllocateInstruction().AsJump(ssa.ValuesNil, child).Insert(builder)
+			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
 			c.finalizeKnownSafeBoundsAtTheEndOfBlock(p1.ID())
 		}
 		{
@@ -3315,7 +3315,7 @@ func TestCompiler_initializeCurrentBlockKnownBounds(t *testing.T) {
 			c.recordKnownSafeBound(5, 555, 54341221)
 			c.recordKnownSafeBound(6, 666, 54321)
 			c.recordKnownSafeBound(7, 666, 54321)
-			builder.AllocateInstruction().AsJump(ssa.ValuesNil, child).Insert(builder)
+			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
 			c.finalizeKnownSafeBoundsAtTheEndOfBlock(p2.ID())
 		}
 		{
@@ -3326,7 +3326,7 @@ func TestCompiler_initializeCurrentBlockKnownBounds(t *testing.T) {
 			c.recordKnownSafeBound(5, 5551231, 54341221)
 			c.recordKnownSafeBound(7, 666, 54321)
 			c.recordKnownSafeBound(60, 666, 54321)
-			builder.AllocateInstruction().AsJump(ssa.ValuesNil, child).Insert(builder)
+			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
 			c.finalizeKnownSafeBoundsAtTheEndOfBlock(p3.ID())
 		}
 
