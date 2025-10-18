@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
@@ -44,8 +44,8 @@ func TestMachine_insertStoreRegisterAt(t *testing.T) {
 					name = "before"
 				}
 				t.Run(name, func(t *testing.T) {
-					ctx.typeOf = map[regalloc.VRegID]ssa.Type{
-						raxVReg.ID(): ssa.TypeI64, xmm1VReg.ID(): ssa.TypeF64,
+					ctx.typeOf = map[regalloc.VRegID]types.Type{
+						raxVReg.ID(): types.I64, xmm1VReg.ID(): types.F64,
 					}
 					i1, i2 := m.allocateInstr().asUD2(), m.allocateInstr().asRet()
 					i1.next = i2
@@ -102,8 +102,8 @@ func TestMachine_insertReloadRegisterAt(t *testing.T) {
 					name = "before"
 				}
 				t.Run(name, func(t *testing.T) {
-					ctx.typeOf = map[regalloc.VRegID]ssa.Type{
-						raxVReg.ID(): ssa.TypeI64, xmm1VReg.ID(): ssa.TypeV128,
+					ctx.typeOf = map[regalloc.VRegID]types.Type{
+						raxVReg.ID(): types.I64, xmm1VReg.ID(): types.V128,
 					}
 					i1, i2 := m.allocateInstr().asUD2(), m.allocateInstr().asRet()
 					i1.next = i2
@@ -213,9 +213,9 @@ func TestMachineSwap(t *testing.T) {
 		t.Run(tc.expected, func(t *testing.T) {
 			ctx, _, m := newSetupWithMockContext()
 
-			ctx.typeOf = map[regalloc.VRegID]ssa.Type{
-				r15VReg.ID(): ssa.TypeI64, raxVReg.ID(): ssa.TypeI64,
-				xmm1VReg.ID(): ssa.TypeF64, xmm12VReg.ID(): ssa.TypeF64,
+			ctx.typeOf = map[regalloc.VRegID]types.Type{
+				r15VReg.ID(): types.I64, raxVReg.ID(): types.I64,
+				xmm1VReg.ID(): types.F64, xmm12VReg.ID(): types.F64,
 			}
 			cur, i2 := m.allocateInstr().asUD2(), m.allocateExitSeq(rsiVReg)
 			cur.next = i2

@@ -3,6 +3,7 @@ package amd64
 import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 // regAllocFn implements regalloc.Function.
@@ -257,15 +258,15 @@ func (m *machine) insertStoreRegisterAt(v regalloc.VReg, instr *instruction, aft
 	store := m.allocateInstr()
 	mem := newOperandMem(m.newAmodeImmReg(uint32(offsetFromSP), rspVReg))
 	switch typ {
-	case ssa.TypeI32:
+	case types.I32:
 		store.asMovRM(v, mem, 4)
-	case ssa.TypeI64:
+	case types.I64:
 		store.asMovRM(v, mem, 8)
-	case ssa.TypeF32:
+	case types.F32:
 		store.asXmmMovRM(sseOpcodeMovss, v, mem)
-	case ssa.TypeF64:
+	case types.F64:
 		store.asXmmMovRM(sseOpcodeMovsd, v, mem)
-	case ssa.TypeV128:
+	case types.V128:
 		store.asXmmMovRM(sseOpcodeMovdqu, v, mem)
 	}
 
@@ -291,15 +292,15 @@ func (m *machine) insertReloadRegisterAt(v regalloc.VReg, instr *instruction, af
 	offsetFromSP := m.getVRegSpillSlotOffsetFromSP(v.ID(), typ.Size())
 	a := newOperandMem(m.newAmodeImmReg(uint32(offsetFromSP), rspVReg))
 	switch typ {
-	case ssa.TypeI32:
+	case types.I32:
 		load.asMovzxRmR(extModeLQ, a, v)
-	case ssa.TypeI64:
+	case types.I64:
 		load.asMov64MR(a, v)
-	case ssa.TypeF32:
+	case types.F32:
 		load.asXmmUnaryRmR(sseOpcodeMovss, a, v)
-	case ssa.TypeF64:
+	case types.F64:
 		load.asXmmUnaryRmR(sseOpcodeMovsd, a, v)
-	case ssa.TypeV128:
+	case types.V128:
 		load.asXmmUnaryRmR(sseOpcodeMovdqu, a, v)
 	default:
 		panic("BUG")

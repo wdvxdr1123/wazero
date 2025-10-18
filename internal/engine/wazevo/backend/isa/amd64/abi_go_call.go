@@ -3,7 +3,7 @@ package amd64
 import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -13,7 +13,7 @@ var calleeSavedVRegs = []regalloc.VReg{
 }
 
 // CompileGoFunctionTrampoline implements backend.Machine.
-func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *ssa.Signature, needModuleContextPtr bool) []byte {
+func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *types.Signature, needModuleContextPtr bool) []byte {
 	argBegin := 1 // Skips exec context by default.
 	if needModuleContextPtr {
 		argBegin++
@@ -106,15 +106,15 @@ func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *
 			mem := newOperandMem(m.newAmodeImmReg(uint32(arg.Offset+16 /* to skip caller_rbp and ret_addr */), rbpVReg))
 			load := m.allocateInstr()
 			switch arg.Type {
-			case ssa.TypeI32:
+			case types.I32:
 				load.asMovzxRmR(extModeLQ, mem, v)
-			case ssa.TypeI64:
+			case types.I64:
 				load.asMov64MR(mem, v)
-			case ssa.TypeF32:
+			case types.F32:
 				load.asXmmUnaryRmR(sseOpcodeMovss, mem, v)
-			case ssa.TypeF64:
+			case types.F64:
 				load.asXmmUnaryRmR(sseOpcodeMovsd, mem, v)
-			case ssa.TypeV128:
+			case types.V128:
 				load.asXmmUnaryRmR(sseOpcodeMovdqu, mem, v)
 			default:
 				panic("BUG")
@@ -125,19 +125,19 @@ func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *
 		store := m.allocateInstr()
 		mem := newOperandMem(m.newAmodeImmReg(uint32(offsetInGoSlice), rspVReg))
 		switch arg.Type {
-		case ssa.TypeI32:
+		case types.I32:
 			store.asMovRM(v, mem, 4)
 			offsetInGoSlice += 8 // always uint64 rep.
-		case ssa.TypeI64:
+		case types.I64:
 			store.asMovRM(v, mem, 8)
 			offsetInGoSlice += 8
-		case ssa.TypeF32:
+		case types.F32:
 			store.asXmmMovRM(sseOpcodeMovss, v, mem)
 			offsetInGoSlice += 8 // always uint64 rep.
-		case ssa.TypeF64:
+		case types.F64:
 			store.asXmmMovRM(sseOpcodeMovsd, v, mem)
 			offsetInGoSlice += 8
-		case ssa.TypeV128:
+		case types.V128:
 			store.asXmmMovRM(sseOpcodeMovdqu, v, mem)
 			offsetInGoSlice += 16
 		default:
@@ -214,19 +214,19 @@ func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *
 		load := m.allocateInstr()
 		mem := newOperandMem(m.newAmodeImmReg(uint32(offsetInGoSlice), rspVReg))
 		switch r.Type {
-		case ssa.TypeI32:
+		case types.I32:
 			load.asMovzxRmR(extModeLQ, mem, v)
 			offsetInGoSlice += 8 // always uint64 rep.
-		case ssa.TypeI64:
+		case types.I64:
 			load.asMov64MR(mem, v)
 			offsetInGoSlice += 8
-		case ssa.TypeF32:
+		case types.F32:
 			load.asXmmUnaryRmR(sseOpcodeMovss, mem, v)
 			offsetInGoSlice += 8 // always uint64 rep.
-		case ssa.TypeF64:
+		case types.F64:
 			load.asXmmUnaryRmR(sseOpcodeMovsd, mem, v)
 			offsetInGoSlice += 8
-		case ssa.TypeV128:
+		case types.V128:
 			load.asXmmUnaryRmR(sseOpcodeMovdqu, mem, v)
 			offsetInGoSlice += 16
 		default:
@@ -239,15 +239,15 @@ func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *
 			store := m.allocateInstr()
 			mem := newOperandMem(m.newAmodeImmReg(uint32(abi.ArgStackSize+r.Offset+16 /* to skip caller_rbp and ret_addr */), rbpVReg))
 			switch r.Type {
-			case ssa.TypeI32:
+			case types.I32:
 				store.asMovRM(v, mem, 4)
-			case ssa.TypeI64:
+			case types.I64:
 				store.asMovRM(v, mem, 8)
-			case ssa.TypeF32:
+			case types.F32:
 				store.asXmmMovRM(sseOpcodeMovss, v, mem)
-			case ssa.TypeF64:
+			case types.F64:
 				store.asXmmMovRM(sseOpcodeMovsd, v, mem)
-			case ssa.TypeV128:
+			case types.V128:
 				store.asXmmMovRM(sseOpcodeMovdqu, v, mem)
 			default:
 				panic("BUG")

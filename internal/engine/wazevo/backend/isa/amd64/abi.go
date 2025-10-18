@@ -4,6 +4,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 // For the details of the ABI, see:
@@ -93,15 +94,15 @@ func (m *machine) LowerParams(args []ssa.Value) {
 			load := m.allocateInstr()
 			mem := newOperandMem(m.newAmodeImmRBPReg(uint32(arg.Offset + 16)))
 			switch arg.Type {
-			case ssa.TypeI32:
+			case types.I32:
 				load.asMovzxRmR(extModeLQ, mem, reg)
-			case ssa.TypeI64:
+			case types.I64:
 				load.asMov64MR(mem, reg)
-			case ssa.TypeF32:
+			case types.F32:
 				load.asXmmUnaryRmR(sseOpcodeMovss, mem, reg)
-			case ssa.TypeF64:
+			case types.F64:
 				load.asXmmUnaryRmR(sseOpcodeMovsd, mem, reg)
-			case ssa.TypeV128:
+			case types.V128:
 				load.asXmmUnaryRmR(sseOpcodeMovdqu, mem, reg)
 			default:
 				panic("BUG")
@@ -170,15 +171,15 @@ func (m *machine) LowerReturn(ret ssa.Value, r *backend.ABIArg) {
 		store := m.allocateInstr()
 		mem := newOperandMem(m.newAmodeImmRBPReg(uint32(m.currentABI.ArgStackSize + 16 + r.Offset)))
 		switch r.Type {
-		case ssa.TypeI32:
+		case types.I32:
 			store.asMovRM(reg, mem, 4)
-		case ssa.TypeI64:
+		case types.I64:
 			store.asMovRM(reg, mem, 8)
-		case ssa.TypeF32:
+		case types.F32:
 			store.asXmmMovRM(sseOpcodeMovss, reg, mem)
-		case ssa.TypeF64:
+		case types.F64:
 			store.asXmmMovRM(sseOpcodeMovsd, reg, mem)
-		case ssa.TypeV128:
+		case types.V128:
 			store.asXmmMovRM(sseOpcodeMovdqu, reg, mem)
 		}
 		m.insert(store)

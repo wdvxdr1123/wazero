@@ -5,21 +5,21 @@ import (
 	"testing"
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
 func TestAbiImpl_constructEntryPreamble(t *testing.T) {
-	const i32, f32, i64, f64, v128 = ssa.TypeI32, ssa.TypeF32, ssa.TypeI64, ssa.TypeF64, ssa.TypeV128
+	const i32, f32, i64, f64, v128 = types.I32, types.F32, types.I64, types.F64, types.V128
 
 	for _, tc := range []struct {
 		name string
-		sig  *ssa.Signature
+		sig  *types.Signature
 		exp  string
 	}{
 		{
 			name: "empty",
-			sig:  &ssa.Signature{},
+			sig:  &types.Signature{},
 			exp: `
 	mov x20, x0
 	str x29, [x20, #0x10]
@@ -37,8 +37,8 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "float reg params",
-			sig: &ssa.Signature{
-				Params: []ssa.Type{
+			sig: &types.Signature{
+				Params: []types.Type{
 					i64, i64, // first and second will be skipped.
 					f32, f32, f32, f32, f64,
 				},
@@ -65,8 +65,8 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "int reg params",
-			sig: &ssa.Signature{
-				Params: []ssa.Type{
+			sig: &types.Signature{
+				Params: []types.Type{
 					i64, i64, // first and second will be skipped.
 					i32, i32, i32, i64, i32,
 				},
@@ -93,8 +93,8 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "int/float reg params interleaved",
-			sig: &ssa.Signature{
-				Params: []ssa.Type{
+			sig: &types.Signature{
+				Params: []types.Type{
 					i64, i64, // first and second will be skipped.
 					i32, f64, i32, f32, i64, i32, i64, f64, i32, f32, v128, f32,
 				},
@@ -128,12 +128,12 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "int/float reg params/results interleaved",
-			sig: &ssa.Signature{
-				Params: []ssa.Type{
+			sig: &types.Signature{
+				Params: []types.Type{
 					i64, i64, // first and second will be skipped.
 					i32, f64, i32, f32, i64,
 				},
-				Results: []ssa.Type{f32, f64, i32, f32, i64, i32, f64},
+				Results: []types.Type{f32, f64, i32, f32, i64, i32, f64},
 			},
 			exp: `
 	mov x20, x0
@@ -165,8 +165,8 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "many results",
-			sig: &ssa.Signature{
-				Results: []ssa.Type{
+			sig: &types.Signature{
+				Results: []types.Type{
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					f32, f64, f64, f32, f64, v128, v128,
@@ -227,8 +227,8 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "many params",
-			sig: &ssa.Signature{
-				Params: []ssa.Type{
+			sig: &types.Signature{
+				Params: []types.Type{
 					i32, i32, v128, v128, v128, i64, i32, i32, i64, i32, i64,
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					f32, f64, f64, f32, f64, v128, v128, v128, v128, v128,
@@ -295,13 +295,13 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "many params and results",
-			sig: &ssa.Signature{
-				Params: []ssa.Type{
+			sig: &types.Signature{
+				Params: []types.Type{
 					i32, i32, v128, v128, v128, i64, i32, i32, i64, i32, i64,
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					f32, f64, f64, f32, f64, v128, v128, v128, v128, v128,
 				},
-				Results: []ssa.Type{
+				Results: []types.Type{
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					i32, i32, v128, v128, v128, i64, i32, i32, i64, i32, i64,
 				},
@@ -412,107 +412,107 @@ func TestMachine_goEntryPreamblePassArg(t *testing.T) {
 	}{
 		// Reg kinds.
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI32, Reg: x0VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.I32, Reg: x0VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	ldr w0, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI64, Reg: x0VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.I64, Reg: x0VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	ldr x0, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF32, Reg: v11VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.F32, Reg: v11VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	ldr s11, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF64, Reg: v12VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.F64, Reg: v12VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	ldr d12, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeV128, Reg: v12VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.V128, Reg: v12VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	ldr q12, [x16], #0x10
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeV128, Reg: v12VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.V128, Reg: v12VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	ldr q12, [x16], #0x10
 `,
 		},
 		// Stack kinds.
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI32, Offset: 0, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.I32, Offset: 0, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr w15, [x16], #0x8
 	str w15, [sp]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI32, Offset: 8, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.I32, Offset: 8, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr w15, [x16], #0x8
 	str w15, [sp, #0x8]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI64, Offset: 0, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.I64, Offset: 0, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr x15, [x16], #0x8
 	str x15, [sp]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI64, Offset: 128, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.I64, Offset: 128, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr x15, [x16], #0x8
 	str x15, [sp, #0x80]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF32, Offset: 64, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.F32, Offset: 64, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr s15, [x16], #0x8
 	str s15, [sp, #0x40]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF32, Offset: 2056, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.F32, Offset: 2056, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr s15, [x16], #0x8
 	str s15, [sp, #0x808]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF64, Offset: 64, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.F64, Offset: 64, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr d15, [x16], #0x8
 	str d15, [sp, #0x40]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF64, Offset: 2056, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.F64, Offset: 2056, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr d15, [x16], #0x8
 	str d15, [sp, #0x808]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeV128, Offset: 64, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.V128, Offset: 64, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr q15, [x16], #0x10
 	str q15, [sp, #0x40]
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeV128, Offset: 2056, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.V128, Offset: 2056, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr q15, [x16], #0x10
 	movz x27, #0x808, lsl 0
@@ -520,7 +520,7 @@ func TestMachine_goEntryPreamblePassArg(t *testing.T) {
 `,
 		},
 		{
-			arg:                      backend.ABIArg{Type: ssa.TypeV128, Offset: 1024, Kind: backend.ABIArgKindStack},
+			arg:                      backend.ABIArg{Type: types.V128, Offset: 1024, Kind: backend.ABIArgKindStack},
 			argSlotBeginOffsetFromSP: -1648,
 			exp: `
 	ldr q15, [x16], #0x10
@@ -550,51 +550,51 @@ func TestMachine_goEntryPreamblePassResult(t *testing.T) {
 	}{
 		// Reg kinds.
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI32, Reg: x0VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.I32, Reg: x0VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	str w0, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI64, Reg: x0VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.I64, Reg: x0VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	str x0, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF32, Reg: v11VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.F32, Reg: v11VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	str s11, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF64, Reg: v12VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.F64, Reg: v12VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	str d12, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeV128, Reg: v12VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.V128, Reg: v12VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	str q12, [x16], #0x10
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeV128, Reg: v12VReg, Kind: backend.ABIArgKindReg},
+			arg: backend.ABIArg{Type: types.V128, Reg: v12VReg, Kind: backend.ABIArgKindReg},
 			exp: `
 	str q12, [x16], #0x10
 `,
 		},
 		// Stack kinds.
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI32, Offset: 0, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.I32, Offset: 0, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr w15, [sp]
 	str w15, [x16], #0x8
 `,
 		},
 		{
-			arg:      backend.ABIArg{Type: ssa.TypeI32, Offset: 0, Kind: backend.ABIArgKindStack},
+			arg:      backend.ABIArg{Type: types.I32, Offset: 0, Kind: backend.ABIArgKindStack},
 			retStart: 1024,
 			exp: `
 	ldr w15, [sp, #0x400]
@@ -602,14 +602,14 @@ func TestMachine_goEntryPreamblePassResult(t *testing.T) {
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI32, Offset: 8, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.I32, Offset: 8, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr w15, [sp, #0x8]
 	str w15, [x16], #0x8
 `,
 		},
 		{
-			arg:      backend.ABIArg{Type: ssa.TypeI32, Offset: 8, Kind: backend.ABIArgKindStack},
+			arg:      backend.ABIArg{Type: types.I32, Offset: 8, Kind: backend.ABIArgKindStack},
 			retStart: 1024,
 			exp: `
 	ldr w15, [sp, #0x408]
@@ -617,56 +617,56 @@ func TestMachine_goEntryPreamblePassResult(t *testing.T) {
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI64, Offset: 0, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.I64, Offset: 0, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr x15, [sp]
 	str x15, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeI64, Offset: 128, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.I64, Offset: 128, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr x15, [sp, #0x80]
 	str x15, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF32, Offset: 64, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.F32, Offset: 64, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr s15, [sp, #0x40]
 	str s15, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF32, Offset: 2056, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.F32, Offset: 2056, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr s15, [sp, #0x808]
 	str s15, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF64, Offset: 64, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.F64, Offset: 64, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr d15, [sp, #0x40]
 	str d15, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeF64, Offset: 2056, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.F64, Offset: 2056, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr d15, [sp, #0x808]
 	str d15, [x16], #0x8
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeV128, Offset: 64, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.V128, Offset: 64, Kind: backend.ABIArgKindStack},
 			exp: `
 	ldr q15, [sp, #0x40]
 	str q15, [x16], #0x10
 `,
 		},
 		{
-			arg: backend.ABIArg{Type: ssa.TypeV128, Offset: 2056, Kind: backend.ABIArgKindStack},
+			arg: backend.ABIArg{Type: types.V128, Offset: 2056, Kind: backend.ABIArgKindStack},
 			exp: `
 	movz x27, #0x808, lsl 0
 	ldr q15, [sp, x27]
@@ -674,7 +674,7 @@ func TestMachine_goEntryPreamblePassResult(t *testing.T) {
 `,
 		},
 		{
-			arg:      backend.ABIArg{Type: ssa.TypeV128, Offset: 2056, Kind: backend.ABIArgKindStack},
+			arg:      backend.ABIArg{Type: types.V128, Offset: 2056, Kind: backend.ABIArgKindStack},
 			retStart: -1024,
 			exp: `
 	movz x27, #0x408, lsl 0

@@ -10,6 +10,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 type (
@@ -304,13 +305,13 @@ func (m *machine) getOperand_NR(def backend.SSAValueDefinition, mode extMode) (o
 	case mode == extModeNone:
 	case inBits == 32 && (mode == extModeZeroExtend32 || mode == extModeSignExtend32):
 	case inBits == 32 && mode == extModeZeroExtend64:
-		extended := m.compiler.AllocateVReg(ssa.TypeI64)
+		extended := m.compiler.AllocateVReg(types.I64)
 		ext := m.allocateInstr()
 		ext.asExtend(extended, v, 32, 64, false)
 		m.insert(ext)
 		r = extended
 	case inBits == 32 && mode == extModeSignExtend64:
-		extended := m.compiler.AllocateVReg(ssa.TypeI64)
+		extended := m.compiler.AllocateVReg(types.I64)
 		ext := m.allocateInstr()
 		ext.asExtend(extended, v, 32, 64, true)
 		m.insert(ext)

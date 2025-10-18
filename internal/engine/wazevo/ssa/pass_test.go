@@ -3,6 +3,7 @@ package ssa
 import (
 	"testing"
 
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
@@ -30,7 +31,7 @@ func TestBuilder_passes(t *testing.T) {
 			pass: deadBlockElim,
 			setup: func(b *builder) func(*testing.T) {
 				entry := b.AllocateBasicBlock()
-				value := entry.AddParam(b, TypeI32)
+				value := entry.AddParam(b, types.I32)
 
 				middle1, middle2 := b.AllocateBasicBlock(), b.AllocateBasicBlock()
 				end := b.AllocateBasicBlock()
@@ -119,8 +120,8 @@ blk3: () <-- (blk1,blk2)
 			setup: func(b *builder) func(*testing.T) {
 				entry, loopHeader, end := b.AllocateBasicBlock(), b.AllocateBasicBlock(), b.AllocateBasicBlock()
 
-				loopHeader.AddParam(b, TypeI32)
-				var1 := b.DeclareVariable(TypeI32)
+				loopHeader.AddParam(b, types.I32)
+				var1 := b.DeclareVariable(types.I32)
 
 				b.SetCurrentBlock(entry)
 				{
@@ -298,8 +299,8 @@ blk1: () <-- (blk0)
 				entry := b.AllocateBasicBlock()
 				b.SetCurrentBlock(entry)
 
-				i32Param := entry.AddParam(b, TypeI32)
-				i64Param := entry.AddParam(b, TypeI64)
+				i32Param := entry.AddParam(b, types.I32)
+				i64Param := entry.AddParam(b, types.I64)
 
 				// 32-bit shift.
 				moduleZeroI32 := b.AllocateInstruction().AsIconst32(32 * 245).Insert(b).Return()

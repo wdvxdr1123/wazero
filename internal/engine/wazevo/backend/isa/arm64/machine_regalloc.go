@@ -5,6 +5,7 @@ package arm64
 import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 // regAllocFn implements regalloc.Function.
@@ -320,11 +321,11 @@ func (m *machine) insertReloadRegisterAt(v regalloc.VReg, instr *instruction, af
 	cur, amode = m.resolveAddressModeForOffsetAndInsert(cur, offsetFromSP, typ.Bits(), spVReg, true)
 	load := m.allocateInstr()
 	switch typ {
-	case ssa.TypeI32, ssa.TypeI64:
+	case types.I32, types.I64:
 		load.asULoad(v, amode, typ.Bits())
-	case ssa.TypeF32, ssa.TypeF64:
+	case types.F32, types.F64:
 		load.asFpuLoad(v, amode, typ.Bits())
-	case ssa.TypeV128:
+	case types.V128:
 		load.asFpuLoad(v, amode, 128)
 	default:
 		panic("TODO")

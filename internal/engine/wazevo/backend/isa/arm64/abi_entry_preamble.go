@@ -3,7 +3,7 @@ package arm64
 import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -15,7 +15,7 @@ import (
 //  4. Function executable in x24.
 //
 // also SP and FP are correct Go-runtime-based values, and LR is the return address to the Go-side caller.
-func (m *machine) CompileEntryPreamble(signature *ssa.Signature) []byte {
+func (m *machine) CompileEntryPreamble(signature *types.Signature) []byte {
 	root := m.constructEntryPreamble(signature)
 	m.encode(root)
 	return m.compiler.Buf()
@@ -44,9 +44,9 @@ func (m *machine) goEntryPreamblePassArg(cur *instruction, paramSlicePtr regallo
 		loadTargetReg = operandNR(arg.Reg)
 	} else {
 		switch typ {
-		case ssa.TypeI32, ssa.TypeI64:
+		case types.I32, types.I64:
 			loadTargetReg = operandNR(x15VReg)
-		case ssa.TypeF32, ssa.TypeF64, ssa.TypeV128:
+		case types.F32, types.F64, types.V128:
 			loadTargetReg = operandNR(v15VReg)
 		default:
 			panic("TODO?")
@@ -54,7 +54,7 @@ func (m *machine) goEntryPreamblePassArg(cur *instruction, paramSlicePtr regallo
 	}
 
 	var postIndexImm int64
-	if typ == ssa.TypeV128 {
+	if typ == types.V128 {
 		postIndexImm = 16 // v128 is represented as 2x64-bit in Go slice.
 	} else {
 		postIndexImm = 8
@@ -64,15 +64,15 @@ func (m *machine) goEntryPreamblePassArg(cur *instruction, paramSlicePtr regallo
 
 	instr := m.allocateInstr()
 	switch typ {
-	case ssa.TypeI32:
+	case types.I32:
 		instr.asULoad(loadTargetReg.reg(), loadMode, 32)
-	case ssa.TypeI64:
+	case types.I64:
 		instr.asULoad(loadTargetReg.reg(), loadMode, 64)
-	case ssa.TypeF32:
+	case types.F32:
 		instr.asFpuLoad(loadTargetReg.reg(), loadMode, 32)
-	case ssa.TypeF64:
+	case types.F64:
 		instr.asFpuLoad(loadTargetReg.reg(), loadMode, 64)
-	case ssa.TypeV128:
+	case types.V128:
 		instr.asFpuLoad(loadTargetReg.reg(), loadMode, 128)
 	}
 	cur = linkInstr(cur, instr)
@@ -97,9 +97,9 @@ func (m *machine) goEntryPreamblePassResult(cur *instruction, resultSlicePtr reg
 		storeTargetReg = operandNR(result.Reg)
 	} else {
 		switch typ {
-		case ssa.TypeI32, ssa.TypeI64:
+		case types.I32, types.I64:
 			storeTargetReg = operandNR(x15VReg)
-		case ssa.TypeF32, ssa.TypeF64, ssa.TypeV128:
+		case types.F32, types.F64, types.V128:
 			storeTargetReg = operandNR(v15VReg)
 		default:
 			panic("TODO?")
@@ -107,7 +107,7 @@ func (m *machine) goEntryPreamblePassResult(cur *instruction, resultSlicePtr reg
 	}
 
 	var postIndexImm int64
-	if typ == ssa.TypeV128 {
+	if typ == types.V128 {
 		postIndexImm = 16 // v128 is represented as 2x64-bit in Go slice.
 	} else {
 		postIndexImm = 8
@@ -118,9 +118,9 @@ func (m *machine) goEntryPreamblePassResult(cur *instruction, resultSlicePtr reg
 		cur, loadMode = m.resolveAddressModeForOffsetAndInsert(cur, resultStartOffsetFromSP+result.Offset, bits, spVReg, true)
 		toReg := m.allocateInstr()
 		switch typ {
-		case ssa.TypeI32, ssa.TypeI64:
+		case types.I32, types.I64:
 			toReg.asULoad(storeTargetReg.reg(), loadMode, bits)
-		case ssa.TypeF32, ssa.TypeF64, ssa.TypeV128:
+		case types.F32, types.F64, types.V128:
 			toReg.asFpuLoad(storeTargetReg.reg(), loadMode, bits)
 		default:
 			panic("TODO?")
@@ -136,7 +136,7 @@ func (m *machine) goEntryPreamblePassResult(cur *instruction, resultSlicePtr reg
 	return cur
 }
 
-func (m *machine) constructEntryPreamble(sig *ssa.Signature) (root *instruction) {
+func (m *machine) constructEntryPreamble(sig *types.Signature) (root *instruction) {
 	abi := backend.FunctionABI{}
 	abi.Init(sig, intParamResultRegs, floatParamResultRegs)
 

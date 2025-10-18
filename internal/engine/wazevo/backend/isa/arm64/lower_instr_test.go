@@ -9,6 +9,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
@@ -23,12 +24,12 @@ func TestMachine_LowerConditionalBranch(t *testing.T) {
 
 		var val1, val2 ssa.Value
 		if isInt {
-			val1 = entry.AddParam(builder, ssa.TypeI64)
-			val2 = entry.AddParam(builder, ssa.TypeI64)
+			val1 = entry.AddParam(builder, types.I64)
+			val2 = entry.AddParam(builder, types.I64)
 			ctx.vRegMap[val1], ctx.vRegMap[val2] = regToVReg(x1).SetRegType(regalloc.RegTypeInt), regToVReg(x2).SetRegType(regalloc.RegTypeInt)
 		} else {
-			val1 = entry.AddParam(builder, ssa.TypeF64)
-			val2 = entry.AddParam(builder, ssa.TypeF64)
+			val1 = entry.AddParam(builder, types.F64)
+			val2 = entry.AddParam(builder, types.F64)
 			ctx.vRegMap[val1], ctx.vRegMap[val2] = regToVReg(v1).SetRegType(regalloc.RegTypeFloat), regToVReg(v2).SetRegType(regalloc.RegTypeFloat)
 		}
 
@@ -63,7 +64,7 @@ func TestMachine_LowerConditionalBranch(t *testing.T) {
 
 	icmpInSameGroupFromParamAndImm12 := func(brz bool, ctx *mockCompiler, builder ssa.Builder, m *machine) (instr *ssa.Instruction, verify func(t *testing.T)) {
 		entry := builder.CurrentBlock()
-		v1 := entry.AddParam(builder, ssa.TypeI32)
+		v1 := entry.AddParam(builder, types.I32)
 
 		iconst := builder.AllocateInstruction()
 		iconst.AsIconst32(0x4d2)
@@ -99,7 +100,7 @@ func TestMachine_LowerConditionalBranch(t *testing.T) {
 			name: "icmp in different group",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (instr *ssa.Instruction, verify func(t *testing.T)) {
 				entry := builder.CurrentBlock()
-				v1, v2 := entry.AddParam(builder, ssa.TypeI64), entry.AddParam(builder, ssa.TypeI64)
+				v1, v2 := entry.AddParam(builder, types.I64), entry.AddParam(builder, types.I64)
 
 				icmp := builder.AllocateInstruction()
 				icmp.AsIcmp(v1, v2, ssa.IntegerCmpCondEqual)
@@ -245,7 +246,7 @@ func TestMachine_InsertMove(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		src, dst    regalloc.VReg
-		typ         ssa.Type
+		typ         types.Type
 		instruction string
 	}{
 		{
@@ -253,21 +254,21 @@ func TestMachine_InsertMove(t *testing.T) {
 			src:         regalloc.VReg(1).SetRegType(regalloc.RegTypeInt),
 			dst:         regalloc.VReg(2).SetRegType(regalloc.RegTypeInt),
 			instruction: "mov x1?, x2?",
-			typ:         ssa.TypeI64,
+			typ:         types.I64,
 		},
 		{
 			name:        "float",
 			src:         regalloc.VReg(1).SetRegType(regalloc.RegTypeFloat),
 			dst:         regalloc.VReg(2).SetRegType(regalloc.RegTypeFloat),
 			instruction: "mov v1?.8b, v2?.8b",
-			typ:         ssa.TypeF64,
+			typ:         types.F64,
 		},
 		{
 			name:        "vector",
 			src:         regalloc.VReg(1).SetRegType(regalloc.RegTypeFloat),
 			dst:         regalloc.VReg(2).SetRegType(regalloc.RegTypeFloat),
 			instruction: "mov v1?.16b, v2?.16b",
-			typ:         ssa.TypeV128,
+			typ:         types.V128,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -372,7 +373,7 @@ L2:
 				regalloc.VReg(3).SetRegType(regalloc.RegTypeInt)
 			mc, _, m := newSetupWithMockContext()
 			m.maxSSABlockID, m.nextLabel = 1, 1
-			mc.typeOf = map[regalloc.VRegID]ssa.Type{execCtx.ID(): ssa.TypeI64, 2: ssa.TypeI64, 3: ssa.TypeI64}
+			mc.typeOf = map[regalloc.VRegID]types.Type{execCtx.ID(): types.I64, 2: types.I64, 3: types.I64}
 			m.lowerIDiv(execCtx, rd, operandNR(rn), operandNR(rm), tc._64bit, tc.signed)
 			require.Equal(t, tc.exp, "\n"+formatEmittedInstructionsInCurrentBlock(m)+"\n")
 		})
@@ -444,7 +445,7 @@ fcvtzu w1, s2
 		t.Run(tc.name, func(t *testing.T) {
 			mc, _, m := newSetupWithMockContext()
 			m.maxSSABlockID, m.nextLabel = 1, 1
-			mc.typeOf = map[regalloc.VRegID]ssa.Type{v2VReg.ID(): ssa.TypeI64, x15VReg.ID(): ssa.TypeI64}
+			mc.typeOf = map[regalloc.VRegID]types.Type{v2VReg.ID(): types.I64, x15VReg.ID(): types.I64}
 			m.lowerFpuToInt(x1VReg, operandNR(v2VReg), x15VReg, false, false, false, tc.nontrapping)
 			require.Equal(t, tc.expectedAsm, "\n"+formatEmittedInstructionsInCurrentBlock(m)+"\n")
 
@@ -836,10 +837,10 @@ ushl x1.16b, x2.16b, v2?.16b
 
 func TestMachine_lowerSelectVec(t *testing.T) {
 	_, _, m := newSetupWithMockContext()
-	c := operandNR(m.compiler.AllocateVReg(ssa.TypeI32))
-	rn := operandNR(m.compiler.AllocateVReg(ssa.TypeV128))
-	rm := operandNR(m.compiler.AllocateVReg(ssa.TypeV128))
-	rd := m.compiler.AllocateVReg(ssa.TypeV128)
+	c := operandNR(m.compiler.AllocateVReg(types.I32))
+	rn := operandNR(m.compiler.AllocateVReg(types.V128))
+	rm := operandNR(m.compiler.AllocateVReg(types.V128))
+	rd := m.compiler.AllocateVReg(types.V128)
 
 	require.Equal(t, 1, int(c.reg().ID()))
 	require.Equal(t, 2, int(rn.reg().ID()))
@@ -884,13 +885,13 @@ mov v5?.8b, v6?.8b
 	} {
 		t.Run(fmt.Sprintf("64bit=%v", tc._64bit), func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ, ftyp ssa.Type
+			var typ, ftyp types.Type
 			if tc._64bit {
-				typ = ssa.TypeI64
-				ftyp = ssa.TypeF64
+				typ = types.I64
+				ftyp = types.F64
 			} else {
-				typ = ssa.TypeI32
-				ftyp = ssa.TypeF32
+				typ = types.I32
+				ftyp = types.F32
 			}
 			tmpI := m.compiler.AllocateVReg(typ)
 			tmpF := m.compiler.AllocateVReg(ftyp)
@@ -932,11 +933,11 @@ ror x4?, x2?, x1?
 	} {
 		t.Run(fmt.Sprintf("64bit=%v", tc._64bit), func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ ssa.Type
+			var typ types.Type
 			if tc._64bit {
-				typ = ssa.TypeI64
+				typ = types.I64
 			} else {
-				typ = ssa.TypeI32
+				typ = types.I32
 			}
 			tmpI := m.compiler.AllocateVReg(typ)
 			rn := operandNR(m.compiler.AllocateVReg(typ))
@@ -1358,14 +1359,14 @@ swpalb w3?, w4?, x2?
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ ssa.Type
+			var typ types.Type
 			if tc._64bit {
-				typ = ssa.TypeI64
+				typ = types.I64
 			} else {
-				typ = ssa.TypeI32
+				typ = types.I32
 			}
 			tmp := m.compiler.AllocateVReg(typ)
-			rn := m.compiler.AllocateVReg(ssa.TypeI64)
+			rn := m.compiler.AllocateVReg(types.I64)
 			rs := m.compiler.AllocateVReg(typ)
 			rt := m.compiler.AllocateVReg(typ)
 
@@ -1446,13 +1447,13 @@ casalb w2?, w3?, x1?
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ ssa.Type
+			var typ types.Type
 			if tc._64bit {
-				typ = ssa.TypeI64
+				typ = types.I64
 			} else {
-				typ = ssa.TypeI32
+				typ = types.I32
 			}
-			rn := m.compiler.AllocateVReg(ssa.TypeI64)
+			rn := m.compiler.AllocateVReg(types.I64)
 			rs := m.compiler.AllocateVReg(typ)
 			rt := m.compiler.AllocateVReg(typ)
 
@@ -1532,13 +1533,13 @@ ldarb w2?, x1?
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ ssa.Type
+			var typ types.Type
 			if tc._64bit {
-				typ = ssa.TypeI64
+				typ = types.I64
 			} else {
-				typ = ssa.TypeI32
+				typ = types.I32
 			}
-			rn := m.compiler.AllocateVReg(ssa.TypeI64)
+			rn := m.compiler.AllocateVReg(types.I64)
 			rt := m.compiler.AllocateVReg(typ)
 
 			require.Equal(t, 1, int(rn.ID()))
@@ -1616,13 +1617,13 @@ stlrb w2?, x1?
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ ssa.Type
+			var typ types.Type
 			if tc._64bit {
-				typ = ssa.TypeI64
+				typ = types.I64
 			} else {
-				typ = ssa.TypeI32
+				typ = types.I32
 			}
-			rn := operandNR(m.compiler.AllocateVReg(ssa.TypeI64))
+			rn := operandNR(m.compiler.AllocateVReg(types.I64))
 			rt := operandNR(m.compiler.AllocateVReg(typ))
 
 			require.Equal(t, 1, int(rn.reg().ID()))

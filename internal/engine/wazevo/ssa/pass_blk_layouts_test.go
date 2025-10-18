@@ -3,6 +3,7 @@ package ssa
 import (
 	"testing"
 
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
@@ -491,8 +492,8 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			name: "brz with arg",
 			setup: func(b *builder) {
 				b0, b1, b2 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
-				p := b0.AddParam(b, TypeI32)
-				retval := b1.AddParam(b, TypeI32)
+				p := b0.AddParam(b, types.I32)
+				retval := b1.AddParam(b, types.I32)
 
 				b.SetCurrentBlock(b0)
 				{
@@ -521,17 +522,17 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			name: "loop with output",
 			exp:  []BasicBlockID{0x0, 0x2, 0x4, 0x1, 0x3, 0x6, 0x5},
 			setup: func(b *builder) {
-				b.currentSignature = &Signature{Results: []Type{TypeI32}}
+				b.currentSignature = &types.Signature{Results: []types.Type{types.I32}}
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 
 				b.SetCurrentBlock(b0)
-				funcParam := b0.AddParam(b, TypeI32)
-				b2Param := b2.AddParam(b, TypeI32)
+				funcParam := b0.AddParam(b, types.I32)
+				b2Param := b2.AddParam(b, types.I32)
 				insertJump(b, b0, b2, funcParam)
 
 				b.SetCurrentBlock(b1)
 				{
-					returnParam := b1.AddParam(b, TypeI32)
+					returnParam := b1.AddParam(b, types.I32)
 					insertJump(b, b1, b.returnBlk, returnParam)
 				}
 

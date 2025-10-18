@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 	"github.com/tetratelabs/wazero/internal/wasm"
 )
@@ -19,16 +20,16 @@ type Compiler struct {
 	offset *wazevoapi.ModuleContextOffsetData
 	// ssaBuilder is a ssa.Builder used by this frontend.
 	ssaBuilder             ssa.Builder
-	signatures             map[*wasm.FunctionType]*ssa.Signature
-	listenerSignatures     map[*wasm.FunctionType][2]*ssa.Signature
-	memoryGrowSig          ssa.Signature
-	memoryWait32Sig        ssa.Signature
-	memoryWait64Sig        ssa.Signature
-	memoryNotifySig        ssa.Signature
-	checkModuleExitCodeSig ssa.Signature
-	tableGrowSig           ssa.Signature
-	refFuncSig             ssa.Signature
-	memmoveSig             ssa.Signature
+	signatures             map[*wasm.FunctionType]*types.Signature
+	listenerSignatures     map[*wasm.FunctionType][2]*types.Signature
+	memoryGrowSig          types.Signature
+	memoryWait32Sig        types.Signature
+	memoryWait64Sig        types.Signature
+	memoryNotifySig        types.Signature
+	checkModuleExitCodeSig types.Signature
+	tableGrowSig           types.Signature
+	refFuncSig             types.Signature
+	memmoveSig             types.Signature
 	ensureTermination      bool
 
 	// Followings are reset by per function.
@@ -46,7 +47,7 @@ type Compiler struct {
 	needMemory                            bool
 	memoryShared                          bool
 	globalVariables                       []ssa.Variable
-	globalVariablesTypes                  []ssa.Type
+	globalVariablesTypes                  []types.Type
 	mutableGlobalVariablesIndexes         []wasm.Index // index to ^.
 	needListener                          bool
 	needSourceOffsetInfo                  bool
@@ -103,105 +104,105 @@ func NewFrontendCompiler(m *wasm.Module, ssaBuilder ssa.Builder, offset *wazevoa
 
 func (c *Compiler) declareSignatures(listenerOn bool) {
 	m := c.m
-	c.signatures = make(map[*wasm.FunctionType]*ssa.Signature, len(m.TypeSection)+2)
+	c.signatures = make(map[*wasm.FunctionType]*types.Signature, len(m.TypeSection)+2)
 	if listenerOn {
-		c.listenerSignatures = make(map[*wasm.FunctionType][2]*ssa.Signature, len(m.TypeSection))
+		c.listenerSignatures = make(map[*wasm.FunctionType][2]*types.Signature, len(m.TypeSection))
 	}
 	for i := range m.TypeSection {
 		wasmSig := &m.TypeSection[i]
 		sig := SignatureForWasmFunctionType(wasmSig)
-		sig.ID = ssa.SignatureID(i)
+		sig.ID = types.SignatureID(i)
 		c.signatures[wasmSig] = &sig
 		c.ssaBuilder.DeclareSignature(&sig)
 
 		if listenerOn {
 			beforeSig, afterSig := SignatureForListener(wasmSig)
-			beforeSig.ID = ssa.SignatureID(i) + ssa.SignatureID(len(m.TypeSection))
-			afterSig.ID = ssa.SignatureID(i) + ssa.SignatureID(len(m.TypeSection))*2
-			c.listenerSignatures[wasmSig] = [2]*ssa.Signature{beforeSig, afterSig}
+			beforeSig.ID = types.SignatureID(i) + types.SignatureID(len(m.TypeSection))
+			afterSig.ID = types.SignatureID(i) + types.SignatureID(len(m.TypeSection))*2
+			c.listenerSignatures[wasmSig] = [2]*types.Signature{beforeSig, afterSig}
 			c.ssaBuilder.DeclareSignature(beforeSig)
 			c.ssaBuilder.DeclareSignature(afterSig)
 		}
 	}
 
-	begin := ssa.SignatureID(len(m.TypeSection))
+	begin := types.SignatureID(len(m.TypeSection))
 	if listenerOn {
 		begin *= 3
 	}
-	c.memoryGrowSig = ssa.Signature{
+	c.memoryGrowSig = types.Signature{
 		ID: begin,
 		// Takes execution context and the page size to grow.
-		Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32},
+		Params: []types.Type{types.I64, types.I32},
 		// Returns the previous page size.
-		Results: []ssa.Type{ssa.TypeI32},
+		Results: []types.Type{types.I32},
 	}
 	c.ssaBuilder.DeclareSignature(&c.memoryGrowSig)
 
-	c.checkModuleExitCodeSig = ssa.Signature{
+	c.checkModuleExitCodeSig = types.Signature{
 		ID: c.memoryGrowSig.ID + 1,
 		// Only takes execution context.
-		Params: []ssa.Type{ssa.TypeI64},
+		Params: []types.Type{types.I64},
 	}
 	c.ssaBuilder.DeclareSignature(&c.checkModuleExitCodeSig)
 
-	c.tableGrowSig = ssa.Signature{
+	c.tableGrowSig = types.Signature{
 		ID:     c.checkModuleExitCodeSig.ID + 1,
-		Params: []ssa.Type{ssa.TypeI64 /* exec context */, ssa.TypeI32 /* table index */, ssa.TypeI32 /* num */, ssa.TypeI64 /* ref */},
+		Params: []types.Type{types.I64 /* exec context */, types.I32 /* table index */, types.I32 /* num */, types.I64 /* ref */},
 		// Returns the previous size.
-		Results: []ssa.Type{ssa.TypeI32},
+		Results: []types.Type{types.I32},
 	}
 	c.ssaBuilder.DeclareSignature(&c.tableGrowSig)
 
-	c.refFuncSig = ssa.Signature{
+	c.refFuncSig = types.Signature{
 		ID:     c.tableGrowSig.ID + 1,
-		Params: []ssa.Type{ssa.TypeI64 /* exec context */, ssa.TypeI32 /* func index */},
+		Params: []types.Type{types.I64 /* exec context */, types.I32 /* func index */},
 		// Returns the function reference.
-		Results: []ssa.Type{ssa.TypeI64},
+		Results: []types.Type{types.I64},
 	}
 	c.ssaBuilder.DeclareSignature(&c.refFuncSig)
 
-	c.memmoveSig = ssa.Signature{
+	c.memmoveSig = types.Signature{
 		ID: c.refFuncSig.ID + 1,
 		// dst, src, and the byte count.
-		Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI64},
+		Params: []types.Type{types.I64, types.I64, types.I64},
 	}
 
 	c.ssaBuilder.DeclareSignature(&c.memmoveSig)
 
-	c.memoryWait32Sig = ssa.Signature{
+	c.memoryWait32Sig = types.Signature{
 		ID: c.memmoveSig.ID + 1,
 		// exec context, timeout, expected, addr
-		Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64},
+		Params: []types.Type{types.I64, types.I64, types.I32, types.I64},
 		// Returns the status.
-		Results: []ssa.Type{ssa.TypeI32},
+		Results: []types.Type{types.I32},
 	}
 	c.ssaBuilder.DeclareSignature(&c.memoryWait32Sig)
 
-	c.memoryWait64Sig = ssa.Signature{
+	c.memoryWait64Sig = types.Signature{
 		ID: c.memoryWait32Sig.ID + 1,
 		// exec context, timeout, expected, addr
-		Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI64, ssa.TypeI64},
+		Params: []types.Type{types.I64, types.I64, types.I64, types.I64},
 		// Returns the status.
-		Results: []ssa.Type{ssa.TypeI32},
+		Results: []types.Type{types.I32},
 	}
 	c.ssaBuilder.DeclareSignature(&c.memoryWait64Sig)
 
-	c.memoryNotifySig = ssa.Signature{
+	c.memoryNotifySig = types.Signature{
 		ID: c.memoryWait64Sig.ID + 1,
 		// exec context, count, addr
-		Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32, ssa.TypeI64},
+		Params: []types.Type{types.I64, types.I32, types.I64},
 		// Returns the number notified.
-		Results: []ssa.Type{ssa.TypeI32},
+		Results: []types.Type{types.I32},
 	}
 	c.ssaBuilder.DeclareSignature(&c.memoryNotifySig)
 }
 
-// SignatureForWasmFunctionType returns the ssa.Signature for the given wasm.FunctionType.
-func SignatureForWasmFunctionType(typ *wasm.FunctionType) ssa.Signature {
-	sig := ssa.Signature{
+// SignatureForWasmFunctionType returns the types.Signature for the given wasm.FunctionType.
+func SignatureForWasmFunctionType(typ *wasm.FunctionType) types.Signature {
+	sig := types.Signature{
 		// +2 to pass moduleContextPtr and executionContextPtr. See the inline comment LowerToSSA.
-		Params:  make([]ssa.Type, len(typ.Params)+2),
-		Results: make([]ssa.Type, len(typ.Results)),
+		Params:  make([]types.Type, len(typ.Params)+2),
+		Results: make([]types.Type, len(typ.Results)),
 	}
 	sig.Params[0] = executionContextPtrTyp
 	sig.Params[1] = moduleContextPtrTyp
@@ -232,7 +233,7 @@ func (c *Compiler) Init(idx, typIndex wasm.Index, typ *wasm.FunctionType, localT
 }
 
 // Note: this assumes 64-bit platform (I believe we won't have 32-bit backend ;)).
-const executionContextPtrTyp, moduleContextPtrTyp = ssa.TypeI64, ssa.TypeI64
+const executionContextPtrTyp, moduleContextPtrTyp = types.I64, types.I64
 
 // LowerToSSA lowers the current function to SSA function which will be held by ssaBuilder.
 // After calling this, the caller will be able to access the SSA info in *Compiler.ssaBuilder.
@@ -318,8 +319,8 @@ func (c *Compiler) declareNecessaryVariables() {
 	}
 
 	if c.needMemory {
-		c.memoryBaseVariable = c.ssaBuilder.DeclareVariable(ssa.TypeI64)
-		c.memoryLenVariable = c.ssaBuilder.DeclareVariable(ssa.TypeI64)
+		c.memoryBaseVariable = c.ssaBuilder.DeclareVariable(types.I64)
+		c.memoryLenVariable = c.ssaBuilder.DeclareVariable(types.I64)
 	}
 
 	c.globalVariables = c.globalVariables[:0]
@@ -340,20 +341,20 @@ func (c *Compiler) declareNecessaryVariables() {
 }
 
 func (c *Compiler) declareWasmGlobal(typ wasm.ValueType, mutable bool) {
-	var st ssa.Type
+	var st types.Type
 	switch typ {
 	case wasm.ValueTypeI32:
-		st = ssa.TypeI32
+		st = types.I32
 	case wasm.ValueTypeI64,
 		// Both externref and funcref are represented as I64 since we only support 64-bit platforms.
 		wasm.ValueTypeExternref, wasm.ValueTypeFuncref:
-		st = ssa.TypeI64
+		st = types.I64
 	case wasm.ValueTypeF32:
-		st = ssa.TypeF32
+		st = types.F32
 	case wasm.ValueTypeF64:
-		st = ssa.TypeF64
+		st = types.F64
 	case wasm.ValueTypeV128:
-		st = ssa.TypeV128
+		st = types.V128
 	default:
 		panic("TODO: " + wasm.ValueTypeName(typ))
 	}
@@ -366,21 +367,21 @@ func (c *Compiler) declareWasmGlobal(typ wasm.ValueType, mutable bool) {
 	}
 }
 
-// WasmTypeToSSAType converts wasm.ValueType to ssa.Type.
-func WasmTypeToSSAType(vt wasm.ValueType) ssa.Type {
+// WasmTypeToSSAType converts wasm.ValueType to types.Type.
+func WasmTypeToSSAType(vt wasm.ValueType) types.Type {
 	switch vt {
 	case wasm.ValueTypeI32:
-		return ssa.TypeI32
+		return types.I32
 	case wasm.ValueTypeI64,
 		// Both externref and funcref are represented as I64 since we only support 64-bit platforms.
 		wasm.ValueTypeExternref, wasm.ValueTypeFuncref:
-		return ssa.TypeI64
+		return types.I64
 	case wasm.ValueTypeF32:
-		return ssa.TypeF32
+		return types.F32
 	case wasm.ValueTypeF64:
-		return ssa.TypeF64
+		return types.F64
 	case wasm.ValueTypeV128:
-		return ssa.TypeV128
+		return types.V128
 	default:
 		panic("TODO: " + wasm.ValueTypeName(vt))
 	}
@@ -400,18 +401,18 @@ func (c *Compiler) formatBuilder() string {
 }
 
 // SignatureForListener returns the signatures for the listener functions.
-func SignatureForListener(wasmSig *wasm.FunctionType) (*ssa.Signature, *ssa.Signature) {
-	beforeSig := &ssa.Signature{}
-	beforeSig.Params = make([]ssa.Type, len(wasmSig.Params)+2)
-	beforeSig.Params[0] = ssa.TypeI64 // Execution context.
-	beforeSig.Params[1] = ssa.TypeI32 // Function index.
+func SignatureForListener(wasmSig *wasm.FunctionType) (*types.Signature, *types.Signature) {
+	beforeSig := &types.Signature{}
+	beforeSig.Params = make([]types.Type, len(wasmSig.Params)+2)
+	beforeSig.Params[0] = types.I64 // Execution context.
+	beforeSig.Params[1] = types.I32 // Function index.
 	for i, p := range wasmSig.Params {
 		beforeSig.Params[i+2] = WasmTypeToSSAType(p)
 	}
-	afterSig := &ssa.Signature{}
-	afterSig.Params = make([]ssa.Type, len(wasmSig.Results)+2)
-	afterSig.Params[0] = ssa.TypeI64 // Execution context.
-	afterSig.Params[1] = ssa.TypeI32 // Function index.
+	afterSig := &types.Signature{}
+	afterSig.Params = make([]types.Type, len(wasmSig.Results)+2)
+	afterSig.Params[0] = types.I64 // Execution context.
+	afterSig.Params[1] = types.I32 // Function index.
 	for i, p := range wasmSig.Results {
 		afterSig.Params[i+2] = WasmTypeToSSAType(p)
 	}

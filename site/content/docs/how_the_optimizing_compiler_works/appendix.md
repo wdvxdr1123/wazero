@@ -56,7 +56,7 @@ For each given architecture, the trampoline:
 
 The **preamble** that will be jumped from `entrypoint` function is generated per function signature.
 
-This is implemented in `machine.CompileEntryPreamble(*ssa.Signature)`.
+This is implemented in `machine.CompileEntryPreamble(*types.Signature)`.
 
 The preamble sets the fields in the `wazevo.executionContext`.
 

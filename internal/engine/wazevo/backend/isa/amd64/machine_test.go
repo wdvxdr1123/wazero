@@ -9,6 +9,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 	"github.com/tetratelabs/wazero/internal/platform"
 	"github.com/tetratelabs/wazero/internal/testing/require"
@@ -68,7 +69,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 			name: "non const instr (single-return)",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				c := builder.AllocateInstruction()
-				sig := &ssa.Signature{Results: []ssa.Type{ssa.TypeI64}}
+				sig := &types.Signature{Results: []types.Type{types.I64}}
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
@@ -82,7 +83,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 			name: "non const instr (multi-return)",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				c := builder.AllocateInstruction()
-				sig := &ssa.Signature{Results: []ssa.Type{ssa.TypeI64, ssa.TypeF64, ssa.TypeF64}}
+				sig := &types.Signature{Results: []types.Type{types.I64, types.F64, types.F64}}
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
@@ -166,11 +167,11 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 			name: "amode with block param",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				blk := builder.CurrentBlock()
-				ptr := blk.AddParam(builder, ssa.TypeI64)
+				ptr := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[ptr] = raxVReg
 				ctx.definitions[ptr] = backend.SSAValueDefinition{V: ptr}
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(ptr, 123, ssa.TypeI64).Insert(builder)
+				instr.AsLoad(ptr, 123, types.I64).Insert(builder)
 				return backend.SSAValueDefinition{Instr: instr}
 			},
 			exp: newOperandMem(newAmodeImmReg(123, raxVReg)),
@@ -180,7 +181,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(iconst.Return(), 123, ssa.TypeI64).Insert(builder)
+				instr.AsLoad(iconst.Return(), 123, types.I64).Insert(builder)
 				ctx.definitions[iconst.Return()] = backend.SSAValueDefinition{Instr: iconst}
 				return backend.SSAValueDefinition{Instr: instr}
 			},
@@ -196,7 +197,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 				uextend := builder.AllocateInstruction().AsUExtend(iconst.Return(), 32, 64).Insert(builder)
 
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(uextend.Return(), 123, ssa.TypeI64).Insert(builder)
+				instr.AsLoad(uextend.Return(), 123, types.I64).Insert(builder)
 
 				ctx.definitions[uextend.Return()] = backend.SSAValueDefinition{Instr: uextend}
 				ctx.definitions[iconst.Return()] = backend.SSAValueDefinition{Instr: iconst}
@@ -215,7 +216,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 				uextend := builder.AllocateInstruction().AsUExtend(iconst.Return(), 32, 64).Insert(builder)
 
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(uextend.Return(), 123, ssa.TypeI64).Insert(builder)
+				instr.AsLoad(uextend.Return(), 123, types.I64).Insert(builder)
 
 				ctx.definitions[uextend.Return()] = backend.SSAValueDefinition{Instr: uextend}
 				ctx.definitions[iconst.Return()] = backend.SSAValueDefinition{Instr: iconst}
@@ -230,12 +231,12 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		{
 			name: "amode with iconst and add",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
-				p := builder.CurrentBlock().AddParam(builder, ssa.TypeI64)
+				p := builder.CurrentBlock().AddParam(builder, types.I64)
 				iconst := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
 				iadd := builder.AllocateInstruction().AsIadd(iconst.Return(), p).Insert(builder)
 
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(iadd.Return(), 789, ssa.TypeI64).Insert(builder)
+				instr.AsLoad(iadd.Return(), 789, types.I64).Insert(builder)
 
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
@@ -254,7 +255,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 				iadd := builder.AllocateInstruction().AsIadd(iconst1.Return(), iconst2.Return()).Insert(builder)
 
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(iadd.Return(), 789, ssa.TypeI64).Insert(builder)
+				instr.AsLoad(iadd.Return(), 789, types.I64).Insert(builder)
 
 				ctx.definitions[iconst1.Return()] = backend.SSAValueDefinition{Instr: iconst1}
 				ctx.definitions[iconst2.Return()] = backend.SSAValueDefinition{Instr: iconst2}
@@ -308,13 +309,13 @@ func Test_machine_lowerClz(t *testing.T) {
 		name     string
 		setup    func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
 		cpuFlags platform.CpuFeatureFlags
-		typ      ssa.Type
+		typ      types.Type
 		exp      string
 	}{
 		{
 			name:     "no extra flags (64)",
 			cpuFlags: &mockCpuFlags{},
-			typ:      ssa.TypeI64,
+			typ:      types.I64,
 			exp: `
 	testq %rax, %rax
 	jnz L1
@@ -330,7 +331,7 @@ L2:
 		{
 			name:     "ABM (64)",
 			cpuFlags: &mockCpuFlags{extraFlags: platform.CpuExtraFeatureAmd64ABM},
-			typ:      ssa.TypeI64,
+			typ:      types.I64,
 			exp: `
 	lzcntq %rax, %rcx
 `,
@@ -338,7 +339,7 @@ L2:
 		{
 			name:     "no extra flags (32)",
 			cpuFlags: &mockCpuFlags{},
-			typ:      ssa.TypeI32,
+			typ:      types.I32,
 			exp: `
 	testl %eax, %eax
 	jnz L1
@@ -354,7 +355,7 @@ L2:
 		{
 			name:     "ABM (32)",
 			cpuFlags: &mockCpuFlags{extraFlags: platform.CpuExtraFeatureAmd64ABM},
-			typ:      ssa.TypeI32,
+			typ:      types.I32,
 			exp: `
 	lzcntl %eax, %ecx
 `,
@@ -384,13 +385,13 @@ func TestMachine_lowerCtz(t *testing.T) {
 		name     string
 		setup    func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
 		cpuFlags platform.CpuFeatureFlags
-		typ      ssa.Type
+		typ      types.Type
 		exp      string
 	}{
 		{
 			name:     "no extra flags (64)",
 			cpuFlags: &mockCpuFlags{},
-			typ:      ssa.TypeI64,
+			typ:      types.I64,
 			exp: `
 	testq %rax, %rax
 	jnz L1
@@ -405,7 +406,7 @@ L2:
 		{
 			name:     "ABM (64)",
 			cpuFlags: &mockCpuFlags{extraFlags: platform.CpuExtraFeatureAmd64ABM},
-			typ:      ssa.TypeI64,
+			typ:      types.I64,
 			exp: `
 	tzcntq %rax, %rcx
 `,
@@ -413,7 +414,7 @@ L2:
 		{
 			name:     "no extra flags (32)",
 			cpuFlags: &mockCpuFlags{},
-			typ:      ssa.TypeI32,
+			typ:      types.I32,
 			exp: `
 	testl %eax, %eax
 	jnz L1
@@ -428,7 +429,7 @@ L2:
 		{
 			name:     "ABM (32)",
 			cpuFlags: &mockCpuFlags{extraFlags: platform.CpuExtraFeatureAmd64ABM},
-			typ:      ssa.TypeI32,
+			typ:      types.I32,
 			exp: `
 	tzcntl %eax, %ecx
 `,

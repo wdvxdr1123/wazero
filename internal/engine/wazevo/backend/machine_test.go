@@ -5,6 +5,7 @@ import (
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -38,7 +39,7 @@ func (m mockMachine) LowerParams(params []ssa.Value) { panic("implement me") }
 
 func (m mockMachine) LowerReturns(returns []ssa.Value) { panic("implement me") }
 
-func (m mockMachine) CompileEntryPreamble(signature *ssa.Signature) []byte {
+func (m mockMachine) CompileEntryPreamble(signature *types.Signature) []byte {
 	panic("TODO")
 }
 
@@ -47,7 +48,7 @@ func (m mockMachine) CompileStackGrowCallSequence() []byte {
 }
 
 // CompileGoFunctionTrampoline implements Machine.CompileGoFunctionTrampoline.
-func (m mockMachine) CompileGoFunctionTrampoline(wazevoapi.ExitCode, *ssa.Signature, bool) []byte {
+func (m mockMachine) CompileGoFunctionTrampoline(wazevoapi.ExitCode, *types.Signature, bool) []byte {
 	panic("TODO")
 }
 
@@ -111,7 +112,7 @@ func (m mockMachine) Reset() {
 func (m mockMachine) FlushPendingInstructions() {}
 
 // InsertMove implements Machine.InsertMove.
-func (m mockMachine) InsertMove(dst, src regalloc.VReg, typ ssa.Type) {
+func (m mockMachine) InsertMove(dst, src regalloc.VReg, typ types.Type) {
 	m.insertMove(dst, src)
 }
 

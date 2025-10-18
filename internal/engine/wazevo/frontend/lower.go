@@ -9,6 +9,7 @@ import (
 
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 	"github.com/tetratelabs/wazero/internal/leb128"
 	"github.com/tetratelabs/wazero/internal/wasm"
@@ -551,13 +552,13 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			// Load the table.
 			loadTableInstancePtr := builder.AllocateInstruction()
-			loadTableInstancePtr.AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), ssa.TypeI64)
+			loadTableInstancePtr.AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), types.I64)
 			builder.InsertInstruction(loadTableInstancePtr)
 			tableInstancePtr := loadTableInstancePtr.Return()
 
 			// Load the table's length.
 			loadTableLen := builder.AllocateInstruction().
-				AsLoad(tableInstancePtr, tableInstanceLenOffset, ssa.TypeI32).
+				AsLoad(tableInstancePtr, tableInstanceLenOffset, types.I32).
 				Insert(builder)
 			state.push(loadTableLen.Return())
 
@@ -577,7 +578,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			tableGrowPtr := builder.AllocateInstruction().
 				AsLoad(c.execCtxPtrValue,
 					wazevoapi.ExecutionContextOffsetTableGrowTrampolineAddress.U32(),
-					ssa.TypeI64,
+					types.I64,
 				).Insert(builder).Return()
 
 			args := []ssa.Value{c.execCtxPtrValue, tableIndexVal, num, r}
@@ -678,7 +679,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			// Prepare the loop and following block.
 			beforeLoop := builder.AllocateBasicBlock()
 			loopBlk := builder.AllocateBasicBlock()
-			loopVar := loopBlk.AddParam(builder, ssa.TypeI64)
+			loopVar := loopBlk.AddParam(builder, types.I64)
 			followingBlk := builder.AllocateBasicBlock()
 
 			// Insert the jump to the beforeLoop block; If the fillSize is zero, then jump to the following block to skip entire logics.
@@ -750,7 +751,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			// Prepare the loop and following block.
 			beforeLoop := builder.AllocateBasicBlock()
 			loopBlk := builder.AllocateBasicBlock()
-			loopVar := loopBlk.AddParam(builder, ssa.TypeI64)
+			loopVar := loopBlk.AddParam(builder, types.I64)
 			followingBlk := builder.AllocateBasicBlock()
 
 			// Insert the jump to the beforeLoop block; If the fillSize is zero, then jump to the following block to skip entire logics.
@@ -817,7 +818,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			c.boundsCheckInMemory(c.getMemoryLenValue(false), offsetInMemory, copySize)
 			c.boundsCheckInDataOrElementInstance(dataInstPtr, offsetInDataInstance, copySize, wazevoapi.ExitCodeMemoryOutOfBounds)
 
-			dataInstBaseAddr := builder.AllocateInstruction().AsLoad(dataInstPtr, 0, ssa.TypeI64).Insert(builder).Return()
+			dataInstBaseAddr := builder.AllocateInstruction().AsLoad(dataInstPtr, 0, types.I64).Insert(builder).Return()
 			srcAddr := builder.AllocateInstruction().AsIadd(dataInstBaseAddr, offsetInDataInstance).Insert(builder).Return()
 
 			memBase := c.getMemoryBaseValue(false)
@@ -853,7 +854,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			// Calculates the source address in the element instance.
 			srcOffsetInBytes := builder.AllocateInstruction().AsIshl(offsetInElementInstance, three).Insert(builder).Return()
-			elemInstBaseAddr := builder.AllocateInstruction().AsLoad(elemInstPtr, 0, ssa.TypeI64).Insert(builder).Return()
+			elemInstBaseAddr := builder.AllocateInstruction().AsLoad(elemInstPtr, 0, types.I64).Insert(builder).Return()
 			srcAddr := builder.AllocateInstruction().AsIadd(elemInstBaseAddr, srcOffsetInBytes).Insert(builder).Return()
 
 			copySizeInBytes := builder.AllocateInstruction().AsIshl(copySize, three).Insert(builder).Return()
@@ -883,7 +884,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		reinterpret := builder.AllocateInstruction().
-			AsBitcast(state.pop(), ssa.TypeI32).
+			AsBitcast(state.pop(), types.I32).
 			Insert(builder).Return()
 		state.push(reinterpret)
 
@@ -892,7 +893,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		reinterpret := builder.AllocateInstruction().
-			AsBitcast(state.pop(), ssa.TypeI64).
+			AsBitcast(state.pop(), types.I64).
 			Insert(builder).Return()
 		state.push(reinterpret)
 
@@ -901,7 +902,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		reinterpret := builder.AllocateInstruction().
-			AsBitcast(state.pop(), ssa.TypeF32).
+			AsBitcast(state.pop(), types.F32).
 			Insert(builder).Return()
 		state.push(reinterpret)
 
@@ -910,7 +911,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		reinterpret := builder.AllocateInstruction().
-			AsBitcast(state.pop(), ssa.TypeF64).
+			AsBitcast(state.pop(), types.F64).
 			Insert(builder).Return()
 		state.push(reinterpret)
 
@@ -1062,7 +1063,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		x := state.pop()
-		wrap := builder.AllocateInstruction().AsIreduce(x, ssa.TypeI32).Insert(builder).Return()
+		wrap := builder.AllocateInstruction().AsIreduce(x, types.I32).Insert(builder).Return()
 		state.push(wrap)
 	case wasm.OpcodeGlobalGet:
 		index := c.readI32u()
@@ -1132,17 +1133,17 @@ func (c *Compiler) lowerCurrentOpcode() {
 		var memSizeInBytes ssa.Value
 		if c.offset.LocalMemoryBegin < 0 {
 			memInstPtr := builder.AllocateInstruction().
-				AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), ssa.TypeI64).
+				AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64).
 				Insert(builder).
 				Return()
 
 			memSizeInBytes = builder.AllocateInstruction().
-				AsLoad(memInstPtr, memoryInstanceBufSizeOffset, ssa.TypeI32).
+				AsLoad(memInstPtr, memoryInstanceBufSizeOffset, types.I32).
 				Insert(builder).
 				Return()
 		} else {
 			memSizeInBytes = builder.AllocateInstruction().
-				AsLoad(c.moduleCtxPtrValue, c.offset.LocalMemoryLen().U32(), ssa.TypeI32).
+				AsLoad(c.moduleCtxPtrValue, c.offset.LocalMemoryLen().U32(), types.I32).
 				Insert(builder).
 				Return()
 		}
@@ -1168,7 +1169,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		memoryGrowPtr := builder.AllocateInstruction().
 			AsLoad(c.execCtxPtrValue,
 				wazevoapi.ExecutionContextOffsetMemoryGrowTrampolineAddress.U32(),
-				ssa.TypeI64,
+				types.I64,
 			).Insert(builder).Return()
 
 		args := []ssa.Value{c.execCtxPtrValue, pages}
@@ -1268,13 +1269,13 @@ func (c *Compiler) lowerCurrentOpcode() {
 		load := builder.AllocateInstruction()
 		switch op {
 		case wasm.OpcodeI32Load:
-			load.AsLoad(addr, offset, ssa.TypeI32)
+			load.AsLoad(addr, offset, types.I32)
 		case wasm.OpcodeI64Load:
-			load.AsLoad(addr, offset, ssa.TypeI64)
+			load.AsLoad(addr, offset, types.I64)
 		case wasm.OpcodeF32Load:
-			load.AsLoad(addr, offset, ssa.TypeF32)
+			load.AsLoad(addr, offset, types.F32)
 		case wasm.OpcodeF64Load:
-			load.AsLoad(addr, offset, ssa.TypeF64)
+			load.AsLoad(addr, offset, types.F64)
 		case wasm.OpcodeI32Load8S:
 			load.AsExtLoad(ssa.OpcodeSload8, addr, offset, false)
 		case wasm.OpcodeI32Load8U:
@@ -1355,7 +1356,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			checkModuleExitCodePtr := builder.AllocateInstruction().
 				AsLoad(c.execCtxPtrValue,
 					wazevoapi.ExecutionContextOffsetCheckModuleExitCodeTrampolineAddress.U32(),
-					ssa.TypeI64,
+					types.I64,
 				).Insert(builder).Return()
 
 			args := []ssa.Value{c.execCtxPtrValue}
@@ -1658,7 +1659,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			baseAddr := state.pop()
 			addr := c.memOpSetup(baseAddr, uint64(offset), 16)
 			load := builder.AllocateInstruction()
-			load.AsLoad(addr, offset, ssa.TypeV128)
+			load.AsLoad(addr, offset, types.V128)
 			builder.InsertInstruction(load)
 			state.push(load.Return())
 		case wasm.OpcodeVecV128Load8Lane, wasm.OpcodeVecV128Load16Lane, wasm.OpcodeVecV128Load32Lane:
@@ -1667,16 +1668,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			var loadOp ssa.Opcode
 			var opSize uint64
 			switch vecOp {
 			case wasm.OpcodeVecV128Load8Lane:
-				loadOp, lane, opSize = ssa.OpcodeUload8, ssa.VecLaneI8x16, 1
+				loadOp, lane, opSize = ssa.OpcodeUload8, types.VecLaneI8x16, 1
 			case wasm.OpcodeVecV128Load16Lane:
-				loadOp, lane, opSize = ssa.OpcodeUload16, ssa.VecLaneI16x8, 2
+				loadOp, lane, opSize = ssa.OpcodeUload16, types.VecLaneI16x8, 2
 			case wasm.OpcodeVecV128Load32Lane:
-				loadOp, lane, opSize = ssa.OpcodeUload32, ssa.VecLaneI32x4, 4
+				loadOp, lane, opSize = ssa.OpcodeUload32, types.VecLaneI32x4, 4
 			}
 			laneIndex := c.wasmFunctionBody[state.pc]
 			vector := state.pop()
@@ -1700,10 +1701,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 			baseAddr := state.pop()
 			addr := c.memOpSetup(baseAddr, uint64(offset), 8)
 			load := builder.AllocateInstruction().
-				AsLoad(addr, offset, ssa.TypeI64).
+				AsLoad(addr, offset, types.I64).
 				Insert(builder).Return()
 			ret := builder.AllocateInstruction().
-				AsInsertlane(vector, load, laneIndex, ssa.VecLaneI64x2).
+				AsInsertlane(vector, load, laneIndex, types.VecLaneI64x2).
 				Insert(builder).Return()
 			state.push(ret)
 
@@ -1713,12 +1714,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 				break
 			}
 
-			var scalarType ssa.Type
+			var scalarType types.Type
 			switch vecOp {
 			case wasm.OpcodeVecV128Load32zero:
-				scalarType = ssa.TypeF32
+				scalarType = types.F32
 			case wasm.OpcodeVecV128Load64zero:
-				scalarType = ssa.TypeF64
+				scalarType = types.F64
 			}
 
 			baseAddr := state.pop()
@@ -1736,29 +1737,29 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			var signed bool
 			switch vecOp {
 			case wasm.OpcodeVecV128Load8x8s:
 				signed = true
 				fallthrough
 			case wasm.OpcodeVecV128Load8x8u:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecV128Load16x4s:
 				signed = true
 				fallthrough
 			case wasm.OpcodeVecV128Load16x4u:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecV128Load32x2s:
 				signed = true
 				fallthrough
 			case wasm.OpcodeVecV128Load32x2u:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			baseAddr := state.pop()
 			addr := c.memOpSetup(baseAddr, uint64(offset), 8)
 			load := builder.AllocateInstruction().
-				AsLoad(addr, offset, ssa.TypeF64).
+				AsLoad(addr, offset, types.F64).
 				Insert(builder).Return()
 			ret := builder.AllocateInstruction().
 				AsWiden(load, lane, signed, true).
@@ -1770,17 +1771,17 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			var opSize uint64
 			switch vecOp {
 			case wasm.OpcodeVecV128Load8Splat:
-				lane, opSize = ssa.VecLaneI8x16, 1
+				lane, opSize = types.VecLaneI8x16, 1
 			case wasm.OpcodeVecV128Load16Splat:
-				lane, opSize = ssa.VecLaneI16x8, 2
+				lane, opSize = types.VecLaneI16x8, 2
 			case wasm.OpcodeVecV128Load32Splat:
-				lane, opSize = ssa.VecLaneI32x4, 4
+				lane, opSize = types.VecLaneI32x4, 4
 			case wasm.OpcodeVecV128Load64Splat:
-				lane, opSize = ssa.VecLaneI64x2, 8
+				lane, opSize = types.VecLaneI64x2, 8
 			}
 			baseAddr := state.pop()
 			addr := c.memOpSetup(baseAddr, uint64(offset), opSize)
@@ -1808,17 +1809,17 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			laneIndex := c.wasmFunctionBody[state.pc]
 			var storeOp ssa.Opcode
-			var lane ssa.VecLane
+			var lane types.VecLane
 			var opSize uint64
 			switch vecOp {
 			case wasm.OpcodeVecV128Store8Lane:
-				storeOp, lane, opSize = ssa.OpcodeIstore8, ssa.VecLaneI8x16, 1
+				storeOp, lane, opSize = ssa.OpcodeIstore8, types.VecLaneI8x16, 1
 			case wasm.OpcodeVecV128Store16Lane:
-				storeOp, lane, opSize = ssa.OpcodeIstore16, ssa.VecLaneI16x8, 2
+				storeOp, lane, opSize = ssa.OpcodeIstore16, types.VecLaneI16x8, 2
 			case wasm.OpcodeVecV128Store32Lane:
-				storeOp, lane, opSize = ssa.OpcodeIstore32, ssa.VecLaneI32x4, 4
+				storeOp, lane, opSize = ssa.OpcodeIstore32, types.VecLaneI32x4, 4
 			case wasm.OpcodeVecV128Store64Lane:
-				storeOp, lane, opSize = ssa.OpcodeStore, ssa.VecLaneI64x2, 8
+				storeOp, lane, opSize = ssa.OpcodeStore, types.VecLaneI64x2, 8
 			}
 			vector := state.pop()
 			baseAddr := state.pop()
@@ -1888,16 +1889,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16AllTrue:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8AllTrue:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4AllTrue:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2AllTrue:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVallTrue(v1, lane).Insert(builder).Return()
@@ -1906,16 +1907,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16BitMask:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8BitMask:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4BitMask:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2BitMask:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVhighBits(v1, lane).Insert(builder).Return()
@@ -1924,16 +1925,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16Abs:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8Abs:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Abs:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Abs:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVIabs(v1, lane).Insert(builder).Return()
@@ -1942,16 +1943,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16Neg:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8Neg:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Neg:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Neg:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVIneg(v1, lane).Insert(builder).Return()
@@ -1960,7 +1961,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			lane := ssa.VecLaneI8x16
+			lane := types.VecLaneI8x16
 			v1 := state.pop()
 
 			ret := builder.AllocateInstruction().AsVIpopcnt(v1, lane).Insert(builder).Return()
@@ -1969,16 +1970,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16Add:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8Add:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Add:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Add:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -1988,12 +1989,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16AddSatS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8AddSatS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2003,12 +2004,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16AddSatU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8AddSatU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2018,12 +2019,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16SubSatS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8SubSatS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2033,12 +2034,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16SubSatU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8SubSatU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2049,16 +2050,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16Sub:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8Sub:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Sub:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Sub:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2068,14 +2069,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16MinS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8MinS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4MinS:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2085,14 +2086,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16MinU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8MinU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4MinU:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2102,14 +2103,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16MaxS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8MaxS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4MaxS:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2119,14 +2120,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16MaxU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8MaxU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4MaxU:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2136,12 +2137,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16AvgrU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8AvgrU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2151,14 +2152,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI16x8Mul:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Mul:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Mul:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2170,22 +2171,22 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsSqmulRoundSat(v1, v2, ssa.VecLaneI16x8).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsSqmulRoundSat(v1, v2, types.VecLaneI16x8).Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Eq, wasm.OpcodeVecI16x8Eq, wasm.OpcodeVecI32x4Eq, wasm.OpcodeVecI64x2Eq:
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16Eq:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8Eq:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Eq:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Eq:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2196,16 +2197,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16Ne:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8Ne:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Ne:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Ne:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2216,16 +2217,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16LtS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8LtS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4LtS:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2LtS:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2236,14 +2237,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16LtU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8LtU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4LtU:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2254,16 +2255,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16LeS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8LeS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4LeS:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2LeS:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2274,14 +2275,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16LeU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8LeU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4LeU:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2292,16 +2293,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16GtS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8GtS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4GtS:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2GtS:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2312,14 +2313,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16GtU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8GtU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4GtU:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2330,16 +2331,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16GeS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8GeS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4GeS:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2GeS:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2350,14 +2351,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16GeU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8GeU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4GeU:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2368,12 +2369,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Max:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Max:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2383,12 +2384,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Abs:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Abs:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVFabs(v1, lane).Insert(builder).Return()
@@ -2397,12 +2398,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Min:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Min:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2412,12 +2413,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Neg:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Neg:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVFneg(v1, lane).Insert(builder).Return()
@@ -2426,12 +2427,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Sqrt:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Sqrt:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVSqrt(v1, lane).Insert(builder).Return()
@@ -2441,12 +2442,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Add:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Add:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2456,12 +2457,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Sub:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Sub:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2471,12 +2472,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Mul:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Mul:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2486,12 +2487,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Div:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Div:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2504,7 +2505,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v := state.pop()
 			signed := vecOp == wasm.OpcodeVecI16x8ExtaddPairwiseI8x16S
-			ret := builder.AllocateInstruction().AsExtIaddPairwise(v, ssa.VecLaneI8x16, signed).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsExtIaddPairwise(v, types.VecLaneI8x16, signed).Insert(builder).Return()
 			state.push(ret)
 
 		case wasm.OpcodeVecI32x4ExtaddPairwiseI16x8S, wasm.OpcodeVecI32x4ExtaddPairwiseI16x8U:
@@ -2513,7 +2514,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v := state.pop()
 			signed := vecOp == wasm.OpcodeVecI32x4ExtaddPairwiseI16x8S
-			ret := builder.AllocateInstruction().AsExtIaddPairwise(v, ssa.VecLaneI16x8, signed).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsExtIaddPairwise(v, types.VecLaneI16x8, signed).Insert(builder).Return()
 			state.push(ret)
 
 		case wasm.OpcodeVecI16x8ExtMulLowI8x16S, wasm.OpcodeVecI16x8ExtMulLowI8x16U:
@@ -2524,7 +2525,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := c.lowerExtMul(
 				v1, v2,
-				ssa.VecLaneI8x16, ssa.VecLaneI16x8,
+				types.VecLaneI8x16, types.VecLaneI16x8,
 				vecOp == wasm.OpcodeVecI16x8ExtMulLowI8x16S, true)
 			state.push(ret)
 
@@ -2536,7 +2537,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := c.lowerExtMul(
 				v1, v2,
-				ssa.VecLaneI8x16, ssa.VecLaneI16x8,
+				types.VecLaneI8x16, types.VecLaneI16x8,
 				vecOp == wasm.OpcodeVecI16x8ExtMulHighI8x16S, false)
 			state.push(ret)
 
@@ -2548,7 +2549,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := c.lowerExtMul(
 				v1, v2,
-				ssa.VecLaneI16x8, ssa.VecLaneI32x4,
+				types.VecLaneI16x8, types.VecLaneI32x4,
 				vecOp == wasm.OpcodeVecI32x4ExtMulLowI16x8S, true)
 			state.push(ret)
 
@@ -2560,7 +2561,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := c.lowerExtMul(
 				v1, v2,
-				ssa.VecLaneI16x8, ssa.VecLaneI32x4,
+				types.VecLaneI16x8, types.VecLaneI32x4,
 				vecOp == wasm.OpcodeVecI32x4ExtMulHighI16x8S, false)
 			state.push(ret)
 		case wasm.OpcodeVecI64x2ExtMulLowI32x4S, wasm.OpcodeVecI64x2ExtMulLowI32x4U:
@@ -2571,7 +2572,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := c.lowerExtMul(
 				v1, v2,
-				ssa.VecLaneI32x4, ssa.VecLaneI64x2,
+				types.VecLaneI32x4, types.VecLaneI64x2,
 				vecOp == wasm.OpcodeVecI64x2ExtMulLowI32x4S, true)
 			state.push(ret)
 
@@ -2583,7 +2584,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := c.lowerExtMul(
 				v1, v2,
-				ssa.VecLaneI32x4, ssa.VecLaneI64x2,
+				types.VecLaneI32x4, types.VecLaneI64x2,
 				vecOp == wasm.OpcodeVecI64x2ExtMulHighI32x4S, false)
 			state.push(ret)
 
@@ -2601,12 +2602,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Eq:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Eq:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2617,12 +2618,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Ne:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Ne:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2633,12 +2634,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Lt:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Lt:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2649,12 +2650,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Le:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Le:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2665,12 +2666,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Gt:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Gt:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2681,12 +2682,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Ge:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Ge:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2697,12 +2698,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Ceil:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Ceil:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVCeil(v1, lane).Insert(builder).Return()
@@ -2711,12 +2712,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Floor:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Floor:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVFloor(v1, lane).Insert(builder).Return()
@@ -2725,12 +2726,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Trunc:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Trunc:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVTrunc(v1, lane).Insert(builder).Return()
@@ -2739,12 +2740,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Nearest:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Nearest:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsVNearest(v1, lane).Insert(builder).Return()
@@ -2753,12 +2754,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Pmin:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Pmin:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2768,12 +2769,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecF32x4Pmax:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Pmax:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2785,7 +2786,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcvtToIntSat(v1, ssa.VecLaneF32x4, vecOp == wasm.OpcodeVecI32x4TruncSatF32x4S).Insert(builder).Return()
+				AsVFcvtToIntSat(v1, types.VecLaneF32x4, vecOp == wasm.OpcodeVecI32x4TruncSatF32x4S).Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI32x4TruncSatF64x2SZero, wasm.OpcodeVecI32x4TruncSatF64x2UZero:
 			if state.unreachable {
@@ -2793,7 +2794,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcvtToIntSat(v1, ssa.VecLaneF64x2, vecOp == wasm.OpcodeVecI32x4TruncSatF64x2SZero).Insert(builder).Return()
+				AsVFcvtToIntSat(v1, types.VecLaneF64x2, vecOp == wasm.OpcodeVecI32x4TruncSatF64x2SZero).Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecF32x4ConvertI32x4S, wasm.OpcodeVecF32x4ConvertI32x4U:
 			if state.unreachable {
@@ -2801,7 +2802,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcvtFromInt(v1, ssa.VecLaneF32x4, vecOp == wasm.OpcodeVecF32x4ConvertI32x4S).Insert(builder).Return()
+				AsVFcvtFromInt(v1, types.VecLaneF32x4, vecOp == wasm.OpcodeVecF32x4ConvertI32x4S).Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecF64x2ConvertLowI32x4S, wasm.OpcodeVecF64x2ConvertLowI32x4U:
 			if state.unreachable {
@@ -2811,10 +2812,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if runtime.GOARCH == "arm64" {
 				// TODO: this is weird. fix.
 				v1 = builder.AllocateInstruction().
-					AsWiden(v1, ssa.VecLaneI32x4, vecOp == wasm.OpcodeVecF64x2ConvertLowI32x4S, true).Insert(builder).Return()
+					AsWiden(v1, types.VecLaneI32x4, vecOp == wasm.OpcodeVecF64x2ConvertLowI32x4S, true).Insert(builder).Return()
 			}
 			ret := builder.AllocateInstruction().
-				AsVFcvtFromInt(v1, ssa.VecLaneF64x2, vecOp == wasm.OpcodeVecF64x2ConvertLowI32x4S).
+				AsVFcvtFromInt(v1, types.VecLaneF64x2, vecOp == wasm.OpcodeVecF64x2ConvertLowI32x4S).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI8x16NarrowI16x8S, wasm.OpcodeVecI8x16NarrowI16x8U:
@@ -2824,7 +2825,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsNarrow(v1, v2, ssa.VecLaneI16x8, vecOp == wasm.OpcodeVecI8x16NarrowI16x8S).
+				AsNarrow(v1, v2, types.VecLaneI16x8, vecOp == wasm.OpcodeVecI8x16NarrowI16x8S).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI16x8NarrowI32x4S, wasm.OpcodeVecI16x8NarrowI32x4U:
@@ -2834,7 +2835,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsNarrow(v1, v2, ssa.VecLaneI32x4, vecOp == wasm.OpcodeVecI16x8NarrowI32x4S).
+				AsNarrow(v1, v2, types.VecLaneI32x4, vecOp == wasm.OpcodeVecI16x8NarrowI32x4S).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI16x8ExtendLowI8x16S, wasm.OpcodeVecI16x8ExtendLowI8x16U:
@@ -2843,7 +2844,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsWiden(v1, ssa.VecLaneI8x16, vecOp == wasm.OpcodeVecI16x8ExtendLowI8x16S, true).
+				AsWiden(v1, types.VecLaneI8x16, vecOp == wasm.OpcodeVecI16x8ExtendLowI8x16S, true).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI16x8ExtendHighI8x16S, wasm.OpcodeVecI16x8ExtendHighI8x16U:
@@ -2852,7 +2853,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsWiden(v1, ssa.VecLaneI8x16, vecOp == wasm.OpcodeVecI16x8ExtendHighI8x16S, false).
+				AsWiden(v1, types.VecLaneI8x16, vecOp == wasm.OpcodeVecI16x8ExtendHighI8x16S, false).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI32x4ExtendLowI16x8S, wasm.OpcodeVecI32x4ExtendLowI16x8U:
@@ -2861,7 +2862,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsWiden(v1, ssa.VecLaneI16x8, vecOp == wasm.OpcodeVecI32x4ExtendLowI16x8S, true).
+				AsWiden(v1, types.VecLaneI16x8, vecOp == wasm.OpcodeVecI32x4ExtendLowI16x8S, true).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI32x4ExtendHighI16x8S, wasm.OpcodeVecI32x4ExtendHighI16x8U:
@@ -2870,7 +2871,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsWiden(v1, ssa.VecLaneI16x8, vecOp == wasm.OpcodeVecI32x4ExtendHighI16x8S, false).
+				AsWiden(v1, types.VecLaneI16x8, vecOp == wasm.OpcodeVecI32x4ExtendHighI16x8S, false).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI64x2ExtendLowI32x4S, wasm.OpcodeVecI64x2ExtendLowI32x4U:
@@ -2879,7 +2880,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsWiden(v1, ssa.VecLaneI32x4, vecOp == wasm.OpcodeVecI64x2ExtendLowI32x4S, true).
+				AsWiden(v1, types.VecLaneI32x4, vecOp == wasm.OpcodeVecI64x2ExtendLowI32x4S, true).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI64x2ExtendHighI32x4S, wasm.OpcodeVecI64x2ExtendHighI32x4U:
@@ -2888,7 +2889,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsWiden(v1, ssa.VecLaneI32x4, vecOp == wasm.OpcodeVecI64x2ExtendHighI32x4S, false).
+				AsWiden(v1, types.VecLaneI32x4, vecOp == wasm.OpcodeVecI64x2ExtendHighI32x4S, false).
 				Insert(builder).Return()
 			state.push(ret)
 
@@ -2898,7 +2899,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsFvpromoteLow(v1, ssa.VecLaneF32x4).
+				AsFvpromoteLow(v1, types.VecLaneF32x4).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecF32x4DemoteF64x2Zero:
@@ -2907,23 +2908,23 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsFvdemote(v1, ssa.VecLaneF64x2).
+				AsFvdemote(v1, types.VecLaneF64x2).
 				Insert(builder).Return()
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Shl, wasm.OpcodeVecI16x8Shl, wasm.OpcodeVecI32x4Shl, wasm.OpcodeVecI64x2Shl:
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16Shl:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8Shl:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Shl:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Shl:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2933,16 +2934,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16ShrS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8ShrS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4ShrS:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2ShrS:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2952,16 +2953,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16ShrU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8ShrU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4ShrU:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2ShrU:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -2972,12 +2973,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16ExtractLaneS:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8ExtractLaneS:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			}
 			v1 := state.pop()
 			index := c.wasmFunctionBody[state.pc]
@@ -2990,20 +2991,20 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16ExtractLaneU:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8ExtractLaneU:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4ExtractLane:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2ExtractLane:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			case wasm.OpcodeVecF32x4ExtractLane:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2ExtractLane:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			index := c.wasmFunctionBody[state.pc]
@@ -3016,20 +3017,20 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16ReplaceLane:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8ReplaceLane:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4ReplaceLane:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2ReplaceLane:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			case wasm.OpcodeVecF32x4ReplaceLane:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2ReplaceLane:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v2 := state.pop()
 			v1 := state.pop()
@@ -3054,7 +3055,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsSwizzle(v1, v2, ssa.VecLaneI8x16).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsSwizzle(v1, v2, types.VecLaneI8x16).Insert(builder).Return()
 			state.push(ret)
 
 		case wasm.OpcodeVecI8x16Splat,
@@ -3066,20 +3067,20 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			var lane ssa.VecLane
+			var lane types.VecLane
 			switch vecOp {
 			case wasm.OpcodeVecI8x16Splat:
-				lane = ssa.VecLaneI8x16
+				lane = types.VecLaneI8x16
 			case wasm.OpcodeVecI16x8Splat:
-				lane = ssa.VecLaneI16x8
+				lane = types.VecLaneI16x8
 			case wasm.OpcodeVecI32x4Splat:
-				lane = ssa.VecLaneI32x4
+				lane = types.VecLaneI32x4
 			case wasm.OpcodeVecI64x2Splat:
-				lane = ssa.VecLaneI64x2
+				lane = types.VecLaneI64x2
 			case wasm.OpcodeVecF32x4Splat:
-				lane = ssa.VecLaneF32x4
+				lane = types.VecLaneF32x4
 			case wasm.OpcodeVecF64x2Splat:
-				lane = ssa.VecLaneF64x2
+				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().AsSplat(v1, lane).Insert(builder).Return()
@@ -3102,7 +3103,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			var opSize uint64
 			var trampoline wazevoapi.Offset
-			var sig *ssa.Signature
+			var sig *types.Signature
 			switch atomicOp {
 			case wasm.OpcodeAtomicMemoryWait32:
 				opSize = 4
@@ -3122,7 +3123,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			memoryWaitPtr := builder.AllocateInstruction().
 				AsLoad(c.execCtxPtrValue,
 					trampoline.U32(),
-					ssa.TypeI64,
+					types.I64,
 				).Insert(builder).Return()
 
 			args := []ssa.Value{c.execCtxPtrValue, timeout, exp, addr}
@@ -3144,7 +3145,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			memoryNotifyPtr := builder.AllocateInstruction().
 				AsLoad(c.execCtxPtrValue,
 					wazevoapi.ExecutionContextOffsetMemoryNotifyTrampolineAddress.U32(),
-					ssa.TypeI64,
+					types.I64,
 				).Insert(builder).Return()
 			args := []ssa.Value{c.execCtxPtrValue, count, addr}
 			memoryNotifyRet := builder.AllocateInstruction().
@@ -3171,12 +3172,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 				size = 1
 			}
 
-			var typ ssa.Type
+			var typ types.Type
 			switch atomicOp {
 			case wasm.OpcodeAtomicI64Load, wasm.OpcodeAtomicI64Load32U, wasm.OpcodeAtomicI64Load16U, wasm.OpcodeAtomicI64Load8U:
-				typ = ssa.TypeI64
+				typ = types.I64
 			case wasm.OpcodeAtomicI32Load, wasm.OpcodeAtomicI32Load16U, wasm.OpcodeAtomicI32Load8U:
-				typ = ssa.TypeI32
+				typ = types.I32
 			}
 
 			addr := c.atomicMemOpSetup(baseAddr, uint64(offset), size)
@@ -3347,7 +3348,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		refFuncPtr := builder.AllocateInstruction().
 			AsLoad(c.execCtxPtrValue,
 				wazevoapi.ExecutionContextOffsetRefFuncTrampolineAddress.U32(),
-				ssa.TypeI64,
+				types.I64,
 			).Insert(builder).Return()
 
 		args := []ssa.Value{c.execCtxPtrValue, funcIndexVal}
@@ -3393,7 +3394,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 		targetOffsetInTable := state.pop()
 		elementAddr := c.lowerAccessTableWithBoundsCheck(tableIndex, targetOffsetInTable)
-		loaded := builder.AllocateInstruction().AsLoad(elementAddr, 0, ssa.TypeI64).Insert(builder).Return()
+		loaded := builder.AllocateInstruction().AsLoad(elementAddr, 0, types.I64).Insert(builder).Return()
 		state.push(loaded)
 
 	case wasm.OpcodeTailCallReturnCallIndirect:
@@ -3435,7 +3436,7 @@ func (c *Compiler) lowerReturn(builder ssa.Builder) {
 	builder.InsertInstruction(instr)
 }
 
-func (c *Compiler) lowerExtMul(v1, v2 ssa.Value, from, to ssa.VecLane, signed, low bool) ssa.Value {
+func (c *Compiler) lowerExtMul(v1, v2 ssa.Value, from, to types.VecLane, signed, low bool) ssa.Value {
 	// TODO: The sequence `Widen; Widen; VIMul` can be substituted for a single instruction on some ISAs.
 	builder := c.ssaBuilder
 
@@ -3455,13 +3456,13 @@ func (c *Compiler) lowerAccessTableWithBoundsCheck(tableIndex uint32, elementOff
 
 	// Load the table.
 	loadTableInstancePtr := builder.AllocateInstruction()
-	loadTableInstancePtr.AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), ssa.TypeI64)
+	loadTableInstancePtr.AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), types.I64)
 	builder.InsertInstruction(loadTableInstancePtr)
 	tableInstancePtr := loadTableInstancePtr.Return()
 
 	// Load the table's length.
 	loadTableLen := builder.AllocateInstruction()
-	loadTableLen.AsLoad(tableInstancePtr, tableInstanceLenOffset, ssa.TypeI32)
+	loadTableLen.AsLoad(tableInstancePtr, tableInstanceLenOffset, types.I32)
 	builder.InsertInstruction(loadTableLen)
 	tableLen := loadTableLen.Return()
 
@@ -3475,7 +3476,7 @@ func (c *Compiler) lowerAccessTableWithBoundsCheck(tableIndex uint32, elementOff
 
 	// Get the base address of wasm.TableInstance.References.
 	loadTableBaseAddress := builder.AllocateInstruction()
-	loadTableBaseAddress.AsLoad(tableInstancePtr, tableInstanceBaseAddressOffset, ssa.TypeI64)
+	loadTableBaseAddress.AsLoad(tableInstancePtr, tableInstanceBaseAddressOffset, types.I64)
 	builder.InsertInstruction(loadTableBaseAddress)
 	tableBase := loadTableBaseAddress.Return()
 
@@ -3495,7 +3496,7 @@ func (c *Compiler) lowerAccessTableWithBoundsCheck(tableIndex uint32, elementOff
 	return calcElementAddressInTable.Return()
 }
 
-func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *ssa.Signature, args []ssa.Value, funcRefOrPtrValue uint64) {
+func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Signature, args []ssa.Value, funcRefOrPtrValue uint64) {
 	builder := c.ssaBuilder
 	state := c.state()
 	var typIndex wasm.Index
@@ -3536,8 +3537,8 @@ func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *ssa.Signat
 		moduleCtx := c.moduleCtxPtrValue
 		loadFuncPtr, loadModuleCtxPtr := builder.AllocateInstruction(), builder.AllocateInstruction()
 		funcPtrOffset, moduleCtxPtrOffset, _ := c.offset.ImportedFunctionOffset(fnIndex)
-		loadFuncPtr.AsLoad(moduleCtx, funcPtrOffset.U32(), ssa.TypeI64)
-		loadModuleCtxPtr.AsLoad(moduleCtx, moduleCtxPtrOffset.U32(), ssa.TypeI64)
+		loadFuncPtr.AsLoad(moduleCtx, funcPtrOffset.U32(), types.I64)
+		loadModuleCtxPtr.AsLoad(moduleCtx, moduleCtxPtrOffset.U32(), types.I64)
 		builder.InsertInstruction(loadFuncPtr)
 		builder.InsertInstruction(loadModuleCtxPtr)
 
@@ -3578,7 +3579,7 @@ func (c *Compiler) prepareCallIndirect(typeIndex, tableIndex uint32) (ssa.Value,
 	elementOffsetInTable := state.pop()
 	functionInstancePtrAddress := c.lowerAccessTableWithBoundsCheck(tableIndex, elementOffsetInTable)
 	loadFunctionInstancePtr := builder.AllocateInstruction()
-	loadFunctionInstancePtr.AsLoad(functionInstancePtrAddress, 0, ssa.TypeI64)
+	loadFunctionInstancePtr.AsLoad(functionInstancePtrAddress, 0, types.I64)
 	builder.InsertInstruction(loadFunctionInstancePtr)
 	functionInstancePtr := loadFunctionInstancePtr.Return()
 
@@ -3595,18 +3596,18 @@ func (c *Compiler) prepareCallIndirect(typeIndex, tableIndex uint32) (ssa.Value,
 
 	// We need to do the type check. First, load the target function instance's typeID.
 	loadTypeID := builder.AllocateInstruction()
-	loadTypeID.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceTypeIDOffset, ssa.TypeI32)
+	loadTypeID.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceTypeIDOffset, types.I32)
 	builder.InsertInstruction(loadTypeID)
 	actualTypeID := loadTypeID.Return()
 
 	// Next, we load the expected TypeID:
 	loadTypeIDsBegin := builder.AllocateInstruction()
-	loadTypeIDsBegin.AsLoad(c.moduleCtxPtrValue, c.offset.TypeIDs1stElement.U32(), ssa.TypeI64)
+	loadTypeIDsBegin.AsLoad(c.moduleCtxPtrValue, c.offset.TypeIDs1stElement.U32(), types.I64)
 	builder.InsertInstruction(loadTypeIDsBegin)
 	typeIDsBegin := loadTypeIDsBegin.Return()
 
 	loadExpectedTypeID := builder.AllocateInstruction()
-	loadExpectedTypeID.AsLoad(typeIDsBegin, uint32(typeIndex)*4 /* size of wasm.FunctionTypeID */, ssa.TypeI32)
+	loadExpectedTypeID.AsLoad(typeIDsBegin, uint32(typeIndex)*4 /* size of wasm.FunctionTypeID */, types.I32)
 	builder.InsertInstruction(loadExpectedTypeID)
 	expectedTypeID := loadExpectedTypeID.Return()
 
@@ -3620,11 +3621,11 @@ func (c *Compiler) prepareCallIndirect(typeIndex, tableIndex uint32) (ssa.Value,
 
 	// Now ready to call the function. Load the executable and moduleContextOpaquePtr from the function instance.
 	loadExecutablePtr := builder.AllocateInstruction()
-	loadExecutablePtr.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceExecutableOffset, ssa.TypeI64)
+	loadExecutablePtr.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceExecutableOffset, types.I64)
 	builder.InsertInstruction(loadExecutablePtr)
 	executablePtr := loadExecutablePtr.Return()
 	loadModuleContextOpaquePtr := builder.AllocateInstruction()
-	loadModuleContextOpaquePtr.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceModuleContextOpaquePtrOffset, ssa.TypeI64)
+	loadModuleContextOpaquePtr.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceModuleContextOpaquePtrOffset, types.I64)
 	builder.InsertInstruction(loadModuleContextOpaquePtr)
 	moduleContextOpaquePtr := loadModuleContextOpaquePtr.Return()
 
@@ -3828,7 +3829,7 @@ func (c *Compiler) memAlignmentCheck(addr ssa.Value, operationSizeInBytes uint64
 
 func (c *Compiler) callMemmove(dst, src, size ssa.Value) {
 	args := []ssa.Value{dst, src, size}
-	if size.Type() != ssa.TypeI64 {
+	if size.Type() != types.I64 {
 		panic("TODO: memmove size must be i64")
 	}
 
@@ -3836,7 +3837,7 @@ func (c *Compiler) callMemmove(dst, src, size ssa.Value) {
 	memmovePtr := builder.AllocateInstruction().
 		AsLoad(c.execCtxPtrValue,
 			wazevoapi.ExecutionContextOffsetMemmoveAddress.U32(),
-			ssa.TypeI64,
+			types.I64,
 		).Insert(builder).Return()
 	builder.AllocateInstruction().AsCallGoRuntimeMemmove(memmovePtr, &c.memmoveSig, args).Insert(builder)
 }
@@ -3874,7 +3875,7 @@ func (c *Compiler) setWasmGlobalValue(index wasm.Index, v ssa.Value) {
 	builder := c.ssaBuilder
 	if index < c.m.ImportGlobalCount {
 		loadGlobalInstPtr := builder.AllocateInstruction()
-		loadGlobalInstPtr.AsLoad(c.moduleCtxPtrValue, uint32(opaqueOffset), ssa.TypeI64)
+		loadGlobalInstPtr.AsLoad(c.moduleCtxPtrValue, uint32(opaqueOffset), types.I64)
 		builder.InsertInstruction(loadGlobalInstPtr)
 
 		store := builder.AllocateInstruction()
@@ -3906,7 +3907,7 @@ func (c *Compiler) getWasmGlobalValue(index wasm.Index, forceLoad bool) ssa.Valu
 	var load *ssa.Instruction
 	if index < c.m.ImportGlobalCount {
 		loadGlobalInstPtr := builder.AllocateInstruction()
-		loadGlobalInstPtr.AsLoad(c.moduleCtxPtrValue, uint32(opaqueOffset), ssa.TypeI64)
+		loadGlobalInstPtr.AsLoad(c.moduleCtxPtrValue, uint32(opaqueOffset), types.I64)
 		builder.InsertInstruction(loadGlobalInstPtr)
 		load = builder.AllocateInstruction().
 			AsLoad(loadGlobalInstPtr.Return(), uint32(0), typ)
@@ -3937,17 +3938,17 @@ func (c *Compiler) getMemoryBaseValue(forceReload bool) ssa.Value {
 	var ret ssa.Value
 	if c.offset.LocalMemoryBegin < 0 {
 		loadMemInstPtr := builder.AllocateInstruction()
-		loadMemInstPtr.AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), ssa.TypeI64)
+		loadMemInstPtr.AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64)
 		builder.InsertInstruction(loadMemInstPtr)
 		memInstPtr := loadMemInstPtr.Return()
 
 		loadBufPtr := builder.AllocateInstruction()
-		loadBufPtr.AsLoad(memInstPtr, memoryInstanceBufOffset, ssa.TypeI64)
+		loadBufPtr.AsLoad(memInstPtr, memoryInstanceBufOffset, types.I64)
 		builder.InsertInstruction(loadBufPtr)
 		ret = loadBufPtr.Return()
 	} else {
 		load := builder.AllocateInstruction()
-		load.AsLoad(c.moduleCtxPtrValue, c.offset.LocalMemoryBase().U32(), ssa.TypeI64)
+		load.AsLoad(c.moduleCtxPtrValue, c.offset.LocalMemoryBase().U32(), types.I64)
 		builder.InsertInstruction(load)
 		ret = load.Return()
 	}
@@ -3968,7 +3969,7 @@ func (c *Compiler) getMemoryLenValue(forceReload bool) ssa.Value {
 	var ret ssa.Value
 	if c.offset.LocalMemoryBegin < 0 {
 		loadMemInstPtr := builder.AllocateInstruction()
-		loadMemInstPtr.AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), ssa.TypeI64)
+		loadMemInstPtr.AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64)
 		builder.InsertInstruction(loadMemInstPtr)
 		memInstPtr := loadMemInstPtr.Return()
 
@@ -3976,9 +3977,9 @@ func (c *Compiler) getMemoryLenValue(forceReload bool) ssa.Value {
 		if c.memoryShared {
 			sizeOffset := builder.AllocateInstruction().AsIconst64(memoryInstanceBufSizeOffset).Insert(builder).Return()
 			addr := builder.AllocateInstruction().AsIadd(memInstPtr, sizeOffset).Insert(builder).Return()
-			loadBufSizePtr.AsAtomicLoad(addr, 8, ssa.TypeI64)
+			loadBufSizePtr.AsAtomicLoad(addr, 8, types.I64)
 		} else {
-			loadBufSizePtr.AsLoad(memInstPtr, memoryInstanceBufSizeOffset, ssa.TypeI64)
+			loadBufSizePtr.AsLoad(memInstPtr, memoryInstanceBufSizeOffset, types.I64)
 		}
 		builder.InsertInstruction(loadBufSizePtr)
 
@@ -3988,7 +3989,7 @@ func (c *Compiler) getMemoryLenValue(forceReload bool) ssa.Value {
 		if c.memoryShared {
 			lenOffset := builder.AllocateInstruction().AsIconst64(c.offset.LocalMemoryLen().U64()).Insert(builder).Return()
 			addr := builder.AllocateInstruction().AsIadd(c.moduleCtxPtrValue, lenOffset).Insert(builder).Return()
-			load.AsAtomicLoad(addr, 8, ssa.TypeI64)
+			load.AsAtomicLoad(addr, 8, types.I64)
 		} else {
 			load.AsExtLoad(ssa.OpcodeUload32, c.moduleCtxPtrValue, c.offset.LocalMemoryLen().U32(), true)
 		}
@@ -4216,11 +4217,11 @@ func (c *Compiler) callListenerBefore() {
 	beforeListeners1stElement := builder.AllocateInstruction().
 		AsLoad(c.moduleCtxPtrValue,
 			c.offset.BeforeListenerTrampolines1stElement.U32(),
-			ssa.TypeI64,
+			types.I64,
 		).Insert(builder).Return()
 
 	beforeListenerPtr := builder.AllocateInstruction().
-		AsLoad(beforeListeners1stElement, uint32(c.wasmFunctionTypeIndex)*8 /* 8 bytes per index */, ssa.TypeI64).Insert(builder).Return()
+		AsLoad(beforeListeners1stElement, uint32(c.wasmFunctionTypeIndex)*8 /* 8 bytes per index */, types.I64).Insert(builder).Return()
 
 	entry := builder.EntryBlock()
 	ps := entry.Params()
@@ -4243,12 +4244,12 @@ func (c *Compiler) callListenerAfter() {
 	afterListeners1stElement := builder.AllocateInstruction().
 		AsLoad(c.moduleCtxPtrValue,
 			c.offset.AfterListenerTrampolines1stElement.U32(),
-			ssa.TypeI64,
+			types.I64,
 		).Insert(builder).Return()
 
 	afterListenerPtr := builder.AllocateInstruction().
 		AsLoad(afterListeners1stElement,
-			uint32(c.wasmFunctionTypeIndex)*8 /* 8 bytes per index */, ssa.TypeI64).
+			uint32(c.wasmFunctionTypeIndex)*8 /* 8 bytes per index */, types.I64).
 		Insert(builder).
 		Return()
 
@@ -4289,7 +4290,7 @@ func (c *Compiler) dataOrElementInstanceAddr(index uint32, firstItemOffset wazev
 
 	_1stItemPtr := builder.
 		AllocateInstruction().
-		AsLoad(c.moduleCtxPtrValue, firstItemOffset.U32(), ssa.TypeI64).
+		AsLoad(c.moduleCtxPtrValue, firstItemOffset.U32(), types.I64).
 		Insert(builder).Return()
 
 	// Each data/element instance is a slice, so we need to multiply index by 16 to get the offset of the target instance.
@@ -4303,7 +4304,7 @@ func (c *Compiler) dataOrElementInstanceAddr(index uint32, firstItemOffset wazev
 func (c *Compiler) boundsCheckInDataOrElementInstance(instPtr, offsetInInstance, copySize ssa.Value, exitCode wazevoapi.ExitCode) {
 	builder := c.ssaBuilder
 	dataInstLen := builder.AllocateInstruction().
-		AsLoad(instPtr, elementOrDataInstanceLenOffset, ssa.TypeI64).
+		AsLoad(instPtr, elementOrDataInstanceLenOffset, types.I64).
 		Insert(builder).Return()
 	ceil := builder.AllocateInstruction().AsIadd(offsetInInstance, copySize).Insert(builder).Return()
 	cmp := builder.AllocateInstruction().
@@ -4321,12 +4322,12 @@ func (c *Compiler) boundsCheckInTable(tableIndex uint32, offset, size ssa.Value)
 
 	// Load the table.
 	tableInstancePtr = builder.AllocateInstruction().
-		AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), ssa.TypeI64).
+		AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), types.I64).
 		Insert(builder).Return()
 
 	// Load the table's length.
 	tableLen := builder.AllocateInstruction().
-		AsLoad(tableInstancePtr, tableInstanceLenOffset, ssa.TypeI32).Insert(builder).Return()
+		AsLoad(tableInstancePtr, tableInstanceLenOffset, types.I32).Insert(builder).Return()
 	tableLenExt := builder.AllocateInstruction().AsUExtend(tableLen, 32, 64).Insert(builder).Return()
 
 	// Compare the length and the target, and trap if out of bounds.
@@ -4343,7 +4344,7 @@ func (c *Compiler) loadTableBaseAddr(tableInstancePtr ssa.Value) ssa.Value {
 	builder := c.ssaBuilder
 	loadTableBaseAddress := builder.
 		AllocateInstruction().
-		AsLoad(tableInstancePtr, tableInstanceBaseAddressOffset, ssa.TypeI64).
+		AsLoad(tableInstancePtr, tableInstanceBaseAddressOffset, types.I64).
 		Insert(builder)
 	return loadTableBaseAddress.Return()
 }

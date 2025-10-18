@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -116,7 +117,7 @@ func (bb *BasicBlock) ReturnBlock() bool {
 	return bb.id == basicBlockIDReturnBlock
 }
 
-func (bb *BasicBlock) AddParam(b Builder, typ Type) Value {
+func (bb *BasicBlock) AddParam(b Builder, typ types.Type) Value {
 	paramValue := b.allocateValue(typ)
 	bb.params = append(bb.params, paramValue)
 	return paramValue

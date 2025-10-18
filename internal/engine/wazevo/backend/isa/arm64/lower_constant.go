@@ -3,6 +3,7 @@ package arm64
 import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 // lowerConstant allocates a new VReg and inserts the instruction to load the constant value.
@@ -31,29 +32,29 @@ func (m *machine) lowerLoadConstantBlockArgAfterRegAlloc(i *instruction) {
 	m.insertLoadConstant(v, typ, dst)
 }
 
-func (m *machine) insertLoadConstant(v uint64, valType ssa.Type, vr regalloc.VReg) {
+func (m *machine) insertLoadConstant(v uint64, valType types.Type, vr regalloc.VReg) {
 	if valType.Bits() < 64 { // Clear the redundant bits just in case it's unexpectedly sign-extended, etc.
 		v = v & ((1 << valType.Bits()) - 1)
 	}
 
 	switch valType {
-	case ssa.TypeF32:
+	case types.F32:
 		loadF := m.allocateInstr()
 		loadF.asLoadFpuConst32(vr, v)
 		m.insert(loadF)
-	case ssa.TypeF64:
+	case types.F64:
 		loadF := m.allocateInstr()
 		loadF.asLoadFpuConst64(vr, v)
 		m.insert(loadF)
-	case ssa.TypeI32:
+	case types.I32:
 		if v == 0 {
-			m.InsertMove(vr, xzrVReg, ssa.TypeI32)
+			m.InsertMove(vr, xzrVReg, types.I32)
 		} else {
 			m.lowerConstantI32(vr, int32(v))
 		}
-	case ssa.TypeI64:
+	case types.I64:
 		if v == 0 {
-			m.InsertMove(vr, xzrVReg, ssa.TypeI64)
+			m.InsertMove(vr, xzrVReg, types.I64)
 		} else {
 			m.lowerConstantI64(vr, int64(v))
 		}

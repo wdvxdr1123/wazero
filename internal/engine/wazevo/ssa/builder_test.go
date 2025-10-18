@@ -3,16 +3,17 @@ package ssa
 import (
 	"testing"
 
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
 func TestBuilder_resolveAlias(t *testing.T) {
 	b := NewBuilder().(*builder)
-	v1 := b.allocateValue(TypeI32)
-	v2 := b.allocateValue(TypeI32)
-	v3 := b.allocateValue(TypeI32)
-	v4 := b.allocateValue(TypeI32)
-	v5 := b.allocateValue(TypeI32)
+	v1 := b.allocateValue(types.I32)
+	v2 := b.allocateValue(types.I32)
+	v3 := b.allocateValue(types.I32)
+	v4 := b.allocateValue(types.I32)
+	v5 := b.allocateValue(types.I32)
 
 	b.alias(v1, v2)
 	b.alias(v2, v3)

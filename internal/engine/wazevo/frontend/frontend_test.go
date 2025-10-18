@@ -7,6 +7,7 @@ import (
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/testcases"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 	"github.com/tetratelabs/wazero/internal/testing/require"
@@ -3027,13 +3028,13 @@ func TestSignatureForListener(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
 		sig           *wasm.FunctionType
-		before, after *ssa.Signature
+		before, after *types.Signature
 	}{
 		{
 			name:   "empty",
 			sig:    &wasm.FunctionType{},
-			before: &ssa.Signature{Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
-			after:  &ssa.Signature{Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
+			before: &types.Signature{Params: []types.Type{types.I64, types.I32}},
+			after:  &types.Signature{Params: []types.Type{types.I64, types.I32}},
 		},
 		{
 			name: "multi",
@@ -3043,21 +3044,20 @@ func TestSignatureForListener(t *testing.T) {
 					wasm.ValueTypeI64, wasm.ValueTypeI32, wasm.ValueTypeF32, wasm.ValueTypeF64, wasm.ValueTypeV128,
 				},
 			},
-			before: &ssa.Signature{
-				Params: []ssa.Type{
-					ssa.TypeI64, ssa.TypeI32,
-					ssa.TypeF64, ssa.TypeI32,
+			before: &types.Signature{
+				Params: []types.Type{
+					types.I64, types.I32,
+					types.F64, types.I32,
 				},
 			},
-			after: &ssa.Signature{
-				Params: []ssa.Type{
-					ssa.TypeI64, ssa.TypeI32,
-					ssa.TypeI64, ssa.TypeI32, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128,
+			after: &types.Signature{
+				Params: []types.Type{
+					types.I64, types.I32,
+					types.I64, types.I32, types.F32, types.F64, types.V128,
 				},
 			},
 		},
 	} {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			before, after := SignatureForListener(tc.sig)
 			require.Equal(t, tc.before, before)
@@ -3082,19 +3082,19 @@ func TestCompiler_declareSignatures(t *testing.T) {
 		c.declareSignatures(false)
 
 		declaredSigs := builder.Signatures()
-		expected := []*ssa.Signature{
-			{ID: 0, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64}},
-			{ID: 1, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI64, ssa.TypeI32}},
-			{ID: 2, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeF64, ssa.TypeI32}},
-			{ID: 3, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
-			{ID: 4, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}, Results: []ssa.Type{ssa.TypeI32}},
-			{ID: 5, Params: []ssa.Type{ssa.TypeI64}},
-			{ID: 6, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32, ssa.TypeI32, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI32}},
-			{ID: 7, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}, Results: []ssa.Type{ssa.TypeI64}},
-			{ID: 8, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI64}},
-			{ID: 9, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI32}},
-			{ID: 10, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI64, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI32}},
-			{ID: 11, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI32}},
+		expected := []*types.Signature{
+			{ID: 0, Params: []types.Type{types.I64, types.I64}},
+			{ID: 1, Params: []types.Type{types.I64, types.I64, types.I64, types.I32}},
+			{ID: 2, Params: []types.Type{types.I64, types.I64, types.F64, types.I32}},
+			{ID: 3, Params: []types.Type{types.I64, types.I64}, Results: []types.Type{types.I64, types.I32}},
+			{ID: 4, Params: []types.Type{types.I64, types.I32}, Results: []types.Type{types.I32}},
+			{ID: 5, Params: []types.Type{types.I64}},
+			{ID: 6, Params: []types.Type{types.I64, types.I32, types.I32, types.I64}, Results: []types.Type{types.I32}},
+			{ID: 7, Params: []types.Type{types.I64, types.I32}, Results: []types.Type{types.I64}},
+			{ID: 8, Params: []types.Type{types.I64, types.I64, types.I64}},
+			{ID: 9, Params: []types.Type{types.I64, types.I64, types.I32, types.I64}, Results: []types.Type{types.I32}},
+			{ID: 10, Params: []types.Type{types.I64, types.I64, types.I64, types.I64}, Results: []types.Type{types.I32}},
+			{ID: 11, Params: []types.Type{types.I64, types.I32, types.I64}, Results: []types.Type{types.I32}},
 		}
 
 		require.Equal(t, len(expected), len(declaredSigs))
@@ -3110,30 +3110,30 @@ func TestCompiler_declareSignatures(t *testing.T) {
 
 		declaredSigs := builder.Signatures()
 
-		expected := []*ssa.Signature{
-			{ID: 0, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64}},
-			{ID: 1, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI64, ssa.TypeI32}},
-			{ID: 2, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeF64, ssa.TypeI32}},
-			{ID: 3, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
+		expected := []*types.Signature{
+			{ID: 0, Params: []types.Type{types.I64, types.I64}},
+			{ID: 1, Params: []types.Type{types.I64, types.I64, types.I64, types.I32}},
+			{ID: 2, Params: []types.Type{types.I64, types.I64, types.F64, types.I32}},
+			{ID: 3, Params: []types.Type{types.I64, types.I64}, Results: []types.Type{types.I64, types.I32}},
 			// Before.
-			{ID: 4, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
-			{ID: 5, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeI32}},
-			{ID: 6, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32, ssa.TypeF64, ssa.TypeI32}},
-			{ID: 7, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
+			{ID: 4, Params: []types.Type{types.I64, types.I32}},
+			{ID: 5, Params: []types.Type{types.I64, types.I32, types.I64, types.I32}},
+			{ID: 6, Params: []types.Type{types.I64, types.I32, types.F64, types.I32}},
+			{ID: 7, Params: []types.Type{types.I64, types.I32}},
 			// After.
-			{ID: 8, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
-			{ID: 9, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
-			{ID: 10, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}},
-			{ID: 11, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeI32}},
+			{ID: 8, Params: []types.Type{types.I64, types.I32}},
+			{ID: 9, Params: []types.Type{types.I64, types.I32}},
+			{ID: 10, Params: []types.Type{types.I64, types.I32}},
+			{ID: 11, Params: []types.Type{types.I64, types.I32, types.I64, types.I32}},
 			// Misc.
-			{ID: 12, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}, Results: []ssa.Type{ssa.TypeI32}},
-			{ID: 13, Params: []ssa.Type{ssa.TypeI64}},
-			{ID: 14, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32, ssa.TypeI32, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI32}},
-			{ID: 15, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32}, Results: []ssa.Type{ssa.TypeI64}},
-			{ID: 16, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI64}},
-			{ID: 17, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI32}},
-			{ID: 18, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI64, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI32}},
-			{ID: 19, Params: []ssa.Type{ssa.TypeI64, ssa.TypeI32, ssa.TypeI64}, Results: []ssa.Type{ssa.TypeI32}},
+			{ID: 12, Params: []types.Type{types.I64, types.I32}, Results: []types.Type{types.I32}},
+			{ID: 13, Params: []types.Type{types.I64}},
+			{ID: 14, Params: []types.Type{types.I64, types.I32, types.I32, types.I64}, Results: []types.Type{types.I32}},
+			{ID: 15, Params: []types.Type{types.I64, types.I32}, Results: []types.Type{types.I64}},
+			{ID: 16, Params: []types.Type{types.I64, types.I64, types.I64}},
+			{ID: 17, Params: []types.Type{types.I64, types.I64, types.I32, types.I64}, Results: []types.Type{types.I32}},
+			{ID: 18, Params: []types.Type{types.I64, types.I64, types.I64, types.I64}, Results: []types.Type{types.I32}},
+			{ID: 19, Params: []types.Type{types.I64, types.I32, types.I64}, Results: []types.Type{types.I32}},
 		}
 		require.Equal(t, len(expected), len(declaredSigs))
 		for i := 0; i < len(declaredSigs); i++ {

@@ -1,4 +1,4 @@
-package ssa
+package types
 
 import (
 	"fmt"
@@ -12,9 +12,9 @@ type Signature struct {
 	// Params and Results are the types of the parameters and results of the function.
 	Params, Results []Type
 
-	// used is true if this is used by the currently-compiled function.
+	// Used is true if this is Used by the currently-compiled function.
 	// Debugging only.
-	used bool
+	Used bool
 }
 
 // String implements fmt.Stringer.

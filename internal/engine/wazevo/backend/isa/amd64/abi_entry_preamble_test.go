@@ -3,21 +3,21 @@ package amd64
 import (
 	"testing"
 
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
 func TestMachineCompileEntryPreamble(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		sig  *ssa.Signature
+		sig  *types.Signature
 		exp  string
 	}{
 		{
 			name: "basic",
-			sig: &ssa.Signature{
+			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64},
+				Params: []types.Type{types.I64, types.I64},
 			},
 			exp: `
 	movq %rax, %rdx
@@ -33,9 +33,9 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "only regs args",
-			sig: &ssa.Signature{
+			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64},
+				Params: []types.Type{types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64},
 			},
 			exp: `
 	movq %rax, %rdx
@@ -57,10 +57,10 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "only regs rets",
-			sig: &ssa.Signature{
+			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params:  []ssa.Type{ssa.TypeI64, ssa.TypeI64},
-				Results: []ssa.Type{ssa.TypeI32, ssa.TypeV128, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64},
+				Params:  []types.Type{types.I64, types.I64},
+				Results: []types.Type{types.I32, types.V128, types.I64, types.F32, types.F64},
 			},
 			exp: `
 	movq %rax, %rdx
@@ -81,10 +81,10 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "only regs args/rets",
-			sig: &ssa.Signature{
+			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params:  []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64},
-				Results: []ssa.Type{ssa.TypeI32, ssa.TypeV128, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64},
+				Params:  []types.Type{types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64},
+				Results: []types.Type{types.I32, types.V128, types.I64, types.F32, types.F64},
 			},
 			exp: `
 	movq %rax, %rdx
@@ -111,12 +111,12 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "many args",
-			sig: &ssa.Signature{
+			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []ssa.Type{
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
+				Params: []types.Type{
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 				},
 			},
 			exp: `
@@ -163,13 +163,13 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "many results",
-			sig: &ssa.Signature{
+			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []ssa.Type{ssa.TypeI64, ssa.TypeI64},
-				Results: []ssa.Type{
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
+				Params: []types.Type{types.I64, types.I64},
+				Results: []types.Type{
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 				},
 			},
 			exp: `
@@ -218,17 +218,17 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 		},
 		{
 			name: "many args results",
-			sig: &ssa.Signature{
+			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []ssa.Type{
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
+				Params: []types.Type{
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 				},
-				Results: []ssa.Type{
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64, ssa.TypeV128, ssa.TypeI64,
+				Results: []types.Type{
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
+					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 				},
 			},
 			exp: `

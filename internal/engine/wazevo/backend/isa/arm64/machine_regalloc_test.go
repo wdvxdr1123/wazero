@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
 func TestRegAllocFunctionImpl_ReloadRegisterAfter(t *testing.T) {
 	ctx, _, m := newSetupWithMockContext()
 
-	ctx.typeOf = map[regalloc.VRegID]ssa.Type{x1VReg.ID(): ssa.TypeI64, v1VReg.ID(): ssa.TypeF64}
+	ctx.typeOf = map[regalloc.VRegID]types.Type{x1VReg.ID(): types.I64, v1VReg.ID(): types.F64}
 	i1, i2 := m.allocateNop(), m.allocateNop()
 	i1.next = i2
 	i2.prev = i1
@@ -40,7 +40,7 @@ func TestRegAllocFunctionImpl_ReloadRegisterAfter(t *testing.T) {
 func TestRegAllocFunctionImpl_StoreRegisterBefore(t *testing.T) {
 	ctx, _, m := newSetupWithMockContext()
 
-	ctx.typeOf = map[regalloc.VRegID]ssa.Type{x1VReg.ID(): ssa.TypeI64, v1VReg.ID(): ssa.TypeF64}
+	ctx.typeOf = map[regalloc.VRegID]types.Type{x1VReg.ID(): types.I64, v1VReg.ID(): types.F64}
 	i1, i2 := m.allocateNop(), m.allocateNop()
 	i1.next = i2
 	i2.prev = i1
@@ -119,7 +119,7 @@ func TestMachine_insertStoreRegisterAt(t *testing.T) {
 					name = "before"
 				}
 				t.Run(name, func(t *testing.T) {
-					ctx.typeOf = map[regalloc.VRegID]ssa.Type{x1VReg.ID(): ssa.TypeI64, v1VReg.ID(): ssa.TypeF64}
+					ctx.typeOf = map[regalloc.VRegID]types.Type{x1VReg.ID(): types.I64, v1VReg.ID(): types.F64}
 					i1, i2 := m.allocateInstr().asUDF(), m.allocateInstr().asExitSequence(x30VReg)
 					i1.next = i2
 					i2.prev = i1
@@ -192,7 +192,7 @@ func TestMachine_insertReloadRegisterAt(t *testing.T) {
 					name = "before"
 				}
 				t.Run(name, func(t *testing.T) {
-					ctx.typeOf = map[regalloc.VRegID]ssa.Type{x1VReg.ID(): ssa.TypeI64, v1VReg.ID(): ssa.TypeF64}
+					ctx.typeOf = map[regalloc.VRegID]types.Type{x1VReg.ID(): types.I64, v1VReg.ID(): types.F64}
 					i1, i2 := m.allocateInstr().asUDF(), m.allocateInstr().asExitSequence(x30VReg)
 					i1.next = i2
 					i2.prev = i1
@@ -276,9 +276,9 @@ func TestMachineMachineswap(t *testing.T) {
 		t.Run(tc.expected, func(t *testing.T) {
 			ctx, _, m := newSetupWithMockContext()
 
-			ctx.typeOf = map[regalloc.VRegID]ssa.Type{
-				x18VReg.ID(): ssa.TypeI64, x19VReg.ID(): ssa.TypeI64,
-				v18VReg.ID(): ssa.TypeF64, v19VReg.ID(): ssa.TypeF64,
+			ctx.typeOf = map[regalloc.VRegID]types.Type{
+				x18VReg.ID(): types.I64, x19VReg.ID(): types.I64,
+				v18VReg.ID(): types.F64, v19VReg.ID(): types.F64,
 			}
 			cur, i2 := m.allocateInstr().asUDF(), m.allocateInstr().asExitSequence(x30VReg)
 			cur.next = i2

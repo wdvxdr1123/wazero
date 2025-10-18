@@ -5,16 +5,17 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
 // Builder is used to builds SSA consisting of Basic Blocks per function.
 type Builder interface {
 	// Init must be called to reuse this builder for the next function.
-	Init(typ *Signature)
+	Init(typ *types.Signature)
 
 	// Signature returns the Signature of the currently-compiled function.
-	Signature() *Signature
+	Signature() *types.Signature
 
 	// BlockIDMax returns the maximum value of BasicBlocksID existing in the currently-compiled function.
 	BlockIDMax() BasicBlockID
@@ -31,8 +32,8 @@ type Builder interface {
 	// SetCurrentBlock sets the instruction insertion target to the BasicBlock `b`.
 	SetCurrentBlock(b *BasicBlock)
 
-	// DeclareVariable declares a Variable of the given Type.
-	DeclareVariable(Type) Variable
+	// DeclareVariable declares a Variable of the given types.Type.
+	DeclareVariable(types.Type) Variable
 
 	// DefineVariable defines a variable in the `block` with value.
 	// The defining instruction will be inserted into the `block`.
@@ -49,7 +50,7 @@ type Builder interface {
 	InsertInstruction(raw *Instruction)
 
 	// allocateValue allocates an unused Value.
-	allocateValue(typ Type) Value
+	allocateValue(typ types.Type) Value
 
 	// MustFindValue searches the latest definition of the given Variable and returns the result.
 	MustFindValue(variable Variable) Value
@@ -65,14 +66,14 @@ type Builder interface {
 	// AnnotateValue is for debugging purpose.
 	AnnotateValue(value Value, annotation string)
 
-	// DeclareSignature appends the *Signature to be referenced by various instructions (e.g. OpcodeCall).
-	DeclareSignature(signature *Signature)
+	// DeclareSignature appends the *types.Signature to be referenced by various instructions (e.g. OpcodeCall).
+	DeclareSignature(signature *types.Signature)
 
 	// Signatures returns the slice of declared Signatures.
-	Signatures() []*Signature
+	Signatures() []*types.Signature
 
 	// ResolveSignature returns the Signature which corresponds to SignatureID.
-	ResolveSignature(id SignatureID) *Signature
+	ResolveSignature(id types.SignatureID) *types.Signature
 
 	// RunPasses runs various passes on the constructed SSA function.
 	RunPasses()
@@ -125,7 +126,7 @@ type Builder interface {
 	Idom(blk *BasicBlock) *BasicBlock
 
 	// InsertZeroValue inserts a zero value constant instruction of the given type.
-	InsertZeroValue(t Type)
+	InsertZeroValue(t types.Type)
 
 	// BasicBlock returns the BasicBlock of the given ID.
 	BasicBlock(id BasicBlockID) *BasicBlock
@@ -141,7 +142,7 @@ func NewBuilder() Builder {
 		basicBlocksPool:         wazevoapi.NewPool(resetBasicBlock),
 		varLengthBasicBlockPool: wazevoapi.NewVarLengthPool[*BasicBlock](),
 		valueAnnotations:        make(map[ValueID]string),
-		signatures:              make(map[SignatureID]*Signature),
+		signatures:              make(map[types.SignatureID]*types.Signature),
 		returnBlk:               &BasicBlock{id: basicBlockIDReturnBlock},
 	}
 }
@@ -150,8 +151,8 @@ func NewBuilder() Builder {
 type builder struct {
 	basicBlocksPool  wazevoapi.Pool[BasicBlock]
 	instructionsPool wazevoapi.Pool[Instruction]
-	signatures       map[SignatureID]*Signature
-	currentSignature *Signature
+	signatures       map[types.SignatureID]*types.Signature
+	currentSignature *types.Signature
 
 	// reversePostOrderedBasicBlocks are the BasicBlock(s) ordered in the reverse post-order after passCalculateImmediateDominators.
 	reversePostOrderedBasicBlocks []*BasicBlock
@@ -194,7 +195,7 @@ type builder struct {
 	currentSourceOffset SourceOffset
 
 	// zeros are the zero value constants for each type.
-	zeros [typeEnd]Value
+	zeros [types.V128 + 1]Value
 }
 
 // ValueInfo contains the data per Value used to lower the SSA in backend.
@@ -226,21 +227,21 @@ func (b *builder) basicBlock(id BasicBlockID) *BasicBlock {
 }
 
 // InsertZeroValue implements Builder.InsertZeroValue.
-func (b *builder) InsertZeroValue(t Type) {
+func (b *builder) InsertZeroValue(t types.Type) {
 	if b.zeros[t].Valid() {
 		return
 	}
 	zeroInst := b.AllocateInstruction()
 	switch t {
-	case TypeI32:
+	case types.I32:
 		zeroInst.AsIconst32(0)
-	case TypeI64:
+	case types.I64:
 		zeroInst.AsIconst64(0)
-	case TypeF32:
+	case types.F32:
 		zeroInst.AsF32const(0)
-	case TypeF64:
+	case types.F64:
 		zeroInst.AsF64const(0)
-	case TypeV128:
+	case types.V128:
 		zeroInst.AsVconst(0, 0)
 	default:
 		panic("TODO: " + t.String())
@@ -254,17 +255,17 @@ func (b *builder) ReturnBlock() *BasicBlock {
 }
 
 // Init implements Builder.Reset.
-func (b *builder) Init(s *Signature) {
+func (b *builder) Init(s *types.Signature) {
 	b.nextVariable = 0
 	b.currentSignature = s
-	b.zeros = [typeEnd]Value{ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid}
+	b.zeros = [types.End]Value{ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid}
 	resetBasicBlock(b.returnBlk)
 	b.instructionsPool.Reset()
 	b.basicBlocksPool.Reset()
 	b.varLengthBasicBlockPool.Reset()
 	b.doneBlockLayout = false
 	for _, sig := range b.signatures {
-		sig.used = false
+		sig.Used = false
 	}
 
 	b.redundantParams = b.redundantParams[:0]
@@ -285,7 +286,7 @@ func (b *builder) Init(s *Signature) {
 }
 
 // Signature implements Builder.Signature.
-func (b *builder) Signature() *Signature {
+func (b *builder) Signature() *types.Signature {
 	return b.currentSignature
 }
 
@@ -302,13 +303,13 @@ func (b *builder) AllocateInstruction() *Instruction {
 }
 
 // DeclareSignature implements Builder.AnnotateValue.
-func (b *builder) DeclareSignature(s *Signature) {
+func (b *builder) DeclareSignature(s *types.Signature) {
 	b.signatures[s.ID] = s
-	s.used = false
+	s.Used = false
 }
 
 // Signatures implements Builder.Signatures.
-func (b *builder) Signatures() (ret []*Signature) {
+func (b *builder) Signatures() (ret []*types.Signature) {
 	for _, sig := range b.signatures {
 		ret = append(ret, sig)
 	}
@@ -323,9 +324,9 @@ func (b *builder) SetCurrentSourceOffset(l SourceOffset) {
 	b.currentSourceOffset = l
 }
 
-func (b *builder) usedSignatures() (ret []*Signature) {
+func (b *builder) usedSignatures() (ret []*types.Signature) {
 	for _, sig := range b.signatures {
-		if sig.used {
+		if sig.Used {
 			ret = append(ret, sig)
 		}
 	}
@@ -336,7 +337,7 @@ func (b *builder) usedSignatures() (ret []*Signature) {
 }
 
 // ResolveSignature implements Builder.ResolveSignature.
-func (b *builder) ResolveSignature(id SignatureID) *Signature {
+func (b *builder) ResolveSignature(id types.SignatureID) *types.Signature {
 	return b.signatures[id]
 }
 
@@ -377,7 +378,7 @@ func (b *builder) InsertInstruction(instr *Instruction) {
 	}
 
 	t1, ts := resultTypesFn(b, instr)
-	if t1.invalid() {
+	if t1.Invalid() {
 		return
 	}
 
@@ -423,14 +424,14 @@ func (b *builder) EntryBlock() *BasicBlock {
 }
 
 // DeclareVariable implements Builder.DeclareVariable.
-func (b *builder) DeclareVariable(typ Type) Variable {
+func (b *builder) DeclareVariable(typ types.Type) Variable {
 	v := b.nextVariable
 	b.nextVariable++
 	return v.setType(typ)
 }
 
 // allocateValue implements Builder.AllocateValue.
-func (b *builder) allocateValue(typ Type) (v Value) {
+func (b *builder) allocateValue(typ types.Type) (v Value) {
 	v = Value(b.nextValueID)
 	v = v.setType(typ)
 	b.nextValueID++
@@ -466,7 +467,7 @@ func (b *builder) MustFindValue(variable Variable) Value {
 // the section 2 of the paper https://link.springer.com/content/pdf/10.1007/978-3-642-37051-9_6.pdf.
 //
 // TODO: reimplement this in iterative, not recursive, to avoid stack overflow.
-func (b *builder) findValue(typ Type, variable Variable, blk *BasicBlock) Value {
+func (b *builder) findValue(typ types.Type, variable Variable, blk *BasicBlock) Value {
 	if val, ok := blk.lastDefinitions[variable]; ok {
 		// The value is already defined in this block!
 		return val

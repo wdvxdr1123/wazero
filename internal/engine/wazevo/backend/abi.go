@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 type (
-	// FunctionABI represents the ABI information for a function which corresponds to a ssa.Signature.
+	// FunctionABI represents the ABI information for a function which corresponds to a types.Signature.
 	FunctionABI struct {
 		Initialized bool
 
@@ -34,7 +34,7 @@ type (
 		// This is the offset from the beginning of either arg or ret stack slot.
 		Offset int64
 		// Type is the type of the argument.
-		Type ssa.Type
+		Type types.Type
 	}
 
 	// ABIArgKind is the kind of ABI argument.
@@ -66,7 +66,7 @@ func (a ABIArgKind) String() string {
 }
 
 // Init initializes the abiImpl for the given signature.
-func (a *FunctionABI) Init(sig *ssa.Signature, argResultInts, argResultFloats []regalloc.RealReg) {
+func (a *FunctionABI) Init(sig *types.Signature, argResultInts, argResultFloats []regalloc.RealReg) {
 	if len(a.Rets) < len(sig.Results) {
 		a.Rets = make([]ABIArg, len(sig.Results))
 	}
@@ -107,7 +107,7 @@ func (a *FunctionABI) Init(sig *ssa.Signature, argResultInts, argResultFloats []
 
 // setABIArgs sets the ABI arguments in the given slice. This assumes that len(s) >= len(types)
 // where if len(s) > len(types), the last elements of s is for the multi-return slot.
-func (a *FunctionABI) setABIArgs(s []ABIArg, types []ssa.Type, ints, floats []regalloc.RealReg) (stackSize int64) {
+func (a *FunctionABI) setABIArgs(s []ABIArg, types []types.Type, ints, floats []regalloc.RealReg) (stackSize int64) {
 	il, fl := len(ints), len(floats)
 
 	var stackOffset int64

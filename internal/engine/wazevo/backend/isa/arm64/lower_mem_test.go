@@ -9,6 +9,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
@@ -294,7 +295,7 @@ func Test_offsetFitsInAddressModeKindRegSignedImm9(t *testing.T) {
 
 func TestMachine_collectAddends(t *testing.T) {
 	v1000, v2000 := regalloc.VReg(1000).SetRegType(regalloc.RegTypeInt), regalloc.VReg(2000).SetRegType(regalloc.RegTypeInt)
-	addParam := func(ctx *mockCompiler, b ssa.Builder, typ ssa.Type) ssa.Value {
+	addParam := func(ctx *mockCompiler, b ssa.Builder, typ types.Type) ssa.Value {
 		p := b.CurrentBlock().AddParam(b, typ)
 		ctx.vRegMap[p] = v1000
 		ctx.definitions[p] = backend.SSAValueDefinition{V: p}
@@ -343,7 +344,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		{
 			name: "non merged",
 			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Value, verify func(t *testing.T)) {
-				ptr = addParam(ctx, b, ssa.TypeI64)
+				ptr = addParam(ctx, b, types.I64)
 				return ptr, func(t *testing.T) {}
 			},
 			exp64s: []regalloc.VReg{v1000},
@@ -381,7 +382,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		{
 			name: "constant folded with one 32 value",
 			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Value, verify func(t *testing.T)) {
-				param := addParam(ctx, b, ssa.TypeI32)
+				param := addParam(ctx, b, types.I32)
 				minus1 := int32(-1)
 				c1, c2, c3, c4 := insertI32Const(ctx, b, 1), insertI32Const(ctx, b, 2), insertI32Const(ctx, b, 3), insertI32Const(ctx, b, uint32(minus1))
 				iadd1, iadd2 := insertIadd(ctx, b, c1.Return(), c2.Return()), insertIadd(ctx, b, c3.Return(), c4.Return())
@@ -402,7 +403,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		{
 			name: "one 64 value + sign-extended (32->64) instr",
 			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Value, verify func(t *testing.T)) {
-				param := addParam(ctx, b, ssa.TypeI64)
+				param := addParam(ctx, b, types.I64)
 				c1, c2 := insertI32Const(ctx, b, 1), insertI32Const(ctx, b, 2)
 				iadd1 := insertIadd(ctx, b, c1.Return(), c2.Return())
 				ext := insertExt(ctx, b, iadd1.Return(), 32, 64, true)
@@ -420,7 +421,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		{
 			name: "one 64 value + sign-extended (32->64) const",
 			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Value, verify func(t *testing.T)) {
-				param := addParam(ctx, b, ssa.TypeI64)
+				param := addParam(ctx, b, types.I64)
 				minus1 := int32(-1)
 				c1 := insertI32Const(ctx, b, uint32(minus1))
 				ext := insertExt(ctx, b, c1.Return(), 32, 64, true)
@@ -438,7 +439,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		{
 			name: "one 64 value + zero-extended (32->64) const",
 			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Value, verify func(t *testing.T)) {
-				param := addParam(ctx, b, ssa.TypeI64)
+				param := addParam(ctx, b, types.I64)
 				minus1 := int32(-1)
 				c1 := insertI32Const(ctx, b, uint32(minus1))
 				ext := insertExt(ctx, b, c1.Return(), 32, 64, false)

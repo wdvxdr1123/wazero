@@ -6,6 +6,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 var addendsMatchOpcodes = [...]ssa.Opcode{ssa.OpcodeUExtend, ssa.OpcodeSExtend, ssa.OpcodeIadd, ssa.OpcodeIconst, ssa.OpcodeIshl}
@@ -32,7 +33,7 @@ func (m *machine) lowerToAddressMode(ptr ssa.Value, offsetBase uint32) (am *amod
 
 		a := m.lowerAddend(def)
 		off64 := a.off + int64(offsetBase)
-		offsetBaseReg := m.c.AllocateVReg(ssa.TypeI64)
+		offsetBaseReg := m.c.AllocateVReg(types.I64)
 		m.lowerIconst(offsetBaseReg, uint64(off64), true)
 		if a.r != regalloc.VRegInvalid {
 			return m.newAmodeRegRegShift(0, offsetBaseReg, a.r, a.shift)
@@ -55,14 +56,14 @@ func (m *machine) lowerToAddressMode(ptr ssa.Value, offsetBase uint32) (am *amod
 		// off is always 0 if r is valid.
 		if a.r != regalloc.VRegInvalid {
 			if a.shift != 0 {
-				tmpReg := m.c.AllocateVReg(ssa.TypeI64)
+				tmpReg := m.c.AllocateVReg(types.I64)
 				m.lowerIconst(tmpReg, 0, true)
 				return m.newAmodeRegRegShift(offsetBase, tmpReg, a.r, a.shift)
 			}
 			return m.newAmodeImmReg(offsetBase, a.r)
 		} else {
 			off64 := a.off + int64(offsetBase)
-			tmpReg := m.c.AllocateVReg(ssa.TypeI64)
+			tmpReg := m.c.AllocateVReg(types.I64)
 			m.lowerIconst(tmpReg, uint64(off64), true)
 			return m.newAmodeImmReg(0, tmpReg)
 		}
@@ -77,7 +78,7 @@ func (m *machine) lowerAddendsToAmode(x, y addend, offBase uint32) *amode {
 	u64 := uint64(x.off+y.off) + uint64(offBase)
 	if u64 != 0 {
 		if _, ok := asImm32(u64, false); !ok {
-			tmpReg := m.c.AllocateVReg(ssa.TypeI64)
+			tmpReg := m.c.AllocateVReg(types.I64)
 			m.lowerIconst(tmpReg, u64, true)
 			// Blank u64 as it has been already lowered.
 			u64 = 0
@@ -118,13 +119,13 @@ func (m *machine) lowerAddendsToAmode(x, y addend, offBase uint32) *amode {
 		fallthrough
 	case x.r != regalloc.VRegInvalid && y.r == regalloc.VRegInvalid:
 		if x.shift != 0 {
-			zero := m.c.AllocateVReg(ssa.TypeI64)
+			zero := m.c.AllocateVReg(types.I64)
 			m.lowerIconst(zero, 0, true)
 			return m.newAmodeRegRegShift(u32, zero, x.r, x.shift)
 		}
 		return m.newAmodeImmReg(u32, x.r)
 	default: // Both are invalid: use the offset.
-		tmpReg := m.c.AllocateVReg(ssa.TypeI64)
+		tmpReg := m.c.AllocateVReg(types.I64)
 		m.lowerIconst(tmpReg, u64, true)
 		return m.newAmodeImmReg(0, tmpReg)
 	}

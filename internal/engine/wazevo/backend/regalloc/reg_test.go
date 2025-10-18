@@ -3,15 +3,15 @@ package regalloc
 import (
 	"testing"
 
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
 func TestRegTypeOf(t *testing.T) {
-	require.Equal(t, RegTypeInt, RegTypeOf(ssa.TypeI32))
-	require.Equal(t, RegTypeInt, RegTypeOf(ssa.TypeI64))
-	require.Equal(t, RegTypeFloat, RegTypeOf(ssa.TypeF32))
-	require.Equal(t, RegTypeFloat, RegTypeOf(ssa.TypeF64))
+	require.Equal(t, RegTypeInt, RegTypeOf(types.I32))
+	require.Equal(t, RegTypeInt, RegTypeOf(types.I64))
+	require.Equal(t, RegTypeFloat, RegTypeOf(types.F32))
+	require.Equal(t, RegTypeFloat, RegTypeOf(types.F64))
 }
 
 func TestVReg_String(t *testing.T) {

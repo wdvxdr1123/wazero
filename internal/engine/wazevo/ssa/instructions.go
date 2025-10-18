@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -24,7 +25,7 @@ type Instruction struct {
 	v2     Value
 	v3     Value
 	vs     []Value
-	typ    Type
+	typ    types.Type
 
 	// rValue is the (first) return value of this instruction.
 	// For branching instructions except for OpcodeBrTable, they hold BlockID to jump cast to Value.
@@ -84,7 +85,7 @@ func resetInstruction(i *Instruction) {
 	i.v2 = ValueInvalid
 	i.v3 = ValueInvalid
 	i.rValue = ValueInvalid
-	i.typ = typeInvalid
+	i.typ = types.Invalid
 	i.vs = nil
 	i.sourceOffset = sourceOffsetUnknown
 }
@@ -134,19 +135,19 @@ func (i *Instruction) Arg2() (Value, Value) {
 }
 
 // ArgWithLane returns the first argument to this instruction, and the lane type.
-func (i *Instruction) ArgWithLane() (Value, VecLane) {
-	return i.v, VecLane(i.u1)
+func (i *Instruction) ArgWithLane() (Value, types.VecLane) {
+	return i.v, types.VecLane(i.u1)
 }
 
 // Arg2WithLane returns the first two arguments to this instruction, and the lane type.
-func (i *Instruction) Arg2WithLane() (Value, Value, VecLane) {
-	return i.v, i.v2, VecLane(i.u1)
+func (i *Instruction) Arg2WithLane() (Value, Value, types.VecLane) {
+	return i.v, i.v2, types.VecLane(i.u1)
 }
 
 // ShuffleData returns the first two arguments to this instruction and 2 uint64s `lo`, `hi`.
 //
-// Note: Each uint64 encodes a sequence of 8 bytes where each byte encodes a VecLane,
-// so that the 128bit integer `hi<<64|lo` packs a slice `[16]VecLane`,
+// Note: Each uint64 encodes a sequence of 8 bytes where each byte encodes a types.VecLane,
+// so that the 128bit integer `hi<<64|lo` packs a slice `[16]types.VecLane`,
 // where `lane[0]` is the least significant byte, and `lane[n]` is shifted to offset `n*8`.
 func (i *Instruction) ShuffleData() (v Value, v2 Value, lo uint64, hi uint64) {
 	return i.v, i.v2, i.u1, i.u2
@@ -218,10 +219,10 @@ const (
 	// OpcodeExtractlane extracts a lane value from a vector: `v = ExtractLane x, Idx`.
 	OpcodeExtractlane
 
-	// OpcodeLoad loads a Type value from the [base + offset] address: `v = Load base, offset`.
+	// OpcodeLoad loads a types.Type value from the [base + offset] address: `v = Load base, offset`.
 	OpcodeLoad
 
-	// OpcodeStore stores a Type value to the [base + offset] address: `Store v, base, offset`.
+	// OpcodeStore stores a types.Type value to the [base + offset] address: `Store v, base, offset`.
 	OpcodeStore
 
 	// OpcodeUload8 loads the 8-bit value from the [base + offset] address, zero-extended to 64 bits: `v = Uload8 base, offset`.
@@ -673,24 +674,24 @@ func (op AtomicRmwOp) String() string {
 
 // returnTypesFn provides the info to determine the type of instruction.
 // t1 is the type of the first result, ts are the types of the remaining results.
-type returnTypesFn func(b *builder, instr *Instruction) (t1 Type, ts []Type)
+type returnTypesFn func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type)
 
 var (
-	returnTypesFnNoReturns    returnTypesFn = func(b *builder, instr *Instruction) (t1 Type, ts []Type) { return typeInvalid, nil }
-	returnTypesFnSingle                     = func(b *builder, instr *Instruction) (t1 Type, ts []Type) { return instr.typ, nil }
-	returnTypesFnI32                        = func(b *builder, instr *Instruction) (t1 Type, ts []Type) { return TypeI32, nil }
-	returnTypesFnF32                        = func(b *builder, instr *Instruction) (t1 Type, ts []Type) { return TypeF32, nil }
-	returnTypesFnF64                        = func(b *builder, instr *Instruction) (t1 Type, ts []Type) { return TypeF64, nil }
-	returnTypesFnV128                       = func(b *builder, instr *Instruction) (t1 Type, ts []Type) { return TypeV128, nil }
-	returnTypesFnCallIndirect               = func(b *builder, instr *Instruction) (t1 Type, ts []Type) {
-		sigID := SignatureID(instr.u1)
+	returnTypesFnNoReturns    returnTypesFn = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.Invalid, nil }
+	returnTypesFnSingle                     = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return instr.typ, nil }
+	returnTypesFnI32                        = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.I32, nil }
+	returnTypesFnF32                        = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.F32, nil }
+	returnTypesFnF64                        = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.F64, nil }
+	returnTypesFnV128                       = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.V128, nil }
+	returnTypesFnCallIndirect               = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) {
+		sigID := types.SignatureID(instr.u1)
 		sig, ok := b.signatures[sigID]
 		if !ok {
 			panic("BUG")
 		}
 		switch len(sig.Results) {
 		case 0:
-			t1 = typeInvalid
+			t1 = types.Invalid
 		case 1:
 			t1 = sig.Results[0]
 		default:
@@ -698,15 +699,15 @@ var (
 		}
 		return
 	}
-	returnTypesFnCall = func(b *builder, instr *Instruction) (t1 Type, ts []Type) {
-		sigID := SignatureID(instr.u2)
+	returnTypesFnCall = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) {
+		sigID := types.SignatureID(instr.u2)
 		sig, ok := b.signatures[sigID]
 		if !ok {
 			panic("BUG")
 		}
 		switch len(sig.Results) {
 		case 0:
-			t1 = typeInvalid
+			t1 = types.Invalid
 		case 1:
 			t1 = sig.Results[0]
 		default:
@@ -1039,7 +1040,7 @@ var instructionReturnTypes = [opcodeEnd]returnTypesFn{
 }
 
 // AsLoad initializes this instruction as a store instruction with OpcodeLoad.
-func (i *Instruction) AsLoad(ptr Value, offset uint32, typ Type) *Instruction {
+func (i *Instruction) AsLoad(ptr Value, offset uint32, typ types.Type) *Instruction {
 	i.opcode = OpcodeLoad
 	i.v = ptr
 	i.u1 = uint64(offset)
@@ -1053,46 +1054,46 @@ func (i *Instruction) AsExtLoad(op Opcode, ptr Value, offset uint32, dst64bit bo
 	i.v = ptr
 	i.u1 = uint64(offset)
 	if dst64bit {
-		i.typ = TypeI64
+		i.typ = types.I64
 	} else {
-		i.typ = TypeI32
+		i.typ = types.I32
 	}
 	return i
 }
 
 // AsVZeroExtLoad initializes this instruction as a store instruction with OpcodeVExtLoad.
-func (i *Instruction) AsVZeroExtLoad(ptr Value, offset uint32, scalarType Type) *Instruction {
+func (i *Instruction) AsVZeroExtLoad(ptr Value, offset uint32, scalarType types.Type) *Instruction {
 	i.opcode = OpcodeVZeroExtLoad
 	i.v = ptr
 	i.u1 = uint64(offset)
 	i.u2 = uint64(scalarType)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // VZeroExtLoadData returns the operands for a load instruction. The returned `typ` is the scalar type of the load target.
-func (i *Instruction) VZeroExtLoadData() (ptr Value, offset uint32, typ Type) {
-	return i.v, uint32(i.u1), Type(i.u2)
+func (i *Instruction) VZeroExtLoadData() (ptr Value, offset uint32, typ types.Type) {
+	return i.v, uint32(i.u1), types.Type(i.u2)
 }
 
 // AsLoadSplat initializes this instruction as a store instruction with OpcodeLoadSplat.
-func (i *Instruction) AsLoadSplat(ptr Value, offset uint32, lane VecLane) *Instruction {
+func (i *Instruction) AsLoadSplat(ptr Value, offset uint32, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeLoadSplat
 	i.v = ptr
 	i.u1 = uint64(offset)
 	i.u2 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // LoadData returns the operands for a load instruction.
-func (i *Instruction) LoadData() (ptr Value, offset uint32, typ Type) {
+func (i *Instruction) LoadData() (ptr Value, offset uint32, typ types.Type) {
 	return i.v, uint32(i.u1), i.typ
 }
 
 // LoadSplatData returns the operands for a load splat instruction.
-func (i *Instruction) LoadSplatData() (ptr Value, offset uint32, lane VecLane) {
-	return i.v, uint32(i.u1), VecLane(i.u2)
+func (i *Instruction) LoadSplatData() (ptr Value, offset uint32, lane types.VecLane) {
+	return i.v, uint32(i.u1), types.VecLane(i.u2)
 }
 
 // AsStore initializes this instruction as a store instruction with OpcodeStore.
@@ -1126,7 +1127,7 @@ func (i *Instruction) StoreData() (value, ptr Value, offset uint32, storeSizeInB
 // AsIconst64 initializes this instruction as a 64-bit integer constant instruction with OpcodeIconst.
 func (i *Instruction) AsIconst64(v uint64) *Instruction {
 	i.opcode = OpcodeIconst
-	i.typ = TypeI64
+	i.typ = types.I64
 	i.u1 = v
 	return i
 }
@@ -1134,7 +1135,7 @@ func (i *Instruction) AsIconst64(v uint64) *Instruction {
 // AsIconst32 initializes this instruction as a 32-bit integer constant instruction with OpcodeIconst.
 func (i *Instruction) AsIconst32(v uint32) *Instruction {
 	i.opcode = OpcodeIconst
-	i.typ = TypeI32
+	i.typ = types.I32
 	i.u1 = uint64(v)
 	return i
 }
@@ -1149,12 +1150,12 @@ func (i *Instruction) AsIadd(x, y Value) *Instruction {
 }
 
 // AsVIadd initializes this instruction as an integer addition instruction with OpcodeVIadd on a vector.
-func (i *Instruction) AsVIadd(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVIadd(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVIadd
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
@@ -1164,263 +1165,263 @@ func (i *Instruction) AsWideningPairwiseDotProductS(x, y Value) *Instruction {
 	i.opcode = OpcodeWideningPairwiseDotProductS
 	i.v = x
 	i.v2 = y
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsExtIaddPairwise initializes this instruction as a lane-wise integer extended pairwise addition instruction
 // with OpcodeIaddPairwise on a vector.
-func (i *Instruction) AsExtIaddPairwise(x Value, srcLane VecLane, signed bool) *Instruction {
+func (i *Instruction) AsExtIaddPairwise(x Value, srcLane types.VecLane, signed bool) *Instruction {
 	i.opcode = OpcodeExtIaddPairwise
 	i.v = x
 	i.u1 = uint64(srcLane)
 	if signed {
 		i.u2 = 1
 	}
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // ExtIaddPairwiseData returns the operands for a lane-wise integer extended pairwise addition instruction.
-func (i *Instruction) ExtIaddPairwiseData() (x Value, srcLane VecLane, signed bool) {
-	return i.v, VecLane(i.u1), i.u2 != 0
+func (i *Instruction) ExtIaddPairwiseData() (x Value, srcLane types.VecLane, signed bool) {
+	return i.v, types.VecLane(i.u1), i.u2 != 0
 }
 
 // AsVSaddSat initializes this instruction as a vector addition with saturation instruction with OpcodeVSaddSat on a vector.
-func (i *Instruction) AsVSaddSat(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVSaddSat(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVSaddSat
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVUaddSat initializes this instruction as a vector addition with saturation instruction with OpcodeVUaddSat on a vector.
-func (i *Instruction) AsVUaddSat(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVUaddSat(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVUaddSat
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVIsub initializes this instruction as an integer subtraction instruction with OpcodeVIsub on a vector.
-func (i *Instruction) AsVIsub(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVIsub(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVIsub
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVSsubSat initializes this instruction as a vector addition with saturation instruction with OpcodeVSsubSat on a vector.
-func (i *Instruction) AsVSsubSat(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVSsubSat(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVSsubSat
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVUsubSat initializes this instruction as a vector addition with saturation instruction with OpcodeVUsubSat on a vector.
-func (i *Instruction) AsVUsubSat(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVUsubSat(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVUsubSat
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVImin initializes this instruction as a signed integer min instruction with OpcodeVImin on a vector.
-func (i *Instruction) AsVImin(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVImin(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVImin
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVUmin initializes this instruction as an unsigned integer min instruction with OpcodeVUmin on a vector.
-func (i *Instruction) AsVUmin(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVUmin(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVUmin
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVImax initializes this instruction as a signed integer max instruction with OpcodeVImax on a vector.
-func (i *Instruction) AsVImax(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVImax(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVImax
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVUmax initializes this instruction as an unsigned integer max instruction with OpcodeVUmax on a vector.
-func (i *Instruction) AsVUmax(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVUmax(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVUmax
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVAvgRound initializes this instruction as an unsigned integer avg instruction, truncating to zero with OpcodeVAvgRound on a vector.
-func (i *Instruction) AsVAvgRound(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVAvgRound(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVAvgRound
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVImul initializes this instruction as an integer multiplication with OpcodeVImul on a vector.
-func (i *Instruction) AsVImul(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVImul(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVImul
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsSqmulRoundSat initializes this instruction as a lane-wise saturating rounding multiplication
 // in Q15 format with OpcodeSqmulRoundSat on a vector.
-func (i *Instruction) AsSqmulRoundSat(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsSqmulRoundSat(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeSqmulRoundSat
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVIabs initializes this instruction as a vector absolute value with OpcodeVIabs.
-func (i *Instruction) AsVIabs(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVIabs(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVIabs
 	i.v = x
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVIneg initializes this instruction as a vector negation with OpcodeVIneg.
-func (i *Instruction) AsVIneg(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVIneg(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVIneg
 	i.v = x
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVIpopcnt initializes this instruction as a Population Count instruction with OpcodeVIpopcnt on a vector.
-func (i *Instruction) AsVIpopcnt(x Value, lane VecLane) *Instruction {
-	if lane != VecLaneI8x16 {
+func (i *Instruction) AsVIpopcnt(x Value, lane types.VecLane) *Instruction {
+	if lane != types.VecLaneI8x16 {
 		panic("Unsupported lane type " + lane.String())
 	}
 	i.opcode = OpcodeVIpopcnt
 	i.v = x
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVSqrt initializes this instruction as a sqrt instruction with OpcodeVSqrt on a vector.
-func (i *Instruction) AsVSqrt(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVSqrt(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVSqrt
 	i.v = x
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFabs initializes this instruction as a float abs instruction with OpcodeVFabs on a vector.
-func (i *Instruction) AsVFabs(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFabs(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFabs
 	i.v = x
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFneg initializes this instruction as a float neg instruction with OpcodeVFneg on a vector.
-func (i *Instruction) AsVFneg(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFneg(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFneg
 	i.v = x
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFmax initializes this instruction as a float max instruction with OpcodeVFmax on a vector.
-func (i *Instruction) AsVFmax(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFmax(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFmax
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFmin initializes this instruction as a float min instruction with OpcodeVFmin on a vector.
-func (i *Instruction) AsVFmin(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFmin(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFmin
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFadd initializes this instruction as a floating point add instruction with OpcodeVFadd on a vector.
-func (i *Instruction) AsVFadd(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFadd(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFadd
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFsub initializes this instruction as a floating point subtraction instruction with OpcodeVFsub on a vector.
-func (i *Instruction) AsVFsub(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFsub(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFsub
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFmul initializes this instruction as a floating point multiplication instruction with OpcodeVFmul on a vector.
-func (i *Instruction) AsVFmul(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFmul(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFmul
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFdiv initializes this instruction as a floating point division instruction with OpcodeVFdiv on a vector.
-func (i *Instruction) AsVFdiv(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFdiv(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFdiv
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
@@ -1453,7 +1454,7 @@ func (i *Instruction) AsIcmp(x, y Value, c IntegerCmpCond) *Instruction {
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(c)
-	i.typ = TypeI32
+	i.typ = types.I32
 	return i
 }
 
@@ -1463,33 +1464,33 @@ func (i *Instruction) AsFcmp(x, y Value, c FloatCmpCond) {
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(c)
-	i.typ = TypeI32
+	i.typ = types.I32
 }
 
 // AsVIcmp initializes this instruction as an integer vector comparison instruction with OpcodeVIcmp.
-func (i *Instruction) AsVIcmp(x, y Value, c IntegerCmpCond, lane VecLane) *Instruction {
+func (i *Instruction) AsVIcmp(x, y Value, c IntegerCmpCond, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVIcmp
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(c)
 	i.u2 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsVFcmp initializes this instruction as a float comparison instruction with OpcodeVFcmp on Vector.
-func (i *Instruction) AsVFcmp(x, y Value, c FloatCmpCond, lane VecLane) *Instruction {
+func (i *Instruction) AsVFcmp(x, y Value, c FloatCmpCond, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFcmp
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(c)
-	i.typ = TypeV128
+	i.typ = types.V128
 	i.u2 = uint64(lane)
 	return i
 }
 
 // AsVCeil initializes this instruction as an instruction with OpcodeCeil.
-func (i *Instruction) AsVCeil(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVCeil(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVCeil
 	i.v = x
 	i.typ = x.Type()
@@ -1498,7 +1499,7 @@ func (i *Instruction) AsVCeil(x Value, lane VecLane) *Instruction {
 }
 
 // AsVFloor initializes this instruction as an instruction with OpcodeFloor.
-func (i *Instruction) AsVFloor(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVFloor(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVFloor
 	i.v = x
 	i.typ = x.Type()
@@ -1507,7 +1508,7 @@ func (i *Instruction) AsVFloor(x Value, lane VecLane) *Instruction {
 }
 
 // AsVTrunc initializes this instruction as an instruction with OpcodeTrunc.
-func (i *Instruction) AsVTrunc(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVTrunc(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVTrunc
 	i.v = x
 	i.typ = x.Type()
@@ -1516,7 +1517,7 @@ func (i *Instruction) AsVTrunc(x Value, lane VecLane) *Instruction {
 }
 
 // AsVNearest initializes this instruction as an instruction with OpcodeNearest.
-func (i *Instruction) AsVNearest(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVNearest(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVNearest
 	i.v = x
 	i.typ = x.Type()
@@ -1525,7 +1526,7 @@ func (i *Instruction) AsVNearest(x Value, lane VecLane) *Instruction {
 }
 
 // AsVMaxPseudo initializes this instruction as an instruction with OpcodeVMaxPseudo.
-func (i *Instruction) AsVMaxPseudo(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVMaxPseudo(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVMaxPseudo
 	i.typ = x.Type()
 	i.v = x
@@ -1535,7 +1536,7 @@ func (i *Instruction) AsVMaxPseudo(x, y Value, lane VecLane) *Instruction {
 }
 
 // AsVMinPseudo initializes this instruction as an instruction with OpcodeVMinPseudo.
-func (i *Instruction) AsVMinPseudo(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVMinPseudo(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVMinPseudo
 	i.typ = x.Type()
 	i.v = x
@@ -1619,7 +1620,7 @@ func (i *Instruction) AsIshl(x, amount Value) *Instruction {
 }
 
 // AsVIshl initializes this instruction as an integer shift left instruction with OpcodeVIshl on vector.
-func (i *Instruction) AsVIshl(x, amount Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVIshl(x, amount Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVIshl
 	i.v = x
 	i.v2 = amount
@@ -1638,7 +1639,7 @@ func (i *Instruction) AsUshr(x, amount Value) *Instruction {
 }
 
 // AsVUshr initializes this instruction as an integer unsigned shift right (logical shift right) instruction with OpcodeVUshr on vector.
-func (i *Instruction) AsVUshr(x, amount Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVUshr(x, amount Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVUshr
 	i.v = x
 	i.v2 = amount
@@ -1657,7 +1658,7 @@ func (i *Instruction) AsSshr(x, amount Value) *Instruction {
 }
 
 // AsVSshr initializes this instruction as an integer signed shift right (arithmetic shift right) instruction with OpcodeVSshr on vector.
-func (i *Instruction) AsVSshr(x, amount Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVSshr(x, amount Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVSshr
 	i.v = x
 	i.v2 = amount
@@ -1667,7 +1668,7 @@ func (i *Instruction) AsVSshr(x, amount Value, lane VecLane) *Instruction {
 }
 
 // AsExtractlane initializes this instruction as an extract lane instruction with OpcodeExtractlane on vector.
-func (i *Instruction) AsExtractlane(x Value, index byte, lane VecLane, signed bool) *Instruction {
+func (i *Instruction) AsExtractlane(x Value, index byte, lane types.VecLane, signed bool) *Instruction {
 	i.opcode = OpcodeExtractlane
 	i.v = x
 	// We do not have a field for signedness, but `index` is a byte,
@@ -1678,26 +1679,26 @@ func (i *Instruction) AsExtractlane(x Value, index byte, lane VecLane, signed bo
 	}
 	i.u2 = uint64(lane)
 	switch lane {
-	case VecLaneI8x16, VecLaneI16x8, VecLaneI32x4:
-		i.typ = TypeI32
-	case VecLaneI64x2:
-		i.typ = TypeI64
-	case VecLaneF32x4:
-		i.typ = TypeF32
-	case VecLaneF64x2:
-		i.typ = TypeF64
+	case types.VecLaneI8x16, types.VecLaneI16x8, types.VecLaneI32x4:
+		i.typ = types.I32
+	case types.VecLaneI64x2:
+		i.typ = types.I64
+	case types.VecLaneF32x4:
+		i.typ = types.F32
+	case types.VecLaneF64x2:
+		i.typ = types.F64
 	}
 	return i
 }
 
 // AsInsertlane initializes this instruction as an insert lane instruction with OpcodeInsertlane on vector.
-func (i *Instruction) AsInsertlane(x, y Value, index byte, lane VecLane) *Instruction {
+func (i *Instruction) AsInsertlane(x, y Value, index byte, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeInsertlane
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(index)
 	i.u2 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
@@ -1709,26 +1710,26 @@ func (i *Instruction) AsShuffle(x, y Value, lane []byte) *Instruction {
 	// Encode the 16 bytes as 8 bytes in u1, and 8 bytes in u2.
 	i.u1 = uint64(lane[7])<<56 | uint64(lane[6])<<48 | uint64(lane[5])<<40 | uint64(lane[4])<<32 | uint64(lane[3])<<24 | uint64(lane[2])<<16 | uint64(lane[1])<<8 | uint64(lane[0])
 	i.u2 = uint64(lane[15])<<56 | uint64(lane[14])<<48 | uint64(lane[13])<<40 | uint64(lane[12])<<32 | uint64(lane[11])<<24 | uint64(lane[10])<<16 | uint64(lane[9])<<8 | uint64(lane[8])
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsSwizzle initializes this instruction as an insert lane instruction with OpcodeSwizzle on vector.
-func (i *Instruction) AsSwizzle(x, y Value, lane VecLane) *Instruction {
+func (i *Instruction) AsSwizzle(x, y Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeSwizzle
 	i.v = x
 	i.v2 = y
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
 // AsSplat initializes this instruction as an insert lane instruction with OpcodeSplat on vector.
-func (i *Instruction) AsSplat(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsSplat(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeSplat
 	i.v = x
 	i.u1 = uint64(lane)
-	i.typ = TypeV128
+	i.typ = types.V128
 	return i
 }
 
@@ -1759,30 +1760,30 @@ func (i *Instruction) FcmpData() (x, y Value, c FloatCmpCond) {
 }
 
 // VIcmpData returns the operands and comparison condition of this integer comparison instruction on vector.
-func (i *Instruction) VIcmpData() (x, y Value, c IntegerCmpCond, l VecLane) {
-	return i.v, i.v2, IntegerCmpCond(i.u1), VecLane(i.u2)
+func (i *Instruction) VIcmpData() (x, y Value, c IntegerCmpCond, l types.VecLane) {
+	return i.v, i.v2, IntegerCmpCond(i.u1), types.VecLane(i.u2)
 }
 
 // VFcmpData returns the operands and comparison condition of this float comparison instruction on vector.
-func (i *Instruction) VFcmpData() (x, y Value, c FloatCmpCond, l VecLane) {
-	return i.v, i.v2, FloatCmpCond(i.u1), VecLane(i.u2)
+func (i *Instruction) VFcmpData() (x, y Value, c FloatCmpCond, l types.VecLane) {
+	return i.v, i.v2, FloatCmpCond(i.u1), types.VecLane(i.u2)
 }
 
 // ExtractlaneData returns the operands and sign flag of Extractlane on vector.
-func (i *Instruction) ExtractlaneData() (x Value, index byte, signed bool, l VecLane) {
+func (i *Instruction) ExtractlaneData() (x Value, index byte, signed bool, l types.VecLane) {
 	x = i.v
 	index = byte(0b00001111 & i.u1)
 	signed = i.u1>>32 != 0
-	l = VecLane(i.u2)
+	l = types.VecLane(i.u2)
 	return
 }
 
 // InsertlaneData returns the operands and sign flag of Insertlane on vector.
-func (i *Instruction) InsertlaneData() (x, y Value, index byte, l VecLane) {
+func (i *Instruction) InsertlaneData() (x, y Value, index byte, l types.VecLane) {
 	x = i.v
 	y = i.v2
 	index = byte(i.u1)
-	l = VecLane(i.u2)
+	l = types.VecLane(i.u2)
 	return
 }
 
@@ -1837,7 +1838,7 @@ func (i *Instruction) AsFmax(x, y Value) {
 // AsF32const initializes this instruction as a 32-bit floating-point constant instruction with OpcodeF32const.
 func (i *Instruction) AsF32const(f float32) *Instruction {
 	i.opcode = OpcodeF32const
-	i.typ = TypeF64
+	i.typ = types.F64
 	i.u1 = uint64(math.Float32bits(f))
 	return i
 }
@@ -1845,7 +1846,7 @@ func (i *Instruction) AsF32const(f float32) *Instruction {
 // AsF64const initializes this instruction as a 64-bit floating-point constant instruction with OpcodeF64const.
 func (i *Instruction) AsF64const(f float64) *Instruction {
 	i.opcode = OpcodeF64const
-	i.typ = TypeF64
+	i.typ = types.F64
 	i.u1 = math.Float64bits(f)
 	return i
 }
@@ -1853,7 +1854,7 @@ func (i *Instruction) AsF64const(f float64) *Instruction {
 // AsVconst initializes this instruction as a vector constant instruction with OpcodeVconst.
 func (i *Instruction) AsVconst(lo, hi uint64) *Instruction {
 	i.opcode = OpcodeVconst
-	i.typ = TypeV128
+	i.typ = types.V128
 	i.u1 = lo
 	i.u2 = hi
 	return i
@@ -1862,7 +1863,7 @@ func (i *Instruction) AsVconst(lo, hi uint64) *Instruction {
 // AsVbnot initializes this instruction as a vector negation instruction with OpcodeVbnot.
 func (i *Instruction) AsVbnot(v Value) *Instruction {
 	i.opcode = OpcodeVbnot
-	i.typ = TypeV128
+	i.typ = types.V128
 	i.v = v
 	return i
 }
@@ -1870,7 +1871,7 @@ func (i *Instruction) AsVbnot(v Value) *Instruction {
 // AsVband initializes this instruction as an and vector instruction with OpcodeVband.
 func (i *Instruction) AsVband(x, y Value) *Instruction {
 	i.opcode = OpcodeVband
-	i.typ = TypeV128
+	i.typ = types.V128
 	i.v = x
 	i.v2 = y
 	return i
@@ -1879,7 +1880,7 @@ func (i *Instruction) AsVband(x, y Value) *Instruction {
 // AsVbor initializes this instruction as an or vector instruction with OpcodeVbor.
 func (i *Instruction) AsVbor(x, y Value) *Instruction {
 	i.opcode = OpcodeVbor
-	i.typ = TypeV128
+	i.typ = types.V128
 	i.v = x
 	i.v2 = y
 	return i
@@ -1888,7 +1889,7 @@ func (i *Instruction) AsVbor(x, y Value) *Instruction {
 // AsVbxor initializes this instruction as a xor vector instruction with OpcodeVbxor.
 func (i *Instruction) AsVbxor(x, y Value) *Instruction {
 	i.opcode = OpcodeVbxor
-	i.typ = TypeV128
+	i.typ = types.V128
 	i.v = x
 	i.v2 = y
 	return i
@@ -1897,7 +1898,7 @@ func (i *Instruction) AsVbxor(x, y Value) *Instruction {
 // AsVbandnot initializes this instruction as an and-not vector instruction with OpcodeVbandnot.
 func (i *Instruction) AsVbandnot(x, y Value) *Instruction {
 	i.opcode = OpcodeVbandnot
-	i.typ = TypeV128
+	i.typ = types.V128
 	i.v = x
 	i.v2 = y
 	return i
@@ -1906,7 +1907,7 @@ func (i *Instruction) AsVbandnot(x, y Value) *Instruction {
 // AsVbitselect initializes this instruction as a bit select vector instruction with OpcodeVbitselect.
 func (i *Instruction) AsVbitselect(c, x, y Value) *Instruction {
 	i.opcode = OpcodeVbitselect
-	i.typ = TypeV128
+	i.typ = types.V128
 	i.v = c
 	i.v2 = x
 	i.v3 = y
@@ -1916,24 +1917,24 @@ func (i *Instruction) AsVbitselect(c, x, y Value) *Instruction {
 // AsVanyTrue initializes this instruction as an anyTrue vector instruction with OpcodeVanyTrue.
 func (i *Instruction) AsVanyTrue(x Value) *Instruction {
 	i.opcode = OpcodeVanyTrue
-	i.typ = TypeI32
+	i.typ = types.I32
 	i.v = x
 	return i
 }
 
 // AsVallTrue initializes this instruction as an allTrue vector instruction with OpcodeVallTrue.
-func (i *Instruction) AsVallTrue(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVallTrue(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVallTrue
-	i.typ = TypeI32
+	i.typ = types.I32
 	i.v = x
 	i.u1 = uint64(lane)
 	return i
 }
 
 // AsVhighBits initializes this instruction as a highBits vector instruction with OpcodeVhighBits.
-func (i *Instruction) AsVhighBits(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsVhighBits(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeVhighBits
-	i.typ = TypeI32
+	i.typ = types.I32
 	i.v = x
 	i.u1 = uint64(lane)
 	return i
@@ -1952,7 +1953,7 @@ func (i *Instruction) AsReturn(vs []Value) *Instruction {
 }
 
 // AsIreduce initializes this instruction as a reduction instruction with OpcodeIreduce.
-func (i *Instruction) AsIreduce(v Value, dstType Type) *Instruction {
+func (i *Instruction) AsIreduce(v Value, dstType types.Type) *Instruction {
 	i.opcode = OpcodeIreduce
 	i.v = v
 	i.typ = dstType
@@ -1961,7 +1962,7 @@ func (i *Instruction) AsIreduce(v Value, dstType Type) *Instruction {
 
 // AsWiden initializes this instruction as a signed or unsigned widen instruction
 // on low half or high half of the given vector with OpcodeSwidenLow, OpcodeUwidenLow, OpcodeSwidenHigh, OpcodeUwidenHigh.
-func (i *Instruction) AsWiden(v Value, lane VecLane, signed, low bool) *Instruction {
+func (i *Instruction) AsWiden(v Value, lane types.VecLane, signed, low bool) *Instruction {
 	switch {
 	case signed && low:
 		i.opcode = OpcodeSwidenLow
@@ -1979,7 +1980,7 @@ func (i *Instruction) AsWiden(v Value, lane VecLane, signed, low bool) *Instruct
 
 // AsAtomicLoad initializes this instruction as an atomic load.
 // The size is in bytes and must be 1, 2, 4, or 8.
-func (i *Instruction) AsAtomicLoad(addr Value, size uint64, typ Type) *Instruction {
+func (i *Instruction) AsAtomicLoad(addr Value, size uint64, typ types.Type) *Instruction {
 	i.opcode = OpcodeAtomicLoad
 	i.u1 = size
 	i.v = addr
@@ -2042,21 +2043,21 @@ func (i *Instruction) AtomicTargetSize() (size uint64) {
 }
 
 // AsTailCallReturnCall initializes this instruction as a call instruction with OpcodeTailCallReturnCall.
-func (i *Instruction) AsTailCallReturnCall(ref FuncRef, sig *Signature, args []Value) {
+func (i *Instruction) AsTailCallReturnCall(ref FuncRef, sig *types.Signature, args []Value) {
 	i.opcode = OpcodeTailCallReturnCall
 	i.u1 = uint64(ref)
 	i.vs = args
 	i.u2 = uint64(sig.ID)
-	sig.used = true
+	sig.Used = true
 }
 
 // AsTailCallReturnCallIndirect initializes this instruction as a call-indirect instruction with OpcodeTailCallReturnCallIndirect.
-func (i *Instruction) AsTailCallReturnCallIndirect(funcPtr Value, sig *Signature, args []Value) *Instruction {
+func (i *Instruction) AsTailCallReturnCallIndirect(funcPtr Value, sig *types.Signature, args []Value) *Instruction {
 	i.opcode = OpcodeTailCallReturnCallIndirect
 	i.vs = args
 	i.v = funcPtr
 	i.u1 = uint64(sig.ID)
-	sig.used = true
+	sig.Used = true
 	return i
 }
 
@@ -2178,50 +2179,50 @@ func (i *Instruction) AsBrTable(index Value, targets []Value) {
 }
 
 // AsCall initializes this instruction as a call instruction with OpcodeCall.
-func (i *Instruction) AsCall(ref FuncRef, sig *Signature, args []Value) {
+func (i *Instruction) AsCall(ref FuncRef, sig *types.Signature, args []Value) {
 	i.opcode = OpcodeCall
 	i.u1 = uint64(ref)
 	i.vs = args
 	i.u2 = uint64(sig.ID)
-	sig.used = true
+	sig.Used = true
 }
 
 // CallData returns the call data for this instruction necessary for backends.
-func (i *Instruction) CallData() (ref FuncRef, sigID SignatureID, args []Value) {
+func (i *Instruction) CallData() (ref FuncRef, sigID types.SignatureID, args []Value) {
 	if i.opcode != OpcodeCall && i.opcode != OpcodeTailCallReturnCall {
 		panic("BUG: CallData only available for OpcodeCall")
 	}
 	ref = FuncRef(i.u1)
-	sigID = SignatureID(i.u2)
+	sigID = types.SignatureID(i.u2)
 	args = i.vs
 	return
 }
 
 // AsCallIndirect initializes this instruction as a call-indirect instruction with OpcodeCallIndirect.
-func (i *Instruction) AsCallIndirect(funcPtr Value, sig *Signature, args []Value) *Instruction {
+func (i *Instruction) AsCallIndirect(funcPtr Value, sig *types.Signature, args []Value) *Instruction {
 	i.opcode = OpcodeCallIndirect
-	i.typ = TypeF64
+	i.typ = types.F64
 	i.vs = args
 	i.v = funcPtr
 	i.u1 = uint64(sig.ID)
-	sig.used = true
+	sig.Used = true
 	return i
 }
 
 // AsCallGoRuntimeMemmove is the same as AsCallIndirect, but with a special flag set to indicate that it is a call to the Go runtime memmove function.
-func (i *Instruction) AsCallGoRuntimeMemmove(funcPtr Value, sig *Signature, args []Value) *Instruction {
+func (i *Instruction) AsCallGoRuntimeMemmove(funcPtr Value, sig *types.Signature, args []Value) *Instruction {
 	i.AsCallIndirect(funcPtr, sig, args)
 	i.u2 = 1
 	return i
 }
 
 // CallIndirectData returns the call indirect data for this instruction necessary for backends.
-func (i *Instruction) CallIndirectData() (funcPtr Value, sigID SignatureID, args []Value, isGoMemmove bool) {
+func (i *Instruction) CallIndirectData() (funcPtr Value, sigID types.SignatureID, args []Value, isGoMemmove bool) {
 	if i.opcode != OpcodeCallIndirect && i.opcode != OpcodeTailCallReturnCallIndirect {
 		panic("BUG: CallIndirectData only available for OpcodeCallIndirect and OpcodeTailCallReturnCallIndirect")
 	}
 	funcPtr = i.v
-	sigID = SignatureID(i.u1)
+	sigID = types.SignatureID(i.u1)
 	args = i.vs
 	isGoMemmove = i.u2 == 1
 	return
@@ -2314,7 +2315,7 @@ func (i *Instruction) AsNearest(x Value) *Instruction {
 }
 
 // AsBitcast initializes this instruction as an instruction with OpcodeBitcast.
-func (i *Instruction) AsBitcast(x Value, dstType Type) *Instruction {
+func (i *Instruction) AsBitcast(x Value, dstType types.Type) *Instruction {
 	i.opcode = OpcodeBitcast
 	i.v = x
 	i.typ = dstType
@@ -2322,7 +2323,7 @@ func (i *Instruction) AsBitcast(x Value, dstType Type) *Instruction {
 }
 
 // BitcastData returns the operands for a bitcast instruction.
-func (i *Instruction) BitcastData() (x Value, dstType Type) {
+func (i *Instruction) BitcastData() (x Value, dstType types.Type) {
 	return i.v, i.typ
 }
 
@@ -2330,14 +2331,14 @@ func (i *Instruction) BitcastData() (x Value, dstType Type) {
 func (i *Instruction) AsFdemote(x Value) {
 	i.opcode = OpcodeFdemote
 	i.v = x
-	i.typ = TypeF32
+	i.typ = types.F32
 }
 
 // AsFpromote initializes this instruction as an instruction with OpcodeFpromote.
 func (i *Instruction) AsFpromote(x Value) {
 	i.opcode = OpcodeFpromote
 	i.v = x
-	i.typ = TypeF64
+	i.typ = types.F64
 }
 
 // AsFcvtFromInt initializes this instruction as an instruction with either OpcodeFcvtFromUint or OpcodeFcvtFromSint
@@ -2349,9 +2350,9 @@ func (i *Instruction) AsFcvtFromInt(x Value, signed bool, dst64bit bool) *Instru
 	}
 	i.v = x
 	if dst64bit {
-		i.typ = TypeF64
+		i.typ = types.F64
 	} else {
-		i.typ = TypeF32
+		i.typ = types.F32
 	}
 	return i
 }
@@ -2371,15 +2372,15 @@ func (i *Instruction) AsFcvtToInt(x, ctx Value, signed bool, dst64bit bool, sat 
 	i.v = x
 	i.v2 = ctx
 	if dst64bit {
-		i.typ = TypeI64
+		i.typ = types.I64
 	} else {
-		i.typ = TypeI32
+		i.typ = types.I32
 	}
 	return i
 }
 
 // AsVFcvtToIntSat initializes this instruction as an instruction with either OpcodeVFcvtToSintSat or OpcodeVFcvtToUintSat
-func (i *Instruction) AsVFcvtToIntSat(x Value, lane VecLane, signed bool) *Instruction {
+func (i *Instruction) AsVFcvtToIntSat(x Value, lane types.VecLane, signed bool) *Instruction {
 	if signed {
 		i.opcode = OpcodeVFcvtToSintSat
 	} else {
@@ -2391,7 +2392,7 @@ func (i *Instruction) AsVFcvtToIntSat(x Value, lane VecLane, signed bool) *Instr
 }
 
 // AsVFcvtFromInt initializes this instruction as an instruction with either OpcodeVFcvtToSintSat or OpcodeVFcvtToUintSat
-func (i *Instruction) AsVFcvtFromInt(x Value, lane VecLane, signed bool) *Instruction {
+func (i *Instruction) AsVFcvtFromInt(x Value, lane types.VecLane, signed bool) *Instruction {
 	if signed {
 		i.opcode = OpcodeVFcvtFromSint
 	} else {
@@ -2403,7 +2404,7 @@ func (i *Instruction) AsVFcvtFromInt(x Value, lane VecLane, signed bool) *Instru
 }
 
 // AsNarrow initializes this instruction as an instruction with either OpcodeSnarrow or OpcodeUnarrow
-func (i *Instruction) AsNarrow(x, y Value, lane VecLane, signed bool) *Instruction {
+func (i *Instruction) AsNarrow(x, y Value, lane types.VecLane, signed bool) *Instruction {
 	if signed {
 		i.opcode = OpcodeSnarrow
 	} else {
@@ -2416,7 +2417,7 @@ func (i *Instruction) AsNarrow(x, y Value, lane VecLane, signed bool) *Instructi
 }
 
 // AsFvpromoteLow initializes this instruction as an instruction with OpcodeFvpromoteLow
-func (i *Instruction) AsFvpromoteLow(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsFvpromoteLow(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeFvpromoteLow
 	i.v = x
 	i.u1 = uint64(lane)
@@ -2424,7 +2425,7 @@ func (i *Instruction) AsFvpromoteLow(x Value, lane VecLane) *Instruction {
 }
 
 // AsFvdemote initializes this instruction as an instruction with OpcodeFvdemote
-func (i *Instruction) AsFvdemote(x Value, lane VecLane) *Instruction {
+func (i *Instruction) AsFvdemote(x Value, lane types.VecLane) *Instruction {
 	i.opcode = OpcodeFvdemote
 	i.v = x
 	i.u1 = uint64(lane)
@@ -2437,9 +2438,9 @@ func (i *Instruction) AsSExtend(v Value, from, to byte) *Instruction {
 	i.v = v
 	i.u1 = uint64(from)<<8 | uint64(to)
 	if to == 64 {
-		i.typ = TypeI64
+		i.typ = types.I64
 	} else {
-		i.typ = TypeI32
+		i.typ = types.I32
 	}
 	return i
 }
@@ -2450,9 +2451,9 @@ func (i *Instruction) AsUExtend(v Value, from, to byte) *Instruction {
 	i.v = v
 	i.u1 = uint64(from)<<8 | uint64(to)
 	if to == 64 {
-		i.typ = TypeI64
+		i.typ = types.I64
 	} else {
-		i.typ = TypeI32
+		i.typ = types.I32
 	}
 	return i
 }
@@ -2516,25 +2517,25 @@ func (i *Instruction) Format(b Builder) string {
 			vs[idx] = view[idx].Format(b)
 		}
 		if i.opcode == OpcodeCallIndirect {
-			instSuffix = fmt.Sprintf(" %s:%s, %s", i.v.Format(b), SignatureID(i.u1), strings.Join(vs, ", "))
+			instSuffix = fmt.Sprintf(" %s:%s, %s", i.v.Format(b), types.SignatureID(i.u1), strings.Join(vs, ", "))
 		} else {
-			instSuffix = fmt.Sprintf(" %s:%s, %s", FuncRef(i.u1), SignatureID(i.u2), strings.Join(vs, ", "))
+			instSuffix = fmt.Sprintf(" %s:%s, %s", FuncRef(i.u1), types.SignatureID(i.u2), strings.Join(vs, ", "))
 		}
 	case OpcodeStore, OpcodeIstore8, OpcodeIstore16, OpcodeIstore32:
 		instSuffix = fmt.Sprintf(" %s, %s, %#x", i.v.Format(b), i.v2.Format(b), uint32(i.u1))
 	case OpcodeLoad, OpcodeVZeroExtLoad:
 		instSuffix = fmt.Sprintf(" %s, %#x", i.v.Format(b), int32(i.u1))
 	case OpcodeLoadSplat:
-		instSuffix = fmt.Sprintf(".%s %s, %#x", VecLane(i.u2), i.v.Format(b), int32(i.u1))
+		instSuffix = fmt.Sprintf(".%s %s, %#x", types.VecLane(i.u2), i.v.Format(b), int32(i.u1))
 	case OpcodeUload8, OpcodeUload16, OpcodeUload32, OpcodeSload8, OpcodeSload16, OpcodeSload32:
 		instSuffix = fmt.Sprintf(" %s, %#x", i.v.Format(b), int32(i.u1))
 	case OpcodeSelect, OpcodeVbitselect:
 		instSuffix = fmt.Sprintf(" %s, %s, %s", i.v.Format(b), i.v2.Format(b), i.v3.Format(b))
 	case OpcodeIconst:
 		switch i.typ {
-		case TypeI32:
+		case types.I32:
 			instSuffix = fmt.Sprintf("_32 %#x", uint32(i.u1))
-		case TypeI64:
+		case types.I64:
 			instSuffix = fmt.Sprintf("_64 %#x", i.u1)
 		}
 	case OpcodeVconst:
@@ -2605,13 +2606,13 @@ func (i *Instruction) Format(b Builder) string {
 		OpcodeVIshl, OpcodeVSshr, OpcodeVUshr,
 		OpcodeVFmin, OpcodeVFmax, OpcodeVMinPseudo, OpcodeVMaxPseudo,
 		OpcodeSnarrow, OpcodeUnarrow, OpcodeSwizzle, OpcodeSqmulRoundSat:
-		instSuffix = fmt.Sprintf(".%s %s, %s", VecLane(i.u1), i.v.Format(b), i.v2.Format(b))
+		instSuffix = fmt.Sprintf(".%s %s, %s", types.VecLane(i.u1), i.v.Format(b), i.v2.Format(b))
 	case OpcodeVIabs, OpcodeVIneg, OpcodeVIpopcnt, OpcodeVhighBits, OpcodeVallTrue, OpcodeVanyTrue,
 		OpcodeVFabs, OpcodeVFneg, OpcodeVSqrt, OpcodeVCeil, OpcodeVFloor, OpcodeVTrunc, OpcodeVNearest,
 		OpcodeVFcvtToUintSat, OpcodeVFcvtToSintSat, OpcodeVFcvtFromUint, OpcodeVFcvtFromSint,
 		OpcodeFvpromoteLow, OpcodeFvdemote, OpcodeSwidenLow, OpcodeUwidenLow, OpcodeSwidenHigh, OpcodeUwidenHigh,
 		OpcodeSplat:
-		instSuffix = fmt.Sprintf(".%s %s", VecLane(i.u1), i.v.Format(b))
+		instSuffix = fmt.Sprintf(".%s %s", types.VecLane(i.u1), i.v.Format(b))
 	case OpcodeExtractlane:
 		var signedness string
 		if i.u1 != 0 {
@@ -2619,9 +2620,9 @@ func (i *Instruction) Format(b Builder) string {
 		} else {
 			signedness = "unsigned"
 		}
-		instSuffix = fmt.Sprintf(".%s %d, %s (%s)", VecLane(i.u2), 0x0000FFFF&i.u1, i.v.Format(b), signedness)
+		instSuffix = fmt.Sprintf(".%s %d, %s (%s)", types.VecLane(i.u2), 0x0000FFFF&i.u1, i.v.Format(b), signedness)
 	case OpcodeInsertlane:
-		instSuffix = fmt.Sprintf(".%s %d, %s, %s", VecLane(i.u2), i.u1, i.v.Format(b), i.v2.Format(b))
+		instSuffix = fmt.Sprintf(".%s %d, %s, %s", types.VecLane(i.u2), i.u1, i.v.Format(b), i.v2.Format(b))
 	case OpcodeShuffle:
 		lanes := make([]byte, 16)
 		for idx := 0; idx < 8; idx++ {
@@ -2649,9 +2650,9 @@ func (i *Instruction) Format(b Builder) string {
 			vs[idx] = view[idx].Format(b)
 		}
 		if i.opcode == OpcodeCallIndirect {
-			instSuffix = fmt.Sprintf(" %s:%s, %s", i.v.Format(b), SignatureID(i.u1), strings.Join(vs, ", "))
+			instSuffix = fmt.Sprintf(" %s:%s, %s", i.v.Format(b), types.SignatureID(i.u1), strings.Join(vs, ", "))
 		} else {
-			instSuffix = fmt.Sprintf(" %s:%s, %s", FuncRef(i.u1), SignatureID(i.u2), strings.Join(vs, ", "))
+			instSuffix = fmt.Sprintf(" %s:%s, %s", FuncRef(i.u1), types.SignatureID(i.u2), strings.Join(vs, ", "))
 		}
 	case OpcodeWideningPairwiseDotProductS:
 		instSuffix = fmt.Sprintf(" %s, %s", i.v.Format(b), i.v2.Format(b))

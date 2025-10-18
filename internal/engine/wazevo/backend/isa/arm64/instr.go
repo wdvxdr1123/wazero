@@ -8,6 +8,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -1768,7 +1769,7 @@ const (
 	numInstructionKinds
 )
 
-func (i *instruction) asLoadConstBlockArg(v uint64, typ ssa.Type, dst regalloc.VReg) *instruction {
+func (i *instruction) asLoadConstBlockArg(v uint64, typ types.Type, dst regalloc.VReg) *instruction {
 	i.kind = loadConstBlockArg
 	i.u1 = v
 	i.u2 = uint64(typ)
@@ -1776,8 +1777,8 @@ func (i *instruction) asLoadConstBlockArg(v uint64, typ ssa.Type, dst regalloc.V
 	return i
 }
 
-func (i *instruction) loadConstBlockArgData() (v uint64, typ ssa.Type, dst regalloc.VReg) {
-	return i.u1, ssa.Type(i.u2), i.rd
+func (i *instruction) loadConstBlockArgData() (v uint64, typ types.Type, dst regalloc.VReg) {
+	return i.u1, types.Type(i.u2), i.rd
 }
 
 func (i *instruction) asEmitSourceOffsetInfo(l ssa.SourceOffset) *instruction {
@@ -2273,7 +2274,7 @@ func (e extMode) signed() bool {
 	}
 }
 
-func extModeOf(t ssa.Type, signed bool) extMode {
+func extModeOf(t types.Type, signed bool) extMode {
 	switch t.Bits() {
 	case 32:
 		if signed {
@@ -2509,19 +2510,19 @@ type vecIndex byte
 // vecIndexNone indicates no vector index specified.
 const vecIndexNone = ^vecIndex(0)
 
-func ssaLaneToArrangement(lane ssa.VecLane) vecArrangement {
+func ssaLaneToArrangement(lane types.VecLane) vecArrangement {
 	switch lane {
-	case ssa.VecLaneI8x16:
+	case types.VecLaneI8x16:
 		return vecArrangement16B
-	case ssa.VecLaneI16x8:
+	case types.VecLaneI16x8:
 		return vecArrangement8H
-	case ssa.VecLaneI32x4:
+	case types.VecLaneI32x4:
 		return vecArrangement4S
-	case ssa.VecLaneI64x2:
+	case types.VecLaneI64x2:
 		return vecArrangement2D
-	case ssa.VecLaneF32x4:
+	case types.VecLaneF32x4:
 		return vecArrangement4S
-	case ssa.VecLaneF64x2:
+	case types.VecLaneF64x2:
 		return vecArrangement2D
 	default:
 		panic(lane)

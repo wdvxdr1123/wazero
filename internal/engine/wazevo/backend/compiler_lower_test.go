@@ -6,6 +6,7 @@ import (
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
 
@@ -34,10 +35,10 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 				builder.InsertInstruction(f2)
 
 				succ := builder.AllocateBasicBlock()
-				succ.AddParam(builder, ssa.TypeI32)
-				succ.AddParam(builder, ssa.TypeI64)
-				succ.AddParam(builder, ssa.TypeF32)
-				succ.AddParam(builder, ssa.TypeF64)
+				succ.AddParam(builder, types.I32)
+				succ.AddParam(builder, types.I64)
+				succ.AddParam(builder, types.F32)
+				succ.AddParam(builder, types.F64)
 
 				var insertedConstInstructions []struct {
 					instr  *ssa.Instruction
@@ -75,9 +76,9 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 			name: "overlap",
 			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, *ssa.BasicBlock, func(t *testing.T)) {
 				blk := builder.AllocateBasicBlock()
-				v1 := blk.AddParam(builder, ssa.TypeI32)
-				v2 := blk.AddParam(builder, ssa.TypeI32)
-				v3 := blk.AddParam(builder, ssa.TypeF32)
+				v1 := blk.AddParam(builder, types.I32)
+				v2 := blk.AddParam(builder, types.I32)
+				v3 := blk.AddParam(builder, types.F32)
 
 				var insertMoves []struct{ src, dst regalloc.VReg }
 				m := &mockMachine{insertMove: func(dst, src regalloc.VReg) {
@@ -111,7 +112,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, *ssa.BasicBlock, func(t *testing.T)) {
 				blk := builder.AllocateBasicBlock()
 				builder.SetCurrentBlock(blk)
-				i32 := blk.AddParam(builder, ssa.TypeI32)
+				i32 := blk.AddParam(builder, types.I32)
 				add := builder.AllocateInstruction()
 				add.AsIadd(i32, i32)
 				builder.InsertInstruction(add)

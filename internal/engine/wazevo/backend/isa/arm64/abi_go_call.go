@@ -3,7 +3,7 @@ package arm64
 import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -13,7 +13,7 @@ var calleeSavedRegistersSorted = []regalloc.VReg{
 }
 
 // CompileGoFunctionTrampoline implements backend.Machine.
-func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *ssa.Signature, needModuleContextPtr bool) []byte {
+func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *types.Signature, needModuleContextPtr bool) []byte {
 	argBegin := 1 // Skips exec context by default.
 	if needModuleContextPtr {
 		argBegin++
@@ -115,7 +115,7 @@ func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *
 		}
 
 		var sizeInBits byte
-		if arg.Type == ssa.TypeV128 {
+		if arg.Type == types.V128 {
 			sizeInBits = 128
 		} else {
 			sizeInBits = 64
@@ -184,19 +184,19 @@ func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *
 			mode := m.amodePool.Allocate()
 			*mode = addressMode{kind: addressModeKindPostIndex, rn: arg0ret0AddrReg}
 			switch r.Type {
-			case ssa.TypeI32:
+			case types.I32:
 				mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 				loadIntoReg.asULoad(r.Reg, mode, 32)
-			case ssa.TypeI64:
+			case types.I64:
 				mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 				loadIntoReg.asULoad(r.Reg, mode, 64)
-			case ssa.TypeF32:
+			case types.F32:
 				mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 				loadIntoReg.asFpuLoad(r.Reg, mode, 32)
-			case ssa.TypeF64:
+			case types.F64:
 				mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 				loadIntoReg.asFpuLoad(r.Reg, mode, 64)
-			case ssa.TypeV128:
+			case types.V128:
 				mode.imm = 16
 				loadIntoReg.asFpuLoad(r.Reg, mode, 128)
 			default:
@@ -211,23 +211,23 @@ func (m *machine) CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *
 			*mode = addressMode{kind: addressModeKindPostIndex, rn: arg0ret0AddrReg}
 			var resultReg regalloc.VReg
 			switch r.Type {
-			case ssa.TypeI32:
+			case types.I32:
 				mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 				loadIntoTmpReg.asULoad(intTmp, mode, 32)
 				resultReg = intTmp
-			case ssa.TypeI64:
+			case types.I64:
 				mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 				loadIntoTmpReg.asULoad(intTmp, mode, 64)
 				resultReg = intTmp
-			case ssa.TypeF32:
+			case types.F32:
 				mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 				loadIntoTmpReg.asFpuLoad(floatTmp, mode, 32)
 				resultReg = floatTmp
-			case ssa.TypeF64:
+			case types.F64:
 				mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 				loadIntoTmpReg.asFpuLoad(floatTmp, mode, 64)
 				resultReg = floatTmp
-			case ssa.TypeV128:
+			case types.V128:
 				mode.imm = 16
 				loadIntoTmpReg.asFpuLoad(floatTmp, mode, 128)
 				resultReg = floatTmp
@@ -379,23 +379,23 @@ func (m *machine) goFunctionCallLoadStackArg(cur *instruction, originalArg0Reg r
 	mode := m.amodePool.Allocate()
 	*mode = addressMode{kind: addressModeKindPostIndex, rn: originalArg0Reg}
 	switch arg.Type {
-	case ssa.TypeI32:
+	case types.I32:
 		mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 		load.asULoad(intVReg, mode, 32)
 		result = intVReg
-	case ssa.TypeI64:
+	case types.I64:
 		mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 		load.asULoad(intVReg, mode, 64)
 		result = intVReg
-	case ssa.TypeF32:
+	case types.F32:
 		mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 		load.asFpuLoad(floatVReg, mode, 32)
 		result = floatVReg
-	case ssa.TypeF64:
+	case types.F64:
 		mode.imm = 8 // We use uint64 for all basic types, except SIMD v128.
 		load.asFpuLoad(floatVReg, mode, 64)
 		result = floatVReg
-	case ssa.TypeV128:
+	case types.V128:
 		mode.imm = 16
 		load.asFpuLoad(floatVReg, mode, 128)
 		result = floatVReg
@@ -413,13 +413,13 @@ func (m *machine) goFunctionCallStoreStackResult(cur *instruction, originalRet0R
 	*mode = addressMode{kind: addressModeKindPostIndex, rn: originalRet0Reg}
 	var sizeInBits byte
 	switch result.Type {
-	case ssa.TypeI32, ssa.TypeF32:
+	case types.I32, types.F32:
 		mode.imm = 8
 		sizeInBits = 32
-	case ssa.TypeI64, ssa.TypeF64:
+	case types.I64, types.F64:
 		mode.imm = 8
 		sizeInBits = 64
-	case ssa.TypeV128:
+	case types.V128:
 		mode.imm = 16
 		sizeInBits = 128
 	default:

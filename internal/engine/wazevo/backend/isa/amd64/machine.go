@@ -10,6 +10,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 	"github.com/tetratelabs/wazero/internal/platform"
 )
@@ -354,7 +355,7 @@ func (m *machine) lowerBrTable(index ssa.Value, targets []ssa.Value) {
 	targetCount := len(targets)
 
 	// First, we need to do the bounds check.
-	maxIndex := m.c.AllocateVReg(ssa.TypeI32)
+	maxIndex := m.c.AllocateVReg(types.I32)
 	m.lowerIconst(maxIndex, uint64(targetCount-1), false)
 	cmp := m.allocateInstr().asCmpRmiR(true, newOperandReg(maxIndex), v, false)
 	m.insert(cmp)
@@ -364,7 +365,7 @@ func (m *machine) lowerBrTable(index ssa.Value, targets []ssa.Value) {
 	m.insert(cmov)
 
 	// Now that v has the correct index. Load the address of the jump table into the addr.
-	addr := m.c.AllocateVReg(ssa.TypeI64)
+	addr := m.c.AllocateVReg(types.I64)
 	leaJmpTableAddr := m.allocateInstr()
 	m.insert(leaJmpTableAddr)
 
@@ -415,7 +416,7 @@ func (m *machine) LowerConditionalBranch(b *ssa.Instruction) {
 		// First, perform the comparison and set the flag.
 		xd, yd := m.c.ValueDefinition(x), m.c.ValueDefinition(y)
 		if !m.tryLowerBandToFlag(xd, yd) {
-			m.lowerIcmpToFlag(xd, yd, x.Type() == ssa.TypeI64)
+			m.lowerIcmpToFlag(xd, yd, x.Type() == types.I64)
 		}
 
 		// Then perform the conditional branch.
@@ -558,26 +559,26 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		rn := m.getOperand_Reg(m.c.ValueDefinition(x))
 		rd := m.c.VRegOf(instr.Return())
 		ctxVReg := m.c.VRegOf(ctx)
-		m.lowerFcvtToSint(ctxVReg, rn.reg(), rd, x.Type() == ssa.TypeF64,
+		m.lowerFcvtToSint(ctxVReg, rn.reg(), rd, x.Type() == types.F64,
 			instr.Return().Type().Bits() == 64, op == ssa.OpcodeFcvtToSintSat)
 	case ssa.OpcodeFcvtToUint, ssa.OpcodeFcvtToUintSat:
 		x, ctx := instr.Arg2()
 		rn := m.getOperand_Reg(m.c.ValueDefinition(x))
 		rd := m.c.VRegOf(instr.Return())
 		ctxVReg := m.c.VRegOf(ctx)
-		m.lowerFcvtToUint(ctxVReg, rn.reg(), rd, x.Type() == ssa.TypeF64,
+		m.lowerFcvtToUint(ctxVReg, rn.reg(), rd, x.Type() == types.F64,
 			instr.Return().Type().Bits() == 64, op == ssa.OpcodeFcvtToUintSat)
 	case ssa.OpcodeFcvtFromSint:
 		x := instr.Arg()
 		rn := m.getOperand_Reg(m.c.ValueDefinition(x))
 		rd := newOperandReg(m.c.VRegOf(instr.Return()))
 		m.lowerFcvtFromSint(rn, rd,
-			x.Type() == ssa.TypeI64, instr.Return().Type().Bits() == 64)
+			x.Type() == types.I64, instr.Return().Type().Bits() == 64)
 	case ssa.OpcodeFcvtFromUint:
 		x := instr.Arg()
 		rn := m.getOperand_Reg(m.c.ValueDefinition(x))
 		rd := newOperandReg(m.c.VRegOf(instr.Return()))
-		m.lowerFcvtFromUint(rn, rd, x.Type() == ssa.TypeI64,
+		m.lowerFcvtFromUint(rn, rd, x.Type() == types.I64,
 			instr.Return().Type().Bits() == 64)
 	case ssa.OpcodeVanyTrue:
 		m.lowerVanyTrue(instr)
@@ -604,13 +605,13 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePaddb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePaddw
-		case ssa.VecLaneI32x4:
+		case types.VecLaneI32x4:
 			vecOp = sseOpcodePaddd
-		case ssa.VecLaneI64x2:
+		case types.VecLaneI64x2:
 			vecOp = sseOpcodePaddq
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -619,9 +620,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePaddsb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePaddsw
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -630,9 +631,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePaddusb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePaddusw
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -641,13 +642,13 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePsubb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePsubw
-		case ssa.VecLaneI32x4:
+		case types.VecLaneI32x4:
 			vecOp = sseOpcodePsubd
-		case ssa.VecLaneI64x2:
+		case types.VecLaneI64x2:
 			vecOp = sseOpcodePsubq
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -656,9 +657,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePsubsb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePsubsw
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -667,9 +668,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePsubusb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePsubusw
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -682,19 +683,19 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		rd := m.c.VRegOf(instr.Return())
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePsubb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePsubw
-		case ssa.VecLaneI32x4:
+		case types.VecLaneI32x4:
 			vecOp = sseOpcodePsubd
-		case ssa.VecLaneI64x2:
+		case types.VecLaneI64x2:
 			vecOp = sseOpcodePsubq
 		default:
 			panic("BUG")
 		}
 
-		tmp := m.c.AllocateVReg(ssa.TypeV128)
+		tmp := m.c.AllocateVReg(types.V128)
 		m.insert(m.allocateInstr().asZeros(tmp))
 
 		i := m.allocateInstr()
@@ -706,9 +707,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneF32x4:
+		case types.VecLaneF32x4:
 			vecOp = sseOpcodeAddps
-		case ssa.VecLaneF64x2:
+		case types.VecLaneF64x2:
 			vecOp = sseOpcodeAddpd
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -717,9 +718,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneF32x4:
+		case types.VecLaneF32x4:
 			vecOp = sseOpcodeSubps
-		case ssa.VecLaneF64x2:
+		case types.VecLaneF64x2:
 			vecOp = sseOpcodeSubpd
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -728,9 +729,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneF32x4:
+		case types.VecLaneF32x4:
 			vecOp = sseOpcodeDivps
-		case ssa.VecLaneF64x2:
+		case types.VecLaneF64x2:
 			vecOp = sseOpcodeDivpd
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -739,9 +740,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneF32x4:
+		case types.VecLaneF32x4:
 			vecOp = sseOpcodeMulps
-		case ssa.VecLaneF64x2:
+		case types.VecLaneF64x2:
 			vecOp = sseOpcodeMulpd
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -751,14 +752,14 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		rn := m.getOperand_Reg(m.c.ValueDefinition(x))
 		rd := m.c.VRegOf(instr.Return())
 
-		tmp := m.c.AllocateVReg(ssa.TypeV128)
+		tmp := m.c.AllocateVReg(types.V128)
 
 		var shiftOp, xorOp sseOpcode
 		var shiftAmt uint32
 		switch lane {
-		case ssa.VecLaneF32x4:
+		case types.VecLaneF32x4:
 			shiftOp, shiftAmt, xorOp = sseOpcodePslld, 31, sseOpcodeXorps
-		case ssa.VecLaneF64x2:
+		case types.VecLaneF64x2:
 			shiftOp, shiftAmt, xorOp = sseOpcodePsllq, 63, sseOpcodeXorpd
 		}
 
@@ -794,9 +795,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneF32x4:
+		case types.VecLaneF32x4:
 			vecOp = sseOpcodeSqrtps
-		case ssa.VecLaneF64x2:
+		case types.VecLaneF64x2:
 			vecOp = sseOpcodeSqrtpd
 		}
 		i := m.allocateInstr()
@@ -807,11 +808,11 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePminsb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePminsw
-		case ssa.VecLaneI32x4:
+		case types.VecLaneI32x4:
 			vecOp = sseOpcodePminsd
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -820,11 +821,11 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePminub
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePminuw
-		case ssa.VecLaneI32x4:
+		case types.VecLaneI32x4:
 			vecOp = sseOpcodePminud
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -833,11 +834,11 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePmaxsb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePmaxsw
-		case ssa.VecLaneI32x4:
+		case types.VecLaneI32x4:
 			vecOp = sseOpcodePmaxsd
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -846,11 +847,11 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePmaxub
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePmaxuw
-		case ssa.VecLaneI32x4:
+		case types.VecLaneI32x4:
 			vecOp = sseOpcodePmaxud
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -859,9 +860,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneI8x16:
+		case types.VecLaneI8x16:
 			vecOp = sseOpcodePavgb
-		case ssa.VecLaneI16x8:
+		case types.VecLaneI16x8:
 			vecOp = sseOpcodePavgw
 		}
 		m.lowerVbBinOp(vecOp, x, y, instr.Return())
@@ -904,7 +905,7 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		// Both movss and movsd clears the higher bits of the destination register upt 128 bits.
 		// https://www.felixcloutier.com/x86/movss
 		// https://www.felixcloutier.com/x86/movsd
-		if typ == ssa.TypeF32 {
+		if typ == types.F32 {
 			sseOp = sseOpcodeMovss
 		} else {
 			sseOp = sseOpcodeMovsd
@@ -917,9 +918,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneF32x4:
+		case types.VecLaneF32x4:
 			vecOp = sseOpcodeMinps
-		case ssa.VecLaneF64x2:
+		case types.VecLaneF64x2:
 			vecOp = sseOpcodeMinpd
 		default:
 			panic("BUG: unexpected lane type")
@@ -930,9 +931,9 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		x, y, lane := instr.Arg2WithLane()
 		var vecOp sseOpcode
 		switch lane {
-		case ssa.VecLaneF32x4:
+		case types.VecLaneF32x4:
 			vecOp = sseOpcodeMaxps
-		case ssa.VecLaneF64x2:
+		case types.VecLaneF64x2:
 			vecOp = sseOpcodeMaxpd
 		default:
 			panic("BUG: unexpected lane type")
@@ -953,19 +954,19 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 
 	case ssa.OpcodeVCeil:
 		x, lane := instr.ArgWithLane()
-		m.lowerVRound(x, instr.Return(), 0x2, lane == ssa.VecLaneF64x2)
+		m.lowerVRound(x, instr.Return(), 0x2, lane == types.VecLaneF64x2)
 
 	case ssa.OpcodeVFloor:
 		x, lane := instr.ArgWithLane()
-		m.lowerVRound(x, instr.Return(), 0x1, lane == ssa.VecLaneF64x2)
+		m.lowerVRound(x, instr.Return(), 0x1, lane == types.VecLaneF64x2)
 
 	case ssa.OpcodeVTrunc:
 		x, lane := instr.ArgWithLane()
-		m.lowerVRound(x, instr.Return(), 0x3, lane == ssa.VecLaneF64x2)
+		m.lowerVRound(x, instr.Return(), 0x3, lane == types.VecLaneF64x2)
 
 	case ssa.OpcodeVNearest:
 		x, lane := instr.ArgWithLane()
-		m.lowerVRound(x, instr.Return(), 0x0, lane == ssa.VecLaneF64x2)
+		m.lowerVRound(x, instr.Return(), 0x0, lane == types.VecLaneF64x2)
 
 	case ssa.OpcodeExtIaddPairwise:
 		x, lane, signed := instr.ExtIaddPairwiseData()
@@ -1056,7 +1057,7 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		retVal := instr.Return()
 		rd := m.c.VRegOf(retVal)
 
-		if retVal.Type() != ssa.TypeI32 {
+		if retVal.Type() != types.I32 {
 			panic("TODO?: Ireduce to non-i32")
 		}
 		m.insert(m.allocateInstr().asMovzxRmR(extModeLQ, rn, rd))
@@ -1145,7 +1146,7 @@ func (m *machine) lowerAtomicRmw(op ssa.AtomicRmwOp, addr, val ssa.Value, size u
 		m.clearHigherBitsForAtomic(valCopied, size, ret.Type())
 
 		memOp := newOperandMem(mem)
-		tmp := m.c.AllocateVReg(ssa.TypeI64)
+		tmp := m.c.AllocateVReg(types.I64)
 		beginLoop, beginLoopLabel := m.allocateBrTarget()
 		{
 			m.insert(beginLoop)
@@ -1212,16 +1213,16 @@ func (m *machine) lowerAtomicCas(addr, exp, repl ssa.Value, size uint64, ret ssa
 	m.copyTo(accumulator, m.c.VRegOf(ret))
 }
 
-func (m *machine) clearHigherBitsForAtomic(r regalloc.VReg, valSize uint64, resultType ssa.Type) {
+func (m *machine) clearHigherBitsForAtomic(r regalloc.VReg, valSize uint64, resultType types.Type) {
 	switch resultType {
-	case ssa.TypeI32:
+	case types.I32:
 		switch valSize {
 		case 1:
 			m.insert(m.allocateInstr().asMovzxRmR(extModeBL, newOperandReg(r), r))
 		case 2:
 			m.insert(m.allocateInstr().asMovzxRmR(extModeWL, newOperandReg(r), r))
 		}
-	case ssa.TypeI64:
+	case types.I64:
 		switch valSize {
 		case 1:
 			m.insert(m.allocateInstr().asMovzxRmR(extModeBQ, newOperandReg(r), r))
@@ -1237,13 +1238,13 @@ func (m *machine) lowerFcmp(instr *ssa.Instruction) {
 	f1, f2, and := m.lowerFcmpToFlags(instr)
 	rd := m.c.VRegOf(instr.Return())
 	if f2 == condInvalid {
-		tmp := m.c.AllocateVReg(ssa.TypeI32)
+		tmp := m.c.AllocateVReg(types.I32)
 		m.insert(m.allocateInstr().asSetcc(f1, tmp))
 		// On amd64, setcc only sets the first byte of the register, so we need to zero extend it to match
 		// the semantics of Icmp that sets either 0 or 1.
 		m.insert(m.allocateInstr().asMovzxRmR(extModeBQ, newOperandReg(tmp), rd))
 	} else {
-		tmp1, tmp2 := m.c.AllocateVReg(ssa.TypeI32), m.c.AllocateVReg(ssa.TypeI32)
+		tmp1, tmp2 := m.c.AllocateVReg(types.I32), m.c.AllocateVReg(types.I32)
 		m.insert(m.allocateInstr().asSetcc(f1, tmp1))
 		m.insert(m.allocateInstr().asSetcc(f2, tmp2))
 		var op aluRmiROpcode
@@ -1259,9 +1260,9 @@ func (m *machine) lowerFcmp(instr *ssa.Instruction) {
 
 func (m *machine) lowerIcmp(instr *ssa.Instruction) {
 	x, y, c := instr.IcmpData()
-	m.lowerIcmpToFlag(m.c.ValueDefinition(x), m.c.ValueDefinition(y), x.Type() == ssa.TypeI64)
+	m.lowerIcmpToFlag(m.c.ValueDefinition(x), m.c.ValueDefinition(y), x.Type() == types.I64)
 	rd := m.c.VRegOf(instr.Return())
-	tmp := m.c.AllocateVReg(ssa.TypeI32)
+	tmp := m.c.AllocateVReg(types.I32)
 	m.insert(m.allocateInstr().asSetcc(condFromSSAIntCmpCond(c), tmp))
 	// On amd64, setcc only sets the first byte of the register, so we need to zero extend it to match
 	// the semantics of Icmp that sets either 0 or 1.
@@ -1278,7 +1279,7 @@ func (m *machine) lowerSelect(x, y, cval, ret ssa.Value) {
 	case ssa.OpcodeIcmp:
 		icmp := cvalDef.Instr
 		xc, yc, cc := icmp.IcmpData()
-		m.lowerIcmpToFlag(m.c.ValueDefinition(xc), m.c.ValueDefinition(yc), xc.Type() == ssa.TypeI64)
+		m.lowerIcmpToFlag(m.c.ValueDefinition(xc), m.c.ValueDefinition(yc), xc.Type() == types.I64)
 		cond = condFromSSAIntCmpCond(cc)
 		icmp.Lowered()
 	default: // TODO: match ssa.OpcodeFcmp for optimization, but seems a bit complex.
@@ -1312,11 +1313,11 @@ func (m *machine) lowerSelect(x, y, cval, ret ssa.Value) {
 		mov := m.allocateInstr()
 		tmp := m.c.AllocateVReg(typ)
 		switch typ {
-		case ssa.TypeF32:
+		case types.F32:
 			mov.asXmmUnaryRmR(sseOpcodeMovss, yo, tmp)
-		case ssa.TypeF64:
+		case types.F64:
 			mov.asXmmUnaryRmR(sseOpcodeMovsd, yo, tmp)
-		case ssa.TypeV128:
+		case types.V128:
 			mov.asXmmUnaryRmR(sseOpcodeMovdqu, yo, tmp)
 		default:
 			panic("BUG")
@@ -1538,19 +1539,19 @@ func (m *machine) lowerUnaryRmR(si *ssa.Instruction, op unaryRmROpcode) {
 	m.insert(instr)
 }
 
-func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ ssa.Type, dst regalloc.VReg) {
+func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ types.Type, dst regalloc.VReg) {
 	mem := newOperandMem(m.lowerToAddressMode(ptr, offset))
 	load := m.allocateInstr()
 	switch typ {
-	case ssa.TypeI32:
+	case types.I32:
 		load.asMovzxRmR(extModeLQ, mem, dst)
-	case ssa.TypeI64:
+	case types.I64:
 		load.asMov64MR(mem, dst)
-	case ssa.TypeF32:
+	case types.F32:
 		load.asXmmUnaryRmR(sseOpcodeMovss, mem, dst)
-	case ssa.TypeF64:
+	case types.F64:
 		load.asXmmUnaryRmR(sseOpcodeMovsd, mem, dst)
-	case ssa.TypeV128:
+	case types.V128:
 		load.asXmmUnaryRmR(sseOpcodeMovdqu, mem, dst)
 	default:
 		panic("BUG")
@@ -1595,7 +1596,7 @@ func (m *machine) lowerExitIfTrueWithCode(execCtx regalloc.VReg, cond ssa.Value,
 	x, y, c := cvalInstr.IcmpData()
 	xx, yy := m.c.ValueDefinition(x), m.c.ValueDefinition(y)
 	if !m.tryLowerBandToFlag(xx, yy) {
-		m.lowerIcmpToFlag(xx, yy, x.Type() == ssa.TypeI64)
+		m.lowerIcmpToFlag(xx, yy, x.Type() == types.I64)
 	}
 
 	jmpIf := m.allocateInstr()
@@ -1630,7 +1631,7 @@ func (m *machine) tryLowerBandToFlag(x, y backend.SSAValueDefinition) (ok bool) 
 
 	xx := m.getOperand_Reg(m.c.ValueDefinition(bandX))
 	yy := m.getOperand_Mem_Imm32_Reg(m.c.ValueDefinition(bandY))
-	test := m.allocateInstr().asCmpRmiR(false, yy, xx.reg(), bandX.Type() == ssa.TypeI64)
+	test := m.allocateInstr().asCmpRmiR(false, yy, xx.reg(), bandX.Type() == types.I64)
 	m.insert(test)
 	bandInstr.MarkLowered()
 	return true
@@ -1870,15 +1871,15 @@ func (m *machine) lowerStore(si *ssa.Instruction) {
 
 	store := m.allocateInstr()
 	switch value.Type() {
-	case ssa.TypeI32:
+	case types.I32:
 		store.asMovRM(rm.reg(), mem, storeSizeInBits/8)
-	case ssa.TypeI64:
+	case types.I64:
 		store.asMovRM(rm.reg(), mem, storeSizeInBits/8)
-	case ssa.TypeF32:
+	case types.F32:
 		store.asXmmMovRM(sseOpcodeMovss, rm.reg(), mem)
-	case ssa.TypeF64:
+	case types.F64:
 		store.asXmmMovRM(sseOpcodeMovsd, rm.reg(), mem)
-	case ssa.TypeV128:
+	case types.V128:
 		store.asXmmMovRM(sseOpcodeMovdqu, rm.reg(), mem)
 	default:
 		panic("BUG")
@@ -1924,7 +1925,7 @@ func (m *machine) lowerCall(si *ssa.Instruction) {
 func (m *machine) prepareCall(si *ssa.Instruction, isDirectCall bool) (ssa.Value, ssa.FuncRef, bool, *backend.FunctionABI, int64) {
 	var indirectCalleePtr ssa.Value
 	var directCallee ssa.FuncRef
-	var sigID ssa.SignatureID
+	var sigID types.SignatureID
 	var args []ssa.Value
 	var isMemmove bool
 	if isDirectCall {
@@ -1985,7 +1986,7 @@ func (m *machine) lowerTailCall(si *ssa.Instruction) {
 		// For details, see internal/engine/RATIONALE.md
 		ptrOp := m.getOperand_Reg(m.c.ValueDefinition(indirectCalleePtr))
 		tmpJmp := r11VReg
-		m.InsertMove(tmpJmp, ptrOp.reg(), ssa.TypeI64)
+		m.InsertMove(tmpJmp, ptrOp.reg(), types.I64)
 		callInd := m.allocateInstr().asTailCallReturnCallIndirect(newOperandReg(tmpJmp), calleeABI)
 		m.insert(callInd)
 	case isDirectCall && !isAllRegs:
@@ -2019,15 +2020,15 @@ func (m *machine) callerGenVRegToFunctionArg(a *backend.FunctionABI, argIndex in
 			// -stackSlotSize because the stack pointer is not yet decreased.
 			uint32(arg.Offset-stackSlotSize), rspVReg))
 		switch arg.Type {
-		case ssa.TypeI32:
+		case types.I32:
 			store.asMovRM(reg, mem, 4)
-		case ssa.TypeI64:
+		case types.I64:
 			store.asMovRM(reg, mem, 8)
-		case ssa.TypeF32:
+		case types.F32:
 			store.asXmmMovRM(sseOpcodeMovss, reg, mem)
-		case ssa.TypeF64:
+		case types.F64:
 			store.asXmmMovRM(sseOpcodeMovsd, reg, mem)
-		case ssa.TypeV128:
+		case types.V128:
 			store.asXmmMovRM(sseOpcodeMovdqu, reg, mem)
 		default:
 			panic("BUG")
@@ -2046,15 +2047,15 @@ func (m *machine) callerGenFunctionReturnVReg(a *backend.FunctionABI, retIndex i
 			// -stackSlotSize because the stack pointer is not yet decreased.
 			uint32(a.ArgStackSize+r.Offset-stackSlotSize), rspVReg))
 		switch r.Type {
-		case ssa.TypeI32:
+		case types.I32:
 			load.asMovzxRmR(extModeLQ, mem, reg)
-		case ssa.TypeI64:
+		case types.I64:
 			load.asMov64MR(mem, reg)
-		case ssa.TypeF32:
+		case types.F32:
 			load.asXmmUnaryRmR(sseOpcodeMovss, mem, reg)
-		case ssa.TypeF64:
+		case types.F64:
 			load.asXmmUnaryRmR(sseOpcodeMovsd, mem, reg)
-		case ssa.TypeV128:
+		case types.V128:
 			load.asXmmUnaryRmR(sseOpcodeMovdqu, mem, reg)
 		default:
 			panic("BUG")
@@ -2064,19 +2065,19 @@ func (m *machine) callerGenFunctionReturnVReg(a *backend.FunctionABI, retIndex i
 }
 
 // InsertMove implements backend.Machine.
-func (m *machine) InsertMove(dst, src regalloc.VReg, typ ssa.Type) {
+func (m *machine) InsertMove(dst, src regalloc.VReg, typ types.Type) {
 	switch typ {
-	case ssa.TypeI32, ssa.TypeI64:
+	case types.I32, types.I64:
 		i := m.allocateInstr().asMovRR(src, dst, typ.Bits() == 64)
 		m.insert(i)
-	case ssa.TypeF32, ssa.TypeF64, ssa.TypeV128:
+	case types.F32, types.F64, types.V128:
 		var op sseOpcode
 		switch typ {
-		case ssa.TypeF32:
+		case types.F32:
 			op = sseOpcodeMovss
-		case ssa.TypeF64:
+		case types.F64:
 			op = sseOpcodeMovsd
-		case ssa.TypeV128:
+		case types.V128:
 			op = sseOpcodeMovdqa
 		}
 		i := m.allocateInstr().asXmmUnaryRmR(op, newOperandReg(src), dst)
@@ -2295,7 +2296,7 @@ func (m *machine) lowerFcmpToFlags(instr *ssa.Instruction) (f1, f2 cond, and boo
 	}
 
 	var opc sseOpcode
-	if x.Type() == ssa.TypeF32 {
+	if x.Type() == types.F32 {
 		opc = sseOpcodeUcomiss
 	} else {
 		opc = sseOpcodeUcomisd
@@ -2691,16 +2692,16 @@ func (m *machine) lowerBitcast(instr *ssa.Instruction) {
 	rn := m.getOperand_Reg(m.c.ValueDefinition(x))
 	rd := m.c.VRegOf(instr.Return())
 	switch {
-	case srcTyp == ssa.TypeF32 && dstTyp == ssa.TypeI32:
+	case srcTyp == types.F32 && dstTyp == types.I32:
 		cvt := m.allocateInstr().asXmmToGpr(sseOpcodeMovd, rn.reg(), rd, false)
 		m.insert(cvt)
-	case srcTyp == ssa.TypeI32 && dstTyp == ssa.TypeF32:
+	case srcTyp == types.I32 && dstTyp == types.F32:
 		cvt := m.allocateInstr().asGprToXmm(sseOpcodeMovd, rn, rd, false)
 		m.insert(cvt)
-	case srcTyp == ssa.TypeF64 && dstTyp == ssa.TypeI64:
+	case srcTyp == types.F64 && dstTyp == types.I64:
 		cvt := m.allocateInstr().asXmmToGpr(sseOpcodeMovq, rn.reg(), rd, true)
 		m.insert(cvt)
-	case srcTyp == ssa.TypeI64 && dstTyp == ssa.TypeF64:
+	case srcTyp == types.I64 && dstTyp == types.F64:
 		cvt := m.allocateInstr().asGprToXmm(sseOpcodeMovq, rn, rd, true)
 		m.insert(cvt)
 	default:
@@ -2711,13 +2712,13 @@ func (m *machine) lowerBitcast(instr *ssa.Instruction) {
 func (m *machine) lowerFcvtToSint(ctxVReg, rn, rd regalloc.VReg, src64, dst64, sat bool) {
 	var tmpXmm regalloc.VReg
 	if dst64 {
-		tmpXmm = m.c.AllocateVReg(ssa.TypeF64)
+		tmpXmm = m.c.AllocateVReg(types.F64)
 	} else {
-		tmpXmm = m.c.AllocateVReg(ssa.TypeF32)
+		tmpXmm = m.c.AllocateVReg(types.F32)
 	}
 
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmpXmm))
-	tmpGp, tmpGp2 := m.c.AllocateVReg(ssa.TypeI64), m.c.AllocateVReg(ssa.TypeI64)
+	tmpGp, tmpGp2 := m.c.AllocateVReg(types.I64), m.c.AllocateVReg(types.I64)
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmpGp))
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmpGp2))
 
@@ -2854,10 +2855,10 @@ func (m *machine) lowerFcvtToSintSequenceAfterRegalloc(i *instruction) {
 }
 
 func (m *machine) lowerFcvtToUint(ctxVReg, rn, rd regalloc.VReg, src64, dst64, sat bool) {
-	tmpXmm, tmpXmm2 := m.c.AllocateVReg(ssa.TypeF64), m.c.AllocateVReg(ssa.TypeF64)
+	tmpXmm, tmpXmm2 := m.c.AllocateVReg(types.F64), m.c.AllocateVReg(types.F64)
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmpXmm))
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmpXmm2))
-	tmpGp, tmpGp2 := m.c.AllocateVReg(ssa.TypeI64), m.c.AllocateVReg(ssa.TypeI64)
+	tmpGp, tmpGp2 := m.c.AllocateVReg(types.I64), m.c.AllocateVReg(types.I64)
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmpGp))
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmpGp2))
 
@@ -3059,7 +3060,7 @@ func (m *machine) lowerFcvtFromUint(rn, rd operand, src64, dst64 bool) {
 	if !src64 {
 		// Before we convert, we have to clear the higher 32-bits of the 64-bit register
 		// to get the correct result.
-		tmp := m.c.AllocateVReg(ssa.TypeI32)
+		tmp := m.c.AllocateVReg(types.I32)
 		m.insert(m.allocateInstr().asMovzxRmR(extModeLQ, rn, tmp))
 		m.insert(m.allocateInstr().asGprToXmm(op, newOperandReg(tmp), rd.reg(), true))
 		return
@@ -3070,9 +3071,9 @@ func (m *machine) lowerFcvtFromUint(rn, rd operand, src64, dst64 bool) {
 
 	var tmpXmm regalloc.VReg
 	if dst64 {
-		tmpXmm = m.c.AllocateVReg(ssa.TypeF64)
+		tmpXmm = m.c.AllocateVReg(types.F64)
 	} else {
-		tmpXmm = m.c.AllocateVReg(ssa.TypeF32)
+		tmpXmm = m.c.AllocateVReg(types.F32)
 	}
 
 	// Check if the most significant bit (sign bit) is set.
@@ -3143,7 +3144,7 @@ func (m *machine) lowerVanyTrue(instr *ssa.Instruction) {
 	rm := m.getOperand_Reg(m.c.ValueDefinition(x))
 	rd := m.c.VRegOf(instr.Return())
 
-	tmp := m.c.AllocateVReg(ssa.TypeI32)
+	tmp := m.c.AllocateVReg(types.I32)
 
 	cmp := m.allocateInstr()
 	cmp.asXmmCmpRmR(sseOpcodePtest, rm, rm.reg())
@@ -3165,19 +3166,19 @@ func (m *machine) lowerVallTrue(instr *ssa.Instruction) {
 	x, lane := instr.ArgWithLane()
 	var op sseOpcode
 	switch lane {
-	case ssa.VecLaneI8x16:
+	case types.VecLaneI8x16:
 		op = sseOpcodePcmpeqb
-	case ssa.VecLaneI16x8:
+	case types.VecLaneI16x8:
 		op = sseOpcodePcmpeqw
-	case ssa.VecLaneI32x4:
+	case types.VecLaneI32x4:
 		op = sseOpcodePcmpeqd
-	case ssa.VecLaneI64x2:
+	case types.VecLaneI64x2:
 		op = sseOpcodePcmpeqq
 	}
 	rm := m.getOperand_Reg(m.c.ValueDefinition(x))
 	rd := m.c.VRegOf(instr.Return())
 
-	tmp := m.c.AllocateVReg(ssa.TypeV128)
+	tmp := m.c.AllocateVReg(types.V128)
 
 	zeros := m.allocateInstr()
 	zeros.asZeros(tmp)
@@ -3191,7 +3192,7 @@ func (m *machine) lowerVallTrue(instr *ssa.Instruction) {
 	test.asXmmCmpRmR(sseOpcodePtest, newOperandReg(tmp), tmp)
 	m.insert(test)
 
-	tmp2 := m.c.AllocateVReg(ssa.TypeI32)
+	tmp2 := m.c.AllocateVReg(types.I32)
 
 	setcc := m.allocateInstr()
 	setcc.asSetcc(condZ, tmp2)
@@ -3210,12 +3211,12 @@ func (m *machine) lowerVhighBits(instr *ssa.Instruction) {
 	rm := m.getOperand_Reg(m.c.ValueDefinition(x))
 	rd := m.c.VRegOf(instr.Return())
 	switch lane {
-	case ssa.VecLaneI8x16:
+	case types.VecLaneI8x16:
 		mov := m.allocateInstr()
 		mov.asXmmToGpr(sseOpcodePmovmskb, rm.reg(), rd, false)
 		m.insert(mov)
 
-	case ssa.VecLaneI16x8:
+	case types.VecLaneI16x8:
 		// When we have:
 		// 	R1 = [R1(w1), R1(w2), R1(w3), R1(w4), R1(w5), R1(w6), R1(w7), R1(v8)]
 		// 	R2 = [R2(w1), R2(w2), R2(w3), R2(v4), R2(w5), R2(w6), R2(w7), R2(v8)]
@@ -3237,7 +3238,7 @@ func (m *machine) lowerVhighBits(instr *ssa.Instruction) {
 		//
 		// Therefore, v.register ends up having i-th and (i+8)-th bit set if i-th lane is negative (for i in 0..8).
 		tmp := m.copyToTmp(rm.reg())
-		res := m.c.AllocateVReg(ssa.TypeI32)
+		res := m.c.AllocateVReg(types.I32)
 
 		pak := m.allocateInstr()
 		pak.asXmmRmR(sseOpcodePacksswb, rm, tmp)
@@ -3254,12 +3255,12 @@ func (m *machine) lowerVhighBits(instr *ssa.Instruction) {
 
 		m.copyTo(res, rd)
 
-	case ssa.VecLaneI32x4:
+	case types.VecLaneI32x4:
 		mov := m.allocateInstr()
 		mov.asXmmToGpr(sseOpcodeMovmskps, rm.reg(), rd, true)
 		m.insert(mov)
 
-	case ssa.VecLaneI64x2:
+	case types.VecLaneI64x2:
 		mov := m.allocateInstr()
 		mov.asXmmToGpr(sseOpcodeMovmskpd, rm.reg(), rd, true)
 		m.insert(mov)
@@ -3273,7 +3274,7 @@ func (m *machine) lowerVbnot(instr *ssa.Instruction) {
 	rd := m.c.VRegOf(instr.Return())
 
 	tmp := m.copyToTmp(rm.reg())
-	tmp2 := m.c.AllocateVReg(ssa.TypeV128)
+	tmp2 := m.c.AllocateVReg(types.V128)
 
 	// Ensure tmp2 is considered defined by regalloc.
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmp2))
@@ -3291,36 +3292,36 @@ func (m *machine) lowerVbnot(instr *ssa.Instruction) {
 	m.copyTo(tmp, rd)
 }
 
-func (m *machine) lowerSplat(x, ret ssa.Value, lane ssa.VecLane) {
-	tmpDst := m.c.AllocateVReg(ssa.TypeV128)
+func (m *machine) lowerSplat(x, ret ssa.Value, lane types.VecLane) {
+	tmpDst := m.c.AllocateVReg(types.V128)
 	m.insert(m.allocateInstr().asDefineUninitializedReg(tmpDst))
 
 	switch lane {
-	case ssa.VecLaneI8x16:
-		tmp := m.c.AllocateVReg(ssa.TypeV128)
+	case types.VecLaneI8x16:
+		tmp := m.c.AllocateVReg(types.V128)
 		m.insert(m.allocateInstr().asDefineUninitializedReg(tmp))
 		xx := m.getOperand_Mem_Reg(m.c.ValueDefinition(x))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePinsrb, 0, xx, tmpDst))
 		m.insert(m.allocateInstr().asXmmRmR(sseOpcodePxor, newOperandReg(tmp), tmp))
 		m.insert(m.allocateInstr().asXmmRmR(sseOpcodePshufb, newOperandReg(tmp), tmpDst))
-	case ssa.VecLaneI16x8:
+	case types.VecLaneI16x8:
 		xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePinsrw, 0, xx, tmpDst))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePinsrw, 1, xx, tmpDst))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePshufd, 0, newOperandReg(tmpDst), tmpDst))
-	case ssa.VecLaneI32x4:
+	case types.VecLaneI32x4:
 		xx := m.getOperand_Mem_Reg(m.c.ValueDefinition(x))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePinsrd, 0, xx, tmpDst))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePshufd, 0, newOperandReg(tmpDst), tmpDst))
-	case ssa.VecLaneI64x2:
+	case types.VecLaneI64x2:
 		xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePinsrq, 0, xx, tmpDst))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePinsrq, 1, xx, tmpDst))
-	case ssa.VecLaneF32x4:
+	case types.VecLaneF32x4:
 		xx := m.getOperand_Mem_Reg(m.c.ValueDefinition(x))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodeInsertps, 0, xx, tmpDst))
 		m.insert(m.allocateInstr().asXmmRmRImm(sseOpcodePshufd, 0, newOperandReg(tmpDst), tmpDst))
-	case ssa.VecLaneF64x2:
+	case types.VecLaneF64x2:
 		xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 		m.insert(m.allocateInstr().asXmmUnaryRmR(sseOpcodeMovsd, xx, tmpDst))
 		m.insert(m.allocateInstr().asXmmRmR(sseOpcodeMovlhps, xx, tmpDst))
@@ -3361,7 +3362,7 @@ func (m *machine) lowerShuffle(x, y ssa.Value, lo, hi uint64, ret ssa.Value) {
 	tmpX, tmpY := m.copyToTmp(xx.reg()), m.copyToTmp(yy.reg())
 
 	// Apply mask to X.
-	tmp := m.c.AllocateVReg(ssa.TypeV128)
+	tmp := m.c.AllocateVReg(types.V128)
 	loadMaskLo := m.allocateInstr().asXmmUnaryRmR(sseOpcodeMovdqu, newOperandMem(m.newAmodeRipRel(xl)), tmp)
 	m.insert(loadMaskLo)
 	m.insert(m.allocateInstr().asXmmRmR(sseOpcodePshufb, newOperandReg(tmp), tmpX))
@@ -3405,12 +3406,12 @@ func (m *machine) lowerVbBinOp(op sseOpcode, x, y, ret ssa.Value) {
 	m.copyTo(tmp, rd)
 }
 
-func (m *machine) lowerVFcmp(x, y ssa.Value, c ssa.FloatCmpCond, ret ssa.Value, lane ssa.VecLane) {
+func (m *machine) lowerVFcmp(x, y ssa.Value, c ssa.FloatCmpCond, ret ssa.Value, lane types.VecLane) {
 	var cmpOp sseOpcode
 	switch lane {
-	case ssa.VecLaneF32x4:
+	case types.VecLaneF32x4:
 		cmpOp = sseOpcodeCmpps
-	case ssa.VecLaneF64x2:
+	case types.VecLaneF64x2:
 		cmpOp = sseOpcodeCmppd
 	default:
 		panic(fmt.Sprintf("invalid lane type: %s", lane))
@@ -3437,7 +3438,7 @@ func (m *machine) lowerVFcmp(x, y ssa.Value, c ssa.FloatCmpCond, ret ssa.Value, 
 		panic(fmt.Sprintf("invalid float comparison condition: %s", c))
 	}
 
-	tmp := m.c.AllocateVReg(ssa.TypeV128)
+	tmp := m.c.AllocateVReg(types.V128)
 	xxx := m.getOperand_Mem_Reg(xx)
 	m.insert(m.allocateInstr().asXmmUnaryRmR(sseOpcodeMovdqu, xxx, tmp))
 
@@ -3447,26 +3448,26 @@ func (m *machine) lowerVFcmp(x, y ssa.Value, c ssa.FloatCmpCond, ret ssa.Value, 
 	m.copyTo(tmp, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerVIcmp(x, y ssa.Value, c ssa.IntegerCmpCond, ret ssa.Value, lane ssa.VecLane) {
+func (m *machine) lowerVIcmp(x, y ssa.Value, c ssa.IntegerCmpCond, ret ssa.Value, lane types.VecLane) {
 	var eq, gt, maxu, minu, mins sseOpcode
 	switch lane {
-	case ssa.VecLaneI8x16:
+	case types.VecLaneI8x16:
 		eq, gt, maxu, minu, mins = sseOpcodePcmpeqb, sseOpcodePcmpgtb, sseOpcodePmaxub, sseOpcodePminub, sseOpcodePminsb
-	case ssa.VecLaneI16x8:
+	case types.VecLaneI16x8:
 		eq, gt, maxu, minu, mins = sseOpcodePcmpeqw, sseOpcodePcmpgtw, sseOpcodePmaxuw, sseOpcodePminuw, sseOpcodePminsw
-	case ssa.VecLaneI32x4:
+	case types.VecLaneI32x4:
 		eq, gt, maxu, minu, mins = sseOpcodePcmpeqd, sseOpcodePcmpgtd, sseOpcodePmaxud, sseOpcodePminud, sseOpcodePminsd
-	case ssa.VecLaneI64x2:
+	case types.VecLaneI64x2:
 		eq, gt = sseOpcodePcmpeqq, sseOpcodePcmpgtq
 	default:
 		panic(fmt.Sprintf("invalid lane type: %s", lane))
 	}
 
-	tmp := m.c.AllocateVReg(ssa.TypeV128)
+	tmp := m.c.AllocateVReg(types.V128)
 	var op operand
 	switch c {
 	case ssa.IntegerCmpCondSignedLessThanOrEqual:
-		if lane == ssa.VecLaneI64x2 {
+		if lane == types.VecLaneI64x2 {
 			x := m.getOperand_Mem_Reg(m.c.ValueDefinition(x))
 			// Copy x to tmp.
 			m.insert(m.allocateInstr().asXmmUnaryRmR(sseOpcodeMovdqu, x, tmp))
@@ -3478,7 +3479,7 @@ func (m *machine) lowerVIcmp(x, y ssa.Value, c ssa.IntegerCmpCond, ret ssa.Value
 			op = m.getOperand_Mem_Reg(m.c.ValueDefinition(x))
 		}
 	case ssa.IntegerCmpCondSignedGreaterThanOrEqual:
-		if lane == ssa.VecLaneI64x2 {
+		if lane == types.VecLaneI64x2 {
 			y := m.getOperand_Mem_Reg(m.c.ValueDefinition(y))
 			// Copy y to tmp.
 			m.insert(m.allocateInstr().asXmmUnaryRmR(sseOpcodeMovdqu, y, tmp))
@@ -3508,7 +3509,7 @@ func (m *machine) lowerVIcmp(x, y ssa.Value, c ssa.IntegerCmpCond, ret ssa.Value
 		// First we compare for equality.
 		m.insert(m.allocateInstr().asXmmRmR(eq, op, tmp))
 		// Then flip the bits. To do so, we set all bits on tmp2.
-		tmp2 := m.c.AllocateVReg(ssa.TypeV128)
+		tmp2 := m.c.AllocateVReg(types.V128)
 		m.insert(m.allocateInstr().asDefineUninitializedReg(tmp2))
 		m.insert(m.allocateInstr().asXmmRmR(eq, newOperandReg(tmp2), tmp2))
 		// And then xor with tmp.
@@ -3516,10 +3517,10 @@ func (m *machine) lowerVIcmp(x, y ssa.Value, c ssa.IntegerCmpCond, ret ssa.Value
 	case ssa.IntegerCmpCondSignedGreaterThan, ssa.IntegerCmpCondSignedLessThan:
 		m.insert(m.allocateInstr().asXmmRmR(gt, op, tmp))
 	case ssa.IntegerCmpCondSignedGreaterThanOrEqual, ssa.IntegerCmpCondSignedLessThanOrEqual:
-		if lane == ssa.VecLaneI64x2 {
+		if lane == types.VecLaneI64x2 {
 			m.insert(m.allocateInstr().asXmmRmR(gt, op, tmp))
 			// Then flip the bits. To do so, we set all bits on tmp2.
-			tmp2 := m.c.AllocateVReg(ssa.TypeV128)
+			tmp2 := m.c.AllocateVReg(types.V128)
 			m.insert(m.allocateInstr().asDefineUninitializedReg(tmp2))
 			m.insert(m.allocateInstr().asXmmRmR(eq, newOperandReg(tmp2), tmp2))
 			// And then xor with tmp.
@@ -3536,7 +3537,7 @@ func (m *machine) lowerVIcmp(x, y ssa.Value, c ssa.IntegerCmpCond, ret ssa.Value
 		// Then compare for equality.
 		m.insert(m.allocateInstr().asXmmRmR(eq, op, tmp))
 		// Then flip the bits. To do so, we set all bits on tmp2.
-		tmp2 := m.c.AllocateVReg(ssa.TypeV128)
+		tmp2 := m.c.AllocateVReg(types.V128)
 		m.insert(m.allocateInstr().asDefineUninitializedReg(tmp2))
 		m.insert(m.allocateInstr().asXmmRmR(eq, newOperandReg(tmp2), tmp2))
 		// And then xor with tmp.
@@ -3604,7 +3605,7 @@ func (m *machine) lowerVFmin(instr *ssa.Instruction) {
 
 	var min, cmp, andn, or, srl /* shift right logical */ sseOpcode
 	var shiftNumToInverseNaN uint32
-	if lane == ssa.VecLaneF32x4 {
+	if lane == types.VecLaneF32x4 {
 		min, cmp, andn, or, srl, shiftNumToInverseNaN = sseOpcodeMinps, sseOpcodeCmpps, sseOpcodeAndnps, sseOpcodeOrps, sseOpcodePsrld, 0xa
 	} else {
 		min, cmp, andn, or, srl, shiftNumToInverseNaN = sseOpcodeMinpd, sseOpcodeCmppd, sseOpcodeAndnpd, sseOpcodeOrpd, sseOpcodePsrlq, 0xd
@@ -3672,7 +3673,7 @@ func (m *machine) lowerVFmax(instr *ssa.Instruction) {
 
 	var max, cmp, andn, or, xor, sub, srl /* shift right logical */ sseOpcode
 	var shiftNumToInverseNaN uint32
-	if lane == ssa.VecLaneF32x4 {
+	if lane == types.VecLaneF32x4 {
 		max, cmp, andn, or, xor, sub, srl, shiftNumToInverseNaN = sseOpcodeMaxps, sseOpcodeCmpps, sseOpcodeAndnps, sseOpcodeOrps, sseOpcodeXorps, sseOpcodeSubps, sseOpcodePsrld, 0xa
 	} else {
 		max, cmp, andn, or, xor, sub, srl, shiftNumToInverseNaN = sseOpcodeMaxpd, sseOpcodeCmppd, sseOpcodeAndnpd, sseOpcodeOrpd, sseOpcodeXorpd, sseOpcodeSubpd, sseOpcodePsrlq, 0xd
@@ -3746,7 +3747,7 @@ func (m *machine) lowerVFabs(instr *ssa.Instruction) {
 	rm := m.getOperand_Mem_Reg(m.c.ValueDefinition(x))
 	rd := m.c.VRegOf(instr.Return())
 
-	tmp := m.c.AllocateVReg(ssa.TypeV128)
+	tmp := m.c.AllocateVReg(types.V128)
 
 	def := m.allocateInstr()
 	def.asDefineUninitializedReg(tmp)
@@ -3758,7 +3759,7 @@ func (m *machine) lowerVFabs(instr *ssa.Instruction) {
 	m.insert(pcmp)
 
 	switch lane {
-	case ssa.VecLaneF32x4:
+	case types.VecLaneF32x4:
 		// Shift right packed single floats by 1 to clear the sign bits.
 		shift := m.allocateInstr()
 		shift.asXmmRmiReg(sseOpcodePsrld, newOperandImm32(1), tmp)
@@ -3767,7 +3768,7 @@ func (m *machine) lowerVFabs(instr *ssa.Instruction) {
 		andp := m.allocateInstr()
 		andp.asXmmRmR(sseOpcodeAndpd, rm, tmp)
 		m.insert(andp)
-	case ssa.VecLaneF64x2:
+	case types.VecLaneF64x2:
 		// Shift right packed single floats by 1 to clear the sign bits.
 		shift := m.allocateInstr()
 		shift.asXmmRmiReg(sseOpcodePsrlq, newOperandImm32(1), tmp)

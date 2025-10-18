@@ -5,6 +5,7 @@ import (
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -224,17 +225,17 @@ func (m *machine) lowerExtLoad(op ssa.Opcode, ptr ssa.Value, offset uint32, ret 
 	m.insert(load)
 }
 
-func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ ssa.Type, ret ssa.Value) {
+func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ types.Type, ret ssa.Value) {
 	amode := m.lowerToAddressMode(ptr, offset, typ.Bits())
 
 	dst := m.compiler.VRegOf(ret)
 	load := m.allocateInstr()
 	switch typ {
-	case ssa.TypeI32, ssa.TypeI64:
+	case types.I32, types.I64:
 		load.asULoad(dst, amode, typ.Bits())
-	case ssa.TypeF32, ssa.TypeF64:
+	case types.F32, types.F64:
 		load.asFpuLoad(dst, amode, typ.Bits())
-	case ssa.TypeV128:
+	case types.V128:
 		load.asFpuLoad(dst, amode, 128)
 	default:
 		panic("TODO")
@@ -242,10 +243,10 @@ func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ ssa.Type, ret ssa.
 	m.insert(load)
 }
 
-func (m *machine) lowerLoadSplat(ptr ssa.Value, offset uint32, lane ssa.VecLane, ret ssa.Value) {
+func (m *machine) lowerLoadSplat(ptr ssa.Value, offset uint32, lane types.VecLane, ret ssa.Value) {
 	// vecLoad1R has offset address mode (base+imm) only for post index, so we simply add the offset to the base.
 	base := m.getOperand_NR(m.compiler.ValueDefinition(ptr), extModeNone).nr()
-	offsetReg := m.compiler.AllocateVReg(ssa.TypeI64)
+	offsetReg := m.compiler.AllocateVReg(types.I64)
 	m.lowerConstantI64(offsetReg, int64(offset))
 	addedBase := m.addReg64ToReg64(base, offsetReg)
 
@@ -314,7 +315,7 @@ func (m *machine) lowerToAddressModeFromAddends(a32s *wazevoapi.Queue[addend32],
 		base32 := a32s.Dequeue()
 
 		// First we need 64-bit base.
-		base := m.compiler.AllocateVReg(ssa.TypeI64)
+		base := m.compiler.AllocateVReg(types.I64)
 		baseExt := m.allocateInstr()
 		var signed bool
 		if base32.ext == extendOpSXTW {
@@ -330,7 +331,7 @@ func (m *machine) lowerToAddressModeFromAddends(a32s *wazevoapi.Queue[addend32],
 			*amode = addressMode{kind: addressModeKindRegUnsignedImm12, rn: base, imm: 0}
 		}
 	default: // Only static offsets.
-		tmpReg := m.compiler.AllocateVReg(ssa.TypeI64)
+		tmpReg := m.compiler.AllocateVReg(types.I64)
 		m.lowerConstantI64(tmpReg, offset)
 		*amode = addressMode{kind: addressModeKindRegUnsignedImm12, rn: tmpReg, imm: 0}
 		offset = 0
@@ -419,14 +420,14 @@ func (m *machine) collectAddends(ptr ssa.Value) (addends32 *wazevoapi.Queue[adde
 }
 
 func (m *machine) addConstToReg64(r regalloc.VReg, c int64) (rd regalloc.VReg) {
-	rd = m.compiler.AllocateVReg(ssa.TypeI64)
+	rd = m.compiler.AllocateVReg(types.I64)
 	alu := m.allocateInstr()
 	if imm12Op, ok := asImm12Operand(uint64(c)); ok {
 		alu.asALU(aluOpAdd, rd, operandNR(r), imm12Op, true)
 	} else if imm12Op, ok = asImm12Operand(uint64(-c)); ok {
 		alu.asALU(aluOpSub, rd, operandNR(r), imm12Op, true)
 	} else {
-		tmp := m.compiler.AllocateVReg(ssa.TypeI64)
+		tmp := m.compiler.AllocateVReg(types.I64)
 		m.load64bitConst(c, tmp)
 		alu.asALU(aluOpAdd, rd, operandNR(r), operandNR(tmp), true)
 	}
@@ -435,7 +436,7 @@ func (m *machine) addConstToReg64(r regalloc.VReg, c int64) (rd regalloc.VReg) {
 }
 
 func (m *machine) addReg64ToReg64(rn, rm regalloc.VReg) (rd regalloc.VReg) {
-	rd = m.compiler.AllocateVReg(ssa.TypeI64)
+	rd = m.compiler.AllocateVReg(types.I64)
 	alu := m.allocateInstr()
 	alu.asALU(aluOpAdd, rd, operandNR(rn), operandNR(rm), true)
 	m.insert(alu)
@@ -443,7 +444,7 @@ func (m *machine) addReg64ToReg64(rn, rm regalloc.VReg) (rd regalloc.VReg) {
 }
 
 func (m *machine) addRegToReg64Ext(rn, rm regalloc.VReg, ext extendOp) (rd regalloc.VReg) {
-	rd = m.compiler.AllocateVReg(ssa.TypeI64)
+	rd = m.compiler.AllocateVReg(types.I64)
 	alu := m.allocateInstr()
 	alu.asALU(aluOpAdd, rd, operandNR(rn), operandER(rm, ext, 64), true)
 	m.insert(alu)

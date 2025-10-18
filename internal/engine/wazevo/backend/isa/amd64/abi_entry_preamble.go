@@ -3,7 +3,7 @@ package amd64
 import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -26,14 +26,14 @@ var (
 )
 
 // CompileEntryPreamble implements backend.Machine.
-func (m *machine) CompileEntryPreamble(sig *ssa.Signature) []byte {
+func (m *machine) CompileEntryPreamble(sig *types.Signature) []byte {
 	root := m.compileEntryPreamble(sig)
 	m.encodeWithoutSSA(root)
 	buf := m.c.Buf()
 	return buf
 }
 
-func (m *machine) compileEntryPreamble(sig *ssa.Signature) *instruction {
+func (m *machine) compileEntryPreamble(sig *types.Signature) *instruction {
 	abi := backend.FunctionABI{}
 	abi.Init(sig, intArgResultRegs, floatArgResultRegs)
 
@@ -67,7 +67,7 @@ func (m *machine) compileEntryPreamble(sig *ssa.Signature) *instruction {
 		}
 		arg := &abi.Args[i]
 		cur = m.goEntryPreamblePassArg(cur, paramResultSlicePtr, offset, arg)
-		if arg.Type == ssa.TypeV128 {
+		if arg.Type == types.V128 {
 			offset += 16
 		} else {
 			offset += 8
@@ -90,7 +90,7 @@ func (m *machine) compileEntryPreamble(sig *ssa.Signature) *instruction {
 	for i := range abi.Rets {
 		r := &abi.Rets[i]
 		cur = m.goEntryPreamblePassResult(cur, paramResultSlicePtr, offset, r, uint32(abi.ArgStackSize))
-		if r.Type == ssa.TypeV128 {
+		if r.Type == types.V128 {
 			offset += 16
 		} else {
 			offset += 8
@@ -150,9 +150,9 @@ func (m *machine) goEntryPreamblePassArg(cur *instruction, paramSlicePtr regallo
 	if arg.Kind == backend.ABIArgKindStack {
 		// Caller saved registers ca
 		switch argTyp {
-		case ssa.TypeI32, ssa.TypeI64:
+		case types.I32, types.I64:
 			dst = tmpIntReg
-		case ssa.TypeF32, ssa.TypeF64, ssa.TypeV128:
+		case types.F32, types.F64, types.V128:
 			dst = tmpXmmReg
 		default:
 			panic("BUG")
@@ -164,15 +164,15 @@ func (m *machine) goEntryPreamblePassArg(cur *instruction, paramSlicePtr regallo
 	load := m.allocateInstr()
 	a := newOperandMem(m.newAmodeImmReg(offsetInParamSlice, paramSlicePtr))
 	switch arg.Type {
-	case ssa.TypeI32:
+	case types.I32:
 		load.asMovzxRmR(extModeLQ, a, dst)
-	case ssa.TypeI64:
+	case types.I64:
 		load.asMov64MR(a, dst)
-	case ssa.TypeF32:
+	case types.F32:
 		load.asXmmUnaryRmR(sseOpcodeMovss, a, dst)
-	case ssa.TypeF64:
+	case types.F64:
 		load.asXmmUnaryRmR(sseOpcodeMovsd, a, dst)
-	case ssa.TypeV128:
+	case types.V128:
 		load.asXmmUnaryRmR(sseOpcodeMovdqu, a, dst)
 	}
 
@@ -182,15 +182,15 @@ func (m *machine) goEntryPreamblePassArg(cur *instruction, paramSlicePtr regallo
 		store := m.allocateInstr()
 		a := newOperandMem(m.newAmodeImmReg(uint32(arg.Offset), rspVReg))
 		switch arg.Type {
-		case ssa.TypeI32:
+		case types.I32:
 			store.asMovRM(dst, a, 4)
-		case ssa.TypeI64:
+		case types.I64:
 			store.asMovRM(dst, a, 8)
-		case ssa.TypeF32:
+		case types.F32:
 			store.asXmmMovRM(sseOpcodeMovss, dst, a)
-		case ssa.TypeF64:
+		case types.F64:
 			store.asXmmMovRM(sseOpcodeMovsd, dst, a)
-		case ssa.TypeV128:
+		case types.V128:
 			store.asXmmMovRM(sseOpcodeMovdqu, dst, a)
 		}
 		cur = linkInstr(cur, store)
@@ -206,19 +206,19 @@ func (m *machine) goEntryPreamblePassResult(cur *instruction, resultSlicePtr reg
 		offset := resultStackSlotBeginOffset + uint32(result.Offset)
 		a := newOperandMem(m.newAmodeImmReg(offset, rspVReg))
 		switch result.Type {
-		case ssa.TypeI32:
+		case types.I32:
 			r = tmpIntReg
 			load.asMovzxRmR(extModeLQ, a, r)
-		case ssa.TypeI64:
+		case types.I64:
 			r = tmpIntReg
 			load.asMov64MR(a, r)
-		case ssa.TypeF32:
+		case types.F32:
 			r = tmpXmmReg
 			load.asXmmUnaryRmR(sseOpcodeMovss, a, r)
-		case ssa.TypeF64:
+		case types.F64:
 			r = tmpXmmReg
 			load.asXmmUnaryRmR(sseOpcodeMovsd, a, r)
-		case ssa.TypeV128:
+		case types.V128:
 			r = tmpXmmReg
 			load.asXmmUnaryRmR(sseOpcodeMovdqu, a, r)
 		default:
@@ -232,15 +232,15 @@ func (m *machine) goEntryPreamblePassResult(cur *instruction, resultSlicePtr reg
 	store := m.allocateInstr()
 	a := newOperandMem(m.newAmodeImmReg(offsetInResultSlice, resultSlicePtr))
 	switch result.Type {
-	case ssa.TypeI32:
+	case types.I32:
 		store.asMovRM(r, a, 4)
-	case ssa.TypeI64:
+	case types.I64:
 		store.asMovRM(r, a, 8)
-	case ssa.TypeF32:
+	case types.F32:
 		store.asXmmMovRM(sseOpcodeMovss, r, a)
-	case ssa.TypeF64:
+	case types.F64:
 		store.asXmmMovRM(sseOpcodeMovsd, r, a)
-	case ssa.TypeV128:
+	case types.V128:
 		store.asXmmMovRM(sseOpcodeMovdqu, r, a)
 	}
 

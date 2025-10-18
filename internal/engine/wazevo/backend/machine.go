@@ -5,6 +5,7 @@ import (
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
@@ -57,7 +58,7 @@ type (
 		Reset()
 
 		// InsertMove inserts a move instruction from src to dst whose type is typ.
-		InsertMove(dst, src regalloc.VReg, typ ssa.Type)
+		InsertMove(dst, src regalloc.VReg, typ types.Type)
 
 		// InsertReturn inserts the return instruction to return from the current function.
 		InsertReturn()
@@ -93,7 +94,7 @@ type (
 		Encode(ctx context.Context) error
 
 		// CompileGoFunctionTrampoline compiles the trampoline function  to call a Go function of the given exit code and signature.
-		CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *ssa.Signature, needModuleContextPtr bool) []byte
+		CompileGoFunctionTrampoline(exitCode wazevoapi.ExitCode, sig *types.Signature, needModuleContextPtr bool) []byte
 
 		// CompileStackGrowCallSequence returns the sequence of instructions shared by all functions to
 		// call the stack grow builtin function.
@@ -101,7 +102,7 @@ type (
 
 		// CompileEntryPreamble returns the sequence of instructions shared by multiple functions to
 		// enter the function from Go.
-		CompileEntryPreamble(signature *ssa.Signature) []byte
+		CompileEntryPreamble(signature *types.Signature) []byte
 
 		// LowerParams lowers the given parameters.
 		LowerParams(params []ssa.Value)

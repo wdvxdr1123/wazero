@@ -3,7 +3,7 @@ package regalloc
 import (
 	"fmt"
 
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 // VReg represents a register which is assigned to an SSA value. This is used to represent a register in the backend.
@@ -110,12 +110,12 @@ func (r RegType) String() string {
 	}
 }
 
-// RegTypeOf returns the RegType of the given ssa.Type.
-func RegTypeOf(p ssa.Type) RegType {
+// RegTypeOf returns the RegType of the given types.Type.
+func RegTypeOf(p types.Type) RegType {
 	switch p {
-	case ssa.TypeI32, ssa.TypeI64:
+	case types.I32, types.I64:
 		return RegTypeInt
-	case ssa.TypeF32, ssa.TypeF64, ssa.TypeV128:
+	case types.F32, types.F64, types.V128:
 		return RegTypeFloat
 	default:
 		panic("invalid type")

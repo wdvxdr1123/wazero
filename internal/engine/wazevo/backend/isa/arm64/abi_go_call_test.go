@@ -7,7 +7,7 @@ import (
 
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
-	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 	"github.com/tetratelabs/wazero/internal/testing/require"
 )
@@ -28,7 +28,7 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 	for _, tc := range []struct {
 		name                 string
 		exitCode             wazevoapi.ExitCode
-		sig                  *ssa.Signature
+		sig                  *types.Signature
 		needModuleContextPtr bool
 		exp                  string
 	}{
@@ -36,19 +36,19 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 			name:                 "listener",
 			exitCode:             wazevoapi.ExitCodeCallListenerBefore,
 			needModuleContextPtr: true,
-			sig: &ssa.Signature{
-				Params: []ssa.Type{
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32, ssa.TypeV128,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32, ssa.TypeV128,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32, ssa.TypeV128,
-					ssa.TypeI64, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32, ssa.TypeV128,
+			sig: &types.Signature{
+				Params: []types.Type{
+					types.I64, types.I64, types.V128, types.F32, types.V128,
+					types.I64, types.I64, types.V128, types.F32, types.V128,
+					types.I64, types.I64, types.V128, types.F32, types.V128,
+					types.I64, types.I64, types.V128, types.F32, types.V128,
 				},
-				Results: []ssa.Type{
-					ssa.TypeV128, ssa.TypeI32, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32,
-					ssa.TypeV128, ssa.TypeI32, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32,
-					ssa.TypeV128, ssa.TypeI32, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32,
-					ssa.TypeV128, ssa.TypeI32, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32,
-					ssa.TypeV128, ssa.TypeI32, ssa.TypeI64, ssa.TypeV128, ssa.TypeF32,
+				Results: []types.Type{
+					types.V128, types.I32, types.I64, types.V128, types.F32,
+					types.V128, types.I32, types.I64, types.V128, types.F32,
+					types.V128, types.I32, types.I64, types.V128, types.F32,
+					types.V128, types.I32, types.I64, types.V128, types.F32,
+					types.V128, types.I32, types.I64, types.V128, types.F32,
 				},
 			},
 			exp: `
@@ -190,9 +190,9 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 		{
 			name:     "go call",
 			exitCode: wazevoapi.ExitCodeCallGoFunctionWithIndex(100, false),
-			sig: &ssa.Signature{
-				Params:  []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeF64},
-				Results: []ssa.Type{ssa.TypeI32, ssa.TypeI64, ssa.TypeF32, ssa.TypeF64},
+			sig: &types.Signature{
+				Params:  []types.Type{types.I64, types.I64, types.F64},
+				Results: []types.Type{types.I32, types.I64, types.F32, types.F64},
 			},
 			needModuleContextPtr: true,
 			exp: `
@@ -278,9 +278,9 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 		{
 			name:     "go call",
 			exitCode: wazevoapi.ExitCodeCallGoFunctionWithIndex(100, false),
-			sig: &ssa.Signature{
-				Params:  []ssa.Type{ssa.TypeI64, ssa.TypeI64, ssa.TypeF64, ssa.TypeF64, ssa.TypeI32, ssa.TypeI32},
-				Results: []ssa.Type{},
+			sig: &types.Signature{
+				Params:  []types.Type{types.I64, types.I64, types.F64, types.F64, types.I32, types.I32},
+				Results: []types.Type{},
 			},
 			needModuleContextPtr: true,
 			exp: `
@@ -364,9 +364,9 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 		{
 			name:     "grow memory",
 			exitCode: wazevoapi.ExitCodeGrowMemory,
-			sig: &ssa.Signature{
-				Params:  []ssa.Type{ssa.TypeI32, ssa.TypeI32},
-				Results: []ssa.Type{ssa.TypeI32},
+			sig: &types.Signature{
+				Params:  []types.Type{types.I32, types.I32},
+				Results: []types.Type{types.I32},
 			},
 			exp: `
 	stp x30, xzr, [sp, #-0x10]!
@@ -469,7 +469,7 @@ func Test_goFunctionCallLoadStackArg(t *testing.T) {
 	}{
 		{
 			name:         "i32",
-			arg:          &backend.ABIArg{Type: ssa.TypeI32},
+			arg:          &backend.ABIArg{Type: types.I32},
 			expResultReg: x11VReg,
 			exp: `
 	ldr w11, [x17], #0x8
@@ -477,7 +477,7 @@ func Test_goFunctionCallLoadStackArg(t *testing.T) {
 		},
 		{
 			name:         "i64",
-			arg:          &backend.ABIArg{Type: ssa.TypeI64},
+			arg:          &backend.ABIArg{Type: types.I64},
 			expResultReg: x11VReg,
 			exp: `
 	ldr x11, [x17], #0x8
@@ -485,7 +485,7 @@ func Test_goFunctionCallLoadStackArg(t *testing.T) {
 		},
 		{
 			name:         "f32",
-			arg:          &backend.ABIArg{Type: ssa.TypeF32},
+			arg:          &backend.ABIArg{Type: types.F32},
 			expResultReg: v11VReg,
 			exp: `
 	ldr s11, [x17], #0x8
@@ -493,7 +493,7 @@ func Test_goFunctionCallLoadStackArg(t *testing.T) {
 		},
 		{
 			name:         "f64",
-			arg:          &backend.ABIArg{Type: ssa.TypeF64},
+			arg:          &backend.ABIArg{Type: types.F64},
 			expResultReg: v11VReg,
 			exp: `
 	ldr d11, [x17], #0x8
@@ -501,7 +501,7 @@ func Test_goFunctionCallLoadStackArg(t *testing.T) {
 		},
 		{
 			name:         "v128",
-			arg:          &backend.ABIArg{Type: ssa.TypeV128},
+			arg:          &backend.ABIArg{Type: types.V128},
 			expResultReg: v11VReg,
 			exp: `
 	ldr q11, [x17], #0x10
@@ -536,7 +536,7 @@ func Test_goFunctionCallStoreStackResult(t *testing.T) {
 	}{
 		{
 			name:      "i32",
-			result:    &backend.ABIArg{Offset: 16 * 3, Type: ssa.TypeI32},
+			result:    &backend.ABIArg{Offset: 16 * 3, Type: types.I32},
 			resultReg: x11VReg,
 			exp: `
 	str w11, [sp], #0x8
@@ -544,7 +544,7 @@ func Test_goFunctionCallStoreStackResult(t *testing.T) {
 		},
 		{
 			name:      "i64",
-			result:    &backend.ABIArg{Offset: 16 * 3, Type: ssa.TypeI64},
+			result:    &backend.ABIArg{Offset: 16 * 3, Type: types.I64},
 			resultReg: x11VReg,
 			exp: `
 	str x11, [sp], #0x8
@@ -552,7 +552,7 @@ func Test_goFunctionCallStoreStackResult(t *testing.T) {
 		},
 		{
 			name:      "f32",
-			result:    &backend.ABIArg{Offset: 16 * 3, Type: ssa.TypeF32},
+			result:    &backend.ABIArg{Offset: 16 * 3, Type: types.F32},
 			resultReg: v11VReg,
 			exp: `
 	str s11, [sp], #0x8
@@ -560,7 +560,7 @@ func Test_goFunctionCallStoreStackResult(t *testing.T) {
 		},
 		{
 			name:      "f64",
-			result:    &backend.ABIArg{Offset: 16 * 3, Type: ssa.TypeF64},
+			result:    &backend.ABIArg{Offset: 16 * 3, Type: types.F64},
 			resultReg: v11VReg,
 			exp: `
 	str d11, [sp], #0x8
@@ -568,7 +568,7 @@ func Test_goFunctionCallStoreStackResult(t *testing.T) {
 		},
 		{
 			name:      "v128",
-			result:    &backend.ABIArg{Offset: 16 * 3, Type: ssa.TypeV128},
+			result:    &backend.ABIArg{Offset: 16 * 3, Type: types.V128},
 			resultReg: v11VReg,
 			exp: `
 	str q11, [sp], #0x10

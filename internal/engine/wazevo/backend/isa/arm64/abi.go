@@ -4,6 +4,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 // References:
@@ -105,9 +106,9 @@ func (m *machine) LowerParams(args []ssa.Value) {
 			*amode = addressMode{imm: arg.Offset, rn: spVReg, kind: addressModeKindArgStackSpace}
 			load := m.allocateInstr()
 			switch arg.Type {
-			case ssa.TypeI32, ssa.TypeI64:
+			case types.I32, types.I64:
 				load.asULoad(reg, amode, bits)
-			case ssa.TypeF32, ssa.TypeF64, ssa.TypeV128:
+			case types.F32, types.F64, types.V128:
 				load.asFpuLoad(reg, amode, bits)
 			default:
 				panic("BUG")
@@ -216,9 +217,9 @@ func (m *machine) callerGenFunctionReturnVReg(a *backend.FunctionABI, retIndex i
 		amode := m.resolveAddressModeForOffset(a.ArgStackSize+r.Offset-slotBegin, r.Type.Bits(), spVReg, false)
 		ldr := m.allocateInstr()
 		switch r.Type {
-		case ssa.TypeI32, ssa.TypeI64:
+		case types.I32, types.I64:
 			ldr.asULoad(reg, amode, r.Type.Bits())
-		case ssa.TypeF32, ssa.TypeF64, ssa.TypeV128:
+		case types.F32, types.F64, types.V128:
 			ldr.asFpuLoad(reg, amode, r.Type.Bits())
 		default:
 			panic("BUG")
@@ -251,7 +252,7 @@ func (m *machine) resolveAddressModeForOffset(offset int64, dstBits byte, rn reg
 			m.lowerConstantI64(tmpRegVReg, offset)
 			indexReg = tmpRegVReg
 		} else {
-			indexReg = m.compiler.AllocateVReg(ssa.TypeI64)
+			indexReg = m.compiler.AllocateVReg(types.I64)
 			m.lowerConstantI64(indexReg, offset)
 		}
 		*amode = addressMode{kind: addressModeKindRegReg, rn: rn, rm: indexReg, extOp: extendOpUXTX /* indicates index rm is 64-bit */}
@@ -280,7 +281,7 @@ func (m *machine) lowerCall(si *ssa.Instruction) {
 func (m *machine) prepareCall(si *ssa.Instruction, isDirectCall bool) (ssa.Value, ssa.FuncRef, *backend.FunctionABI, int64) {
 	var indirectCalleePtr ssa.Value
 	var directCallee ssa.FuncRef
-	var sigID ssa.SignatureID
+	var sigID types.SignatureID
 	var args []ssa.Value
 	if isDirectCall {
 		directCallee, sigID, args = si.CallData()

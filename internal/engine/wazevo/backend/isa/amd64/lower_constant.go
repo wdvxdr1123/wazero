@@ -3,6 +3,7 @@ package amd64
 import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 // lowerConstant allocates a new VReg and inserts the instruction to load the constant value.
@@ -31,9 +32,9 @@ func (m *machine) insertLoadConstant(instr *ssa.Instruction, vr regalloc.VReg) {
 	}
 
 	switch valType {
-	case ssa.TypeF32, ssa.TypeF64:
+	case types.F32, types.F64:
 		m.lowerFconst(vr, v, bits == 64)
-	case ssa.TypeI32, ssa.TypeI64:
+	case types.I32, types.I64:
 		m.lowerIconst(vr, v, bits == 64)
 	default:
 		panic("BUG")
@@ -45,11 +46,11 @@ func (m *machine) lowerFconst(dst regalloc.VReg, c uint64, _64 bool) {
 		xor := m.allocateInstr().asZeros(dst)
 		m.insert(xor)
 	} else {
-		var tmpType ssa.Type
+		var tmpType types.Type
 		if _64 {
-			tmpType = ssa.TypeI64
+			tmpType = types.I64
 		} else {
-			tmpType = ssa.TypeI32
+			tmpType = types.I32
 		}
 		tmpInt := m.c.AllocateVReg(tmpType)
 		loadToGP := m.allocateInstr().asImm(tmpInt, c, _64)

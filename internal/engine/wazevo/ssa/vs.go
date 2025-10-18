@@ -3,6 +3,8 @@ package ssa
 import (
 	"fmt"
 	"math"
+
+	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
 // Variable is a unique identifier for a source program's variable and will correspond to
@@ -22,15 +24,15 @@ func (v Variable) String() string {
 	return fmt.Sprintf("var%d", v&0x0fffffff)
 }
 
-func (v Variable) setType(typ Type) Variable {
+func (v Variable) setType(typ types.Type) Variable {
 	if v >= 1<<28 {
 		panic(fmt.Sprintf("Too large variable: %d", v))
 	}
 	return Variable(typ)<<28 | v
 }
 
-func (v Variable) getType() Type {
-	return Type(v >> 28)
+func (v Variable) getType() types.Type {
+	return types.Type(v >> 28)
 }
 
 // Value represents an SSA value with a type information. The relationship with Variable is 1: N (including 0),
@@ -71,8 +73,8 @@ func (v Value) Valid() bool {
 }
 
 // Type returns the Type of this value.
-func (v Value) Type() Type {
-	return Type(v >> 60)
+func (v Value) Type() types.Type {
+	return types.Type(v >> 60)
 }
 
 // ID returns the valueID of this value.
@@ -81,7 +83,7 @@ func (v Value) ID() ValueID {
 }
 
 // setType sets a type to this Value and returns the updated Value.
-func (v Value) setType(typ Type) Value {
+func (v Value) setType(typ types.Type) Value {
 	return v | Value(typ)<<60
 }
 
