@@ -624,7 +624,7 @@ func (m *machine) addJmpTableTarget(targets []ssa.Value) (index int) {
 	m.jmpTableTargetsNext++
 	m.jmpTableTargets[index] = m.jmpTableTargets[index][:0]
 	for _, targetBlockID := range targets {
-		target := m.compiler.SSABuilder().BasicBlock(ssa.BasicBlockID(targetBlockID))
+		target := m.compiler.SSABuilder().BasicBlock(targetBlockID.BlockID())
 		m.jmpTableTargets[index] = append(m.jmpTableTargets[index], uint32(target.ID()))
 	}
 	return

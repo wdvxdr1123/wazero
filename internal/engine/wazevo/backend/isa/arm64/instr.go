@@ -26,6 +26,7 @@ type (
 	instruction struct {
 		prev, next          *instruction
 		u1, u2              uint64
+		typ                 *types.Type
 		rd                  regalloc.VReg
 		rm, rn              operand
 		kind                instructionKind
@@ -1769,16 +1770,16 @@ const (
 	numInstructionKinds
 )
 
-func (i *instruction) asLoadConstBlockArg(v uint64, typ types.Type, dst regalloc.VReg) *instruction {
+func (i *instruction) asLoadConstBlockArg(v uint64, typ *types.Type, dst regalloc.VReg) *instruction {
 	i.kind = loadConstBlockArg
 	i.u1 = v
-	i.u2 = uint64(typ)
+	i.typ = typ
 	i.rd = dst
 	return i
 }
 
-func (i *instruction) loadConstBlockArgData() (v uint64, typ types.Type, dst regalloc.VReg) {
-	return i.u1, types.Type(i.u2), i.rd
+func (i *instruction) loadConstBlockArgData() (v uint64, typ *types.Type, dst regalloc.VReg) {
+	return i.u1, i.typ, i.rd
 }
 
 func (i *instruction) asEmitSourceOffsetInfo(l ssa.SourceOffset) *instruction {
@@ -2274,7 +2275,7 @@ func (e extMode) signed() bool {
 	}
 }
 
-func extModeOf(t types.Type, signed bool) extMode {
+func extModeOf(t *types.Type, signed bool) extMode {
 	switch t.Bits() {
 	case 32:
 		if signed {

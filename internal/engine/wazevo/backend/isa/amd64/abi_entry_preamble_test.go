@@ -17,7 +17,7 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 			name: "basic",
 			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []types.Type{types.I64, types.I64},
+				Params: []*types.Type{types.I64, types.I64},
 			},
 			exp: `
 	movq %rax, %rdx
@@ -35,7 +35,7 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 			name: "only regs args",
 			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []types.Type{types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64},
+				Params: []*types.Type{types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64},
 			},
 			exp: `
 	movq %rax, %rdx
@@ -59,8 +59,8 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 			name: "only regs rets",
 			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params:  []types.Type{types.I64, types.I64},
-				Results: []types.Type{types.I32, types.V128, types.I64, types.F32, types.F64},
+				Params:  []*types.Type{types.I64, types.I64},
+				Results: []*types.Type{types.I32, types.V128, types.I64, types.F32, types.F64},
 			},
 			exp: `
 	movq %rax, %rdx
@@ -83,8 +83,8 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 			name: "only regs args/rets",
 			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params:  []types.Type{types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64},
-				Results: []types.Type{types.I32, types.V128, types.I64, types.F32, types.F64},
+				Params:  []*types.Type{types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64},
+				Results: []*types.Type{types.I32, types.V128, types.I64, types.F32, types.F64},
 			},
 			exp: `
 	movq %rax, %rdx
@@ -113,7 +113,7 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 			name: "many args",
 			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []types.Type{
+				Params: []*types.Type{
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
@@ -165,8 +165,8 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 			name: "many results",
 			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []types.Type{types.I64, types.I64},
-				Results: []types.Type{
+				Params: []*types.Type{types.I64, types.I64},
+				Results: []*types.Type{
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
@@ -220,12 +220,12 @@ func TestMachineCompileEntryPreamble(t *testing.T) {
 			name: "many args results",
 			sig: &types.Signature{
 				// execContext and moduleContext are passed in %rax and %rcx.
-				Params: []types.Type{
+				Params: []*types.Type{
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 				},
-				Results: []types.Type{
+				Results: []*types.Type{
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,
 					types.I64, types.I64, types.I32, types.I64, types.F32, types.F64, types.V128, types.I64,

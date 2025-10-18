@@ -1493,7 +1493,7 @@ func (m *machine) lowerSubOrAdd(si *ssa.Instruction, add bool) {
 }
 
 // InsertMove implements backend.Machine.
-func (m *machine) InsertMove(dst, src regalloc.VReg, typ types.Type) {
+func (m *machine) InsertMove(dst, src regalloc.VReg, typ *types.Type) {
 	instr := m.allocateInstr()
 	switch typ {
 	case types.I32, types.I64:

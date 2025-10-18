@@ -32,7 +32,7 @@ func (m *machine) lowerLoadConstantBlockArgAfterRegAlloc(i *instruction) {
 	m.insertLoadConstant(v, typ, dst)
 }
 
-func (m *machine) insertLoadConstant(v uint64, valType types.Type, vr regalloc.VReg) {
+func (m *machine) insertLoadConstant(v uint64, valType *types.Type, vr regalloc.VReg) {
 	if valType.Bits() < 64 { // Clear the redundant bits just in case it's unexpectedly sign-extended, etc.
 		v = v & ((1 << valType.Bits()) - 1)
 	}

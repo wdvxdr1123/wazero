@@ -17,22 +17,23 @@ import (
 // can be used to find the corresponding latest SSA Value via Builder.FindValue.
 //
 // Higher 4-bit is used to store Type for this variable.
-type Variable uint32
+type Variable struct {
+	id  uint32
+	typ *types.Type
+}
 
 // String implements fmt.Stringer.
 func (v Variable) String() string {
-	return fmt.Sprintf("var%d", v&0x0fffffff)
+	return fmt.Sprintf("var%d", v.id)
 }
 
-func (v Variable) setType(typ types.Type) Variable {
-	if v >= 1<<28 {
-		panic(fmt.Sprintf("Too large variable: %d", v))
-	}
-	return Variable(typ)<<28 | v
+func (v Variable) setType(typ *types.Type) Variable {
+	v.typ = typ
+	return v
 }
 
-func (v Variable) getType() types.Type {
-	return types.Type(v >> 28)
+func (v Variable) getType() *types.Type {
+	return v.typ
 }
 
 // Value represents an SSA value with a type information. The relationship with Variable is 1: N (including 0),
@@ -40,15 +41,18 @@ func (v Variable) getType() types.Type {
 //
 // 32 to 59-bit is used to store the unique identifier of the Instruction that generates this value if any.
 // 60 to 63-bit is used to store Type for this value.
-type Value uint64
+type Value struct {
+	id     ValueID
+	instID int32
+	typ    *types.Type
+}
 
 // ValueID is the lower 32bit of Value, which is the pure identifier of Value without type info.
 type ValueID uint32
 
-const (
-	valueIDInvalid ValueID = math.MaxUint32
-	ValueInvalid           = Value(valueIDInvalid)
-)
+const valueIDInvalid ValueID = math.MaxUint32
+
+var ValueInvalid = Value{id: valueIDInvalid, typ: types.Invalid}
 
 // Format creates a debug string for this Value using the data stored in Builder.
 func (v Value) Format(b Builder) string {
@@ -73,29 +77,58 @@ func (v Value) Valid() bool {
 }
 
 // Type returns the Type of this value.
-func (v Value) Type() types.Type {
-	return types.Type(v >> 60)
+func (v Value) Type() *types.Type {
+	return v.typ
 }
 
 // ID returns the valueID of this value.
 func (v Value) ID() ValueID {
-	return ValueID(v)
+	return ValueID(v.id)
 }
 
 // setType sets a type to this Value and returns the updated Value.
-func (v Value) setType(typ types.Type) Value {
-	return v | Value(typ)<<60
+func (v Value) setType(typ *types.Type) Value {
+	v.typ = typ
+	return v
 }
 
 // setInstructionID sets an Instruction.id to this Value and returns the updated Value.
 func (v Value) setInstructionID(id int) Value {
-	if id < 0 || uint(id) >= 1<<28 {
-		panic(fmt.Sprintf("Too large instruction ID: %d", id))
-	}
-	return v | Value(id)<<32
+	v.instID = int32(id)
+	return v
 }
 
 // instructionID() returns the Instruction.id of this Value.
 func (v Value) instructionID() int {
-	return int(v>>32) & 0x0fffffff
+	return int(v.instID)
+}
+
+func (v Value) BlockID() BasicBlockID {
+	if v.typ != types.Block {
+		panic("BUG: not a block value")
+	}
+	return BasicBlockID(v.id)
+}
+
+func (v Value) FuncRef() FuncRef {
+	if v.typ != types.Func {
+		panic("BUG: not a func value")
+	}
+	return FuncRef(v.id)
+}
+
+func ValueFromBlockID(id BasicBlockID) Value {
+	return Value{
+		id:     ValueID(id),
+		instID: -1,
+		typ:    types.Block,
+	}
+}
+
+func ValueFromFuncRef(f FuncRef) Value {
+	return Value{
+		id:     ValueID(f),
+		instID: -1,
+		typ:    types.Func,
+	}
 }

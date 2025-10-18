@@ -340,7 +340,7 @@ func (m *machine) addJmpTableTarget(targets []ssa.Value) (index int) {
 	m.jmpTableTargetsNext++
 	m.jmpTableTargets[index] = m.jmpTableTargets[index][:0]
 	for _, targetBlockID := range targets {
-		target := m.c.SSABuilder().BasicBlock(ssa.BasicBlockID(targetBlockID))
+		target := m.c.SSABuilder().BasicBlock(targetBlockID.BlockID())
 		m.jmpTableTargets[index] = append(m.jmpTableTargets[index], uint32(ssaBlockLabel(target)))
 	}
 	return
@@ -1213,7 +1213,7 @@ func (m *machine) lowerAtomicCas(addr, exp, repl ssa.Value, size uint64, ret ssa
 	m.copyTo(accumulator, m.c.VRegOf(ret))
 }
 
-func (m *machine) clearHigherBitsForAtomic(r regalloc.VReg, valSize uint64, resultType types.Type) {
+func (m *machine) clearHigherBitsForAtomic(r regalloc.VReg, valSize uint64, resultType *types.Type) {
 	switch resultType {
 	case types.I32:
 		switch valSize {
@@ -1539,7 +1539,7 @@ func (m *machine) lowerUnaryRmR(si *ssa.Instruction, op unaryRmROpcode) {
 	m.insert(instr)
 }
 
-func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ types.Type, dst regalloc.VReg) {
+func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ *types.Type, dst regalloc.VReg) {
 	mem := newOperandMem(m.lowerToAddressMode(ptr, offset))
 	load := m.allocateInstr()
 	switch typ {
@@ -2065,7 +2065,7 @@ func (m *machine) callerGenFunctionReturnVReg(a *backend.FunctionABI, retIndex i
 }
 
 // InsertMove implements backend.Machine.
-func (m *machine) InsertMove(dst, src regalloc.VReg, typ types.Type) {
+func (m *machine) InsertMove(dst, src regalloc.VReg, typ *types.Type) {
 	switch typ {
 	case types.I32, types.I64:
 		i := m.allocateInstr().asMovRR(src, dst, typ.Bits() == 64)

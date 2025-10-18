@@ -45,15 +45,6 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 		instructions []string
 	}{
 		{
-			name: "block param",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
-				ctx.vRegMap[1234] = raxVReg
-				return backend.SSAValueDefinition{V: 1234, Instr: nil}
-			},
-			exp: newOperandReg(raxVReg),
-		},
-
-		{
 			name: "const instr",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				instr := builder.AllocateInstruction()
@@ -69,7 +60,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 			name: "non const instr (single-return)",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				c := builder.AllocateInstruction()
-				sig := &types.Signature{Results: []types.Type{types.I64}}
+				sig := &types.Signature{Results: []*types.Type{types.I64}}
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
@@ -83,7 +74,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 			name: "non const instr (multi-return)",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				c := builder.AllocateInstruction()
-				sig := &types.Signature{Results: []types.Type{types.I64, types.F64, types.F64}}
+				sig := &types.Signature{Results: []*types.Type{types.I64, types.F64, types.F64}}
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
@@ -111,14 +102,6 @@ func TestMachine_getOperand_Imm32_Reg(t *testing.T) {
 		exp          operand
 		instructions []string
 	}{
-		{
-			name: "block param falls back to getOperand_Reg",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
-				ctx.vRegMap[1234] = raxVReg
-				return backend.SSAValueDefinition{V: 1234, Instr: nil}
-			},
-			exp: newOperandReg(raxVReg),
-		},
 		{
 			name: "const imm 32",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
@@ -155,14 +138,6 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		exp          operand
 		instructions []string
 	}{
-		{
-			name: "block param falls back to getOperand_Imm32_Reg",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
-				ctx.vRegMap[1234] = raxVReg
-				return backend.SSAValueDefinition{V: 1234, Instr: nil}
-			},
-			exp: newOperandReg(raxVReg),
-		},
 		{
 			name: "amode with block param",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
@@ -309,7 +284,7 @@ func Test_machine_lowerClz(t *testing.T) {
 		name     string
 		setup    func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
 		cpuFlags platform.CpuFeatureFlags
-		typ      types.Type
+		typ      *types.Type
 		exp      string
 	}{
 		{
@@ -369,9 +344,9 @@ L2:
 
 			ctx.vRegMap[p] = raxVReg
 			ctx.definitions[p] = backend.SSAValueDefinition{V: p}
-			ctx.vRegMap[0] = rcxVReg
 			instr := &ssa.Instruction{}
 			instr.AsClz(p)
+			ctx.vRegMap[instr.Return()] = rcxVReg
 			m.lowerClz(instr)
 			m.FlushPendingInstructions()
 			m.rootInstr = m.perBlockHead
@@ -385,7 +360,7 @@ func TestMachine_lowerCtz(t *testing.T) {
 		name     string
 		setup    func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
 		cpuFlags platform.CpuFeatureFlags
-		typ      types.Type
+		typ      *types.Type
 		exp      string
 	}{
 		{
@@ -443,9 +418,9 @@ L2:
 
 			ctx.vRegMap[p] = raxVReg
 			ctx.definitions[p] = backend.SSAValueDefinition{V: p}
-			ctx.vRegMap[0] = rcxVReg
 			instr := &ssa.Instruction{}
 			instr.AsCtz(p)
+			ctx.vRegMap[instr.Return()] = rcxVReg
 			m.lowerCtz(instr)
 			m.FlushPendingInstructions()
 			m.rootInstr = m.perBlockHead

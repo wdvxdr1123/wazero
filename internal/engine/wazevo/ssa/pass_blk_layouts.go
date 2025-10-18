@@ -110,7 +110,7 @@ func layoutBlocks(b *builder) {
 			}
 
 			fallthroughBranch := blk.Tail()
-			if fallthroughBranch.opcode == OpcodeJump && BasicBlockID(fallthroughBranch.rValue) == trampoline.id {
+			if fallthroughBranch.opcode == OpcodeJump && fallthroughBranch.rValue.BlockID() == trampoline.id {
 				// This can be lowered as fallthrough at the end of the block.
 				b.reversePostOrderedBasicBlocks = append(b.reversePostOrderedBasicBlocks, trampoline)
 				trampoline.visited = 1 // mark as inserted.
@@ -159,7 +159,7 @@ func markFallthroughJumps(b *builder) {
 	for i, blk := range b.reversePostOrderedBasicBlocks {
 		if i < l {
 			cur := blk.Tail()
-			if cur.opcode == OpcodeJump && BasicBlockID(cur.rValue) == b.reversePostOrderedBasicBlocks[i+1].id {
+			if cur.opcode == OpcodeJump && cur.rValue.BlockID() == b.reversePostOrderedBasicBlocks[i+1].id {
 				cur.AsFallthroughJump()
 			}
 		}
@@ -192,8 +192,8 @@ func maybeInvertBranches(b *builder, now *BasicBlock, nextInRPO *BasicBlock) boo
 	// So this block has two branches (a conditional branch followed by an unconditional branch) at the end.
 	// We can invert the condition of the branch if it makes the fallthrough more likely.
 
-	fallthroughTarget := b.basicBlock(BasicBlockID(fallthroughBranch.rValue))
-	condTarget := b.basicBlock(BasicBlockID(condBranch.rValue))
+	fallthroughTarget := b.basicBlock(fallthroughBranch.rValue.BlockID())
+	condTarget := b.basicBlock(condBranch.rValue.BlockID())
 
 	if fallthroughTarget.LoopHeader {
 		// First, if the tail's target is loopHeader, we don't need to do anything here,
@@ -237,8 +237,8 @@ invert:
 	}
 
 	condBranch.InvertBrx()
-	condBranch.rValue = Value(fallthroughTarget.ID())
-	fallthroughBranch.rValue = Value(condTarget.ID())
+	condBranch.rValue = ValueFromBlockID(fallthroughTarget.ID())
+	fallthroughBranch.rValue = ValueFromBlockID(condTarget.ID())
 	if wazevoapi.SSALoggingEnabled {
 		fmt.Printf("inverting branches at %d->%d and %d->%d\n",
 			now.ID(), fallthroughTarget.ID(), now.ID(), condTarget.ID())
@@ -281,7 +281,7 @@ func (b *builder) splitCriticalEdge(pred, succ *BasicBlock, predInfo *PredInfo) 
 	// Replace originalBranch with the newBranch.
 	newBranch := b.AllocateInstruction()
 	newBranch.opcode = originalBranch.opcode
-	newBranch.rValue = Value(trampoline.ID())
+	newBranch.rValue = ValueFromBlockID(trampoline.ID())
 	switch originalBranch.opcode {
 	case OpcodeJump:
 	case OpcodeBrz, OpcodeBrnz:

@@ -110,8 +110,8 @@ func (r RegType) String() string {
 	}
 }
 
-// RegTypeOf returns the RegType of the given types.Type.
-func RegTypeOf(p types.Type) RegType {
+// RegTypeOf returns the RegType of the given *types.Type.
+func RegTypeOf(p *types.Type) RegType {
 	switch p {
 	case types.I32, types.I64:
 		return RegTypeInt

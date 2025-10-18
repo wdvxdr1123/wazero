@@ -10,7 +10,7 @@ type Signature struct {
 	// ID is a unique identifier for this signature used to lookup.
 	ID SignatureID
 	// Params and Results are the types of the parameters and results of the function.
-	Params, Results []Type
+	Params, Results []*Type
 
 	// Used is true if this is Used by the currently-compiled function.
 	// Debugging only.

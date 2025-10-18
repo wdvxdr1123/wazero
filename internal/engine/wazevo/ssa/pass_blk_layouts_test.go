@@ -118,9 +118,9 @@ func Test_maybeInvertBranch(t *testing.T) {
 				require.Equal(t, tail, next.Pred[0].Branch)
 				verify = func(t *testing.T) {
 					require.Equal(t, OpcodeJump, tail.opcode)
-					require.Equal(t, OpcodeBrnz, conditionalBr.opcode)                       // inversion.
-					require.Equal(t, loopHeader, b.basicBlock(BasicBlockID(tail.rValue)))    // swapped.
-					require.Equal(t, next, b.basicBlock(BasicBlockID(conditionalBr.rValue))) // swapped.
+					require.Equal(t, OpcodeBrnz, conditionalBr.opcode)                   // inversion.
+					require.Equal(t, loopHeader, b.basicBlock(tail.rValue.BlockID()))    // swapped.
+					require.Equal(t, next, b.basicBlock(conditionalBr.rValue.BlockID())) // swapped.
 
 					// Predecessor info should correctly point to the inverted jump instruction.
 					require.Equal(t, tail, loopHeader.Pred[0].Branch)
@@ -147,9 +147,9 @@ func Test_maybeInvertBranch(t *testing.T) {
 
 				verify = func(t *testing.T) {
 					require.Equal(t, OpcodeJump, tail.opcode)
-					require.Equal(t, OpcodeBrnz, conditionalBr.opcode)                            // inversion.
-					require.Equal(t, next, b.basicBlock(BasicBlockID(tail.rValue)))               // swapped.
-					require.Equal(t, nowTarget, b.basicBlock(BasicBlockID(conditionalBr.rValue))) // swapped.
+					require.Equal(t, OpcodeBrnz, conditionalBr.opcode)                        // inversion.
+					require.Equal(t, next, b.basicBlock(tail.rValue.BlockID()))               // swapped.
+					require.Equal(t, nowTarget, b.basicBlock(conditionalBr.rValue.BlockID())) // swapped.
 
 					require.Equal(t, conditionalBr, nowTarget.Pred[0].Branch)
 					require.Equal(t, tail, next.Pred[0].Branch)
@@ -198,7 +198,7 @@ func TestBuilder_splitCriticalEdge(t *testing.T) {
 
 	replacedBrz := predBlk.instr[1] // predBlk.Root().Next
 	require.Equal(t, OpcodeBrz, replacedBrz.opcode)
-	require.Equal(t, trampoline, b.basicBlock(BasicBlockID(replacedBrz.rValue)))
+	require.Equal(t, trampoline, b.basicBlock(replacedBrz.rValue.BlockID()))
 }
 
 func Test_swapInstruction(t *testing.T) {
@@ -522,7 +522,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			name: "loop with output",
 			exp:  []BasicBlockID{0x0, 0x2, 0x4, 0x1, 0x3, 0x6, 0x5},
 			setup: func(b *builder) {
-				b.currentSignature = &types.Signature{Results: []types.Type{types.I32}}
+				b.currentSignature = &types.Signature{Results: []*types.Type{types.I32}}
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 
 				b.SetCurrentBlock(b0)

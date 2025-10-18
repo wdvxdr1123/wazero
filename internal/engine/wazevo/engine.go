@@ -600,8 +600,8 @@ func (e *engine) compileSharedFunctions() {
 	e.be.Init()
 	{
 		src := e.machine.CompileGoFunctionTrampoline(wazevoapi.ExitCodeGrowMemory, &types.Signature{
-			Params:  []types.Type{types.I64 /* exec context */, types.I32},
-			Results: []types.Type{types.I32},
+			Params:  []*types.Type{types.I64 /* exec context */, types.I32},
+			Results: []*types.Type{types.I32},
 		}, false)
 		e.sharedFunctions.memoryGrowExecutable = mmapExecutable(src)
 		if wazevoapi.PerfMapEnabled {
@@ -613,8 +613,8 @@ func (e *engine) compileSharedFunctions() {
 	e.be.Init()
 	{
 		src := e.machine.CompileGoFunctionTrampoline(wazevoapi.ExitCodeTableGrow, &types.Signature{
-			Params:  []types.Type{types.I64 /* exec context */, types.I32 /* table index */, types.I32 /* num */, types.I64 /* ref */},
-			Results: []types.Type{types.I32},
+			Params:  []*types.Type{types.I64 /* exec context */, types.I32 /* table index */, types.I32 /* num */, types.I64 /* ref */},
+			Results: []*types.Type{types.I32},
 		}, false)
 		e.sharedFunctions.tableGrowExecutable = mmapExecutable(src)
 		if wazevoapi.PerfMapEnabled {
@@ -626,8 +626,8 @@ func (e *engine) compileSharedFunctions() {
 	e.be.Init()
 	{
 		src := e.machine.CompileGoFunctionTrampoline(wazevoapi.ExitCodeCheckModuleExitCode, &types.Signature{
-			Params:  []types.Type{types.I32 /* exec context */},
-			Results: []types.Type{types.I32},
+			Params:  []*types.Type{types.I32 /* exec context */},
+			Results: []*types.Type{types.I32},
 		}, false)
 		e.sharedFunctions.checkModuleExitCode = mmapExecutable(src)
 		if wazevoapi.PerfMapEnabled {
@@ -639,8 +639,8 @@ func (e *engine) compileSharedFunctions() {
 	e.be.Init()
 	{
 		src := e.machine.CompileGoFunctionTrampoline(wazevoapi.ExitCodeRefFunc, &types.Signature{
-			Params:  []types.Type{types.I64 /* exec context */, types.I32 /* function index */},
-			Results: []types.Type{types.I64}, // returns the function reference.
+			Params:  []*types.Type{types.I64 /* exec context */, types.I32 /* function index */},
+			Results: []*types.Type{types.I64}, // returns the function reference.
 		}, false)
 		e.sharedFunctions.refFuncExecutable = mmapExecutable(src)
 		if wazevoapi.PerfMapEnabled {
@@ -663,9 +663,9 @@ func (e *engine) compileSharedFunctions() {
 	{
 		src := e.machine.CompileGoFunctionTrampoline(wazevoapi.ExitCodeMemoryWait32, &types.Signature{
 			// exec context, timeout, expected, addr
-			Params: []types.Type{types.I64, types.I64, types.I32, types.I64},
+			Params: []*types.Type{types.I64, types.I64, types.I32, types.I64},
 			// Returns the status.
-			Results: []types.Type{types.I32},
+			Results: []*types.Type{types.I32},
 		}, false)
 		e.sharedFunctions.memoryWait32Executable = mmapExecutable(src)
 		if wazevoapi.PerfMapEnabled {
@@ -678,9 +678,9 @@ func (e *engine) compileSharedFunctions() {
 	{
 		src := e.machine.CompileGoFunctionTrampoline(wazevoapi.ExitCodeMemoryWait64, &types.Signature{
 			// exec context, timeout, expected, addr
-			Params: []types.Type{types.I64, types.I64, types.I64, types.I64},
+			Params: []*types.Type{types.I64, types.I64, types.I64, types.I64},
 			// Returns the status.
-			Results: []types.Type{types.I32},
+			Results: []*types.Type{types.I32},
 		}, false)
 		e.sharedFunctions.memoryWait64Executable = mmapExecutable(src)
 		if wazevoapi.PerfMapEnabled {
@@ -693,9 +693,9 @@ func (e *engine) compileSharedFunctions() {
 	{
 		src := e.machine.CompileGoFunctionTrampoline(wazevoapi.ExitCodeMemoryNotify, &types.Signature{
 			// exec context, count, addr
-			Params: []types.Type{types.I64, types.I32, types.I64},
+			Params: []*types.Type{types.I64, types.I32, types.I64},
 			// Returns the number notified.
-			Results: []types.Type{types.I32},
+			Results: []*types.Type{types.I32},
 		}, false)
 		e.sharedFunctions.memoryNotifyExecutable = mmapExecutable(src)
 		if wazevoapi.PerfMapEnabled {

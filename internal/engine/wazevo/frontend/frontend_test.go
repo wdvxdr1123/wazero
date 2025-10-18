@@ -1,7 +1,6 @@
 package frontend
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/tetratelabs/wazero/api"
@@ -2991,8 +2990,6 @@ blk9: () <-- (blk4)
 `,
 		},
 	} {
-
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			// Just in case let's check the test module is valid.
 			features := tc.features
@@ -3033,8 +3030,8 @@ func TestSignatureForListener(t *testing.T) {
 		{
 			name:   "empty",
 			sig:    &wasm.FunctionType{},
-			before: &types.Signature{Params: []types.Type{types.I64, types.I32}},
-			after:  &types.Signature{Params: []types.Type{types.I64, types.I32}},
+			before: &types.Signature{Params: []*types.Type{types.I64, types.I32}},
+			after:  &types.Signature{Params: []*types.Type{types.I64, types.I32}},
 		},
 		{
 			name: "multi",
@@ -3045,13 +3042,13 @@ func TestSignatureForListener(t *testing.T) {
 				},
 			},
 			before: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					types.I64, types.I32,
 					types.F64, types.I32,
 				},
 			},
 			after: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					types.I64, types.I32,
 					types.I64, types.I32, types.F32, types.F64, types.V128,
 				},
@@ -3083,18 +3080,18 @@ func TestCompiler_declareSignatures(t *testing.T) {
 
 		declaredSigs := builder.Signatures()
 		expected := []*types.Signature{
-			{ID: 0, Params: []types.Type{types.I64, types.I64}},
-			{ID: 1, Params: []types.Type{types.I64, types.I64, types.I64, types.I32}},
-			{ID: 2, Params: []types.Type{types.I64, types.I64, types.F64, types.I32}},
-			{ID: 3, Params: []types.Type{types.I64, types.I64}, Results: []types.Type{types.I64, types.I32}},
-			{ID: 4, Params: []types.Type{types.I64, types.I32}, Results: []types.Type{types.I32}},
-			{ID: 5, Params: []types.Type{types.I64}},
-			{ID: 6, Params: []types.Type{types.I64, types.I32, types.I32, types.I64}, Results: []types.Type{types.I32}},
-			{ID: 7, Params: []types.Type{types.I64, types.I32}, Results: []types.Type{types.I64}},
-			{ID: 8, Params: []types.Type{types.I64, types.I64, types.I64}},
-			{ID: 9, Params: []types.Type{types.I64, types.I64, types.I32, types.I64}, Results: []types.Type{types.I32}},
-			{ID: 10, Params: []types.Type{types.I64, types.I64, types.I64, types.I64}, Results: []types.Type{types.I32}},
-			{ID: 11, Params: []types.Type{types.I64, types.I32, types.I64}, Results: []types.Type{types.I32}},
+			{ID: 0, Params: []*types.Type{types.I64, types.I64}},
+			{ID: 1, Params: []*types.Type{types.I64, types.I64, types.I64, types.I32}},
+			{ID: 2, Params: []*types.Type{types.I64, types.I64, types.F64, types.I32}},
+			{ID: 3, Params: []*types.Type{types.I64, types.I64}, Results: []*types.Type{types.I64, types.I32}},
+			{ID: 4, Params: []*types.Type{types.I64, types.I32}, Results: []*types.Type{types.I32}},
+			{ID: 5, Params: []*types.Type{types.I64}},
+			{ID: 6, Params: []*types.Type{types.I64, types.I32, types.I32, types.I64}, Results: []*types.Type{types.I32}},
+			{ID: 7, Params: []*types.Type{types.I64, types.I32}, Results: []*types.Type{types.I64}},
+			{ID: 8, Params: []*types.Type{types.I64, types.I64, types.I64}},
+			{ID: 9, Params: []*types.Type{types.I64, types.I64, types.I32, types.I64}, Results: []*types.Type{types.I32}},
+			{ID: 10, Params: []*types.Type{types.I64, types.I64, types.I64, types.I64}, Results: []*types.Type{types.I32}},
+			{ID: 11, Params: []*types.Type{types.I64, types.I32, types.I64}, Results: []*types.Type{types.I32}},
 		}
 
 		require.Equal(t, len(expected), len(declaredSigs))
@@ -3111,53 +3108,35 @@ func TestCompiler_declareSignatures(t *testing.T) {
 		declaredSigs := builder.Signatures()
 
 		expected := []*types.Signature{
-			{ID: 0, Params: []types.Type{types.I64, types.I64}},
-			{ID: 1, Params: []types.Type{types.I64, types.I64, types.I64, types.I32}},
-			{ID: 2, Params: []types.Type{types.I64, types.I64, types.F64, types.I32}},
-			{ID: 3, Params: []types.Type{types.I64, types.I64}, Results: []types.Type{types.I64, types.I32}},
+			{ID: 0, Params: []*types.Type{types.I64, types.I64}},
+			{ID: 1, Params: []*types.Type{types.I64, types.I64, types.I64, types.I32}},
+			{ID: 2, Params: []*types.Type{types.I64, types.I64, types.F64, types.I32}},
+			{ID: 3, Params: []*types.Type{types.I64, types.I64}, Results: []*types.Type{types.I64, types.I32}},
 			// Before.
-			{ID: 4, Params: []types.Type{types.I64, types.I32}},
-			{ID: 5, Params: []types.Type{types.I64, types.I32, types.I64, types.I32}},
-			{ID: 6, Params: []types.Type{types.I64, types.I32, types.F64, types.I32}},
-			{ID: 7, Params: []types.Type{types.I64, types.I32}},
+			{ID: 4, Params: []*types.Type{types.I64, types.I32}},
+			{ID: 5, Params: []*types.Type{types.I64, types.I32, types.I64, types.I32}},
+			{ID: 6, Params: []*types.Type{types.I64, types.I32, types.F64, types.I32}},
+			{ID: 7, Params: []*types.Type{types.I64, types.I32}},
 			// After.
-			{ID: 8, Params: []types.Type{types.I64, types.I32}},
-			{ID: 9, Params: []types.Type{types.I64, types.I32}},
-			{ID: 10, Params: []types.Type{types.I64, types.I32}},
-			{ID: 11, Params: []types.Type{types.I64, types.I32, types.I64, types.I32}},
+			{ID: 8, Params: []*types.Type{types.I64, types.I32}},
+			{ID: 9, Params: []*types.Type{types.I64, types.I32}},
+			{ID: 10, Params: []*types.Type{types.I64, types.I32}},
+			{ID: 11, Params: []*types.Type{types.I64, types.I32, types.I64, types.I32}},
 			// Misc.
-			{ID: 12, Params: []types.Type{types.I64, types.I32}, Results: []types.Type{types.I32}},
-			{ID: 13, Params: []types.Type{types.I64}},
-			{ID: 14, Params: []types.Type{types.I64, types.I32, types.I32, types.I64}, Results: []types.Type{types.I32}},
-			{ID: 15, Params: []types.Type{types.I64, types.I32}, Results: []types.Type{types.I64}},
-			{ID: 16, Params: []types.Type{types.I64, types.I64, types.I64}},
-			{ID: 17, Params: []types.Type{types.I64, types.I64, types.I32, types.I64}, Results: []types.Type{types.I32}},
-			{ID: 18, Params: []types.Type{types.I64, types.I64, types.I64, types.I64}, Results: []types.Type{types.I32}},
-			{ID: 19, Params: []types.Type{types.I64, types.I32, types.I64}, Results: []types.Type{types.I32}},
+			{ID: 12, Params: []*types.Type{types.I64, types.I32}, Results: []*types.Type{types.I32}},
+			{ID: 13, Params: []*types.Type{types.I64}},
+			{ID: 14, Params: []*types.Type{types.I64, types.I32, types.I32, types.I64}, Results: []*types.Type{types.I32}},
+			{ID: 15, Params: []*types.Type{types.I64, types.I32}, Results: []*types.Type{types.I64}},
+			{ID: 16, Params: []*types.Type{types.I64, types.I64, types.I64}},
+			{ID: 17, Params: []*types.Type{types.I64, types.I64, types.I32, types.I64}, Results: []*types.Type{types.I32}},
+			{ID: 18, Params: []*types.Type{types.I64, types.I64, types.I64, types.I64}, Results: []*types.Type{types.I32}},
+			{ID: 19, Params: []*types.Type{types.I64, types.I32, types.I64}, Results: []*types.Type{types.I32}},
 		}
 		require.Equal(t, len(expected), len(declaredSigs))
 		for i := 0; i < len(declaredSigs); i++ {
 			require.Equal(t, expected[i].String(), declaredSigs[i].String(), i)
 		}
 	})
-}
-
-func TestCompiler_recordKnownSafeBound(t *testing.T) {
-	c := &Compiler{}
-	c.recordKnownSafeBound(1, 99, 9999)
-	require.Equal(t, 1, len(c.knownSafeBoundsSet))
-	require.True(t, c.getKnownSafeBound(1).valid())
-	require.Equal(t, uint64(99), c.getKnownSafeBound(1).bound)
-	require.Equal(t, ssa.Value(9999), c.getKnownSafeBound(1).absoluteAddr)
-
-	c.recordKnownSafeBound(1, 150, 9999)
-	require.Equal(t, 1, len(c.knownSafeBoundsSet))
-	require.Equal(t, uint64(150), c.getKnownSafeBound(1).bound)
-
-	c.recordKnownSafeBound(5, 666, 54321)
-	require.Equal(t, 2, len(c.knownSafeBoundsSet))
-	require.Equal(t, uint64(666), c.getKnownSafeBound(5).bound)
-	require.Equal(t, ssa.Value(54321), c.getKnownSafeBound(5).absoluteAddr)
 }
 
 func TestCompiler_getKnownSafeBound(t *testing.T) {
@@ -3179,183 +3158,4 @@ func TestCompiler_clearSafeBounds(t *testing.T) {
 	c.clearSafeBounds()
 	require.Equal(t, 0, len(c.knownSafeBoundsSet))
 	require.Equal(t, []knownSafeBound{{absoluteAddr: ssa.ValueInvalid}, {}, {absoluteAddr: ssa.ValueInvalid}, {}, {}, {absoluteAddr: ssa.ValueInvalid}}, c.knownSafeBounds)
-}
-
-func TestCompiler_resetAbsoluteAddressInSafeBounds(t *testing.T) {
-	c := &Compiler{}
-	c.knownSafeBounds = []knownSafeBound{
-		{bound: 1, absoluteAddr: ssa.Value(1)},
-		{},
-		{bound: 2, absoluteAddr: ssa.Value(2)},
-		{},
-		{},
-		{bound: 3, absoluteAddr: ssa.Value(3)},
-	}
-	c.knownSafeBoundsSet = []ssa.ValueID{0, 2, 5}
-	c.resetAbsoluteAddressInSafeBounds()
-	require.Equal(t, 3, len(c.knownSafeBoundsSet))
-	require.Equal(t, []knownSafeBound{
-		{bound: 1, absoluteAddr: ssa.ValueInvalid},
-		{},
-		{bound: 2, absoluteAddr: ssa.ValueInvalid},
-		{},
-		{},
-		{bound: 3, absoluteAddr: ssa.ValueInvalid},
-	}, c.knownSafeBounds)
-}
-
-func TestKnownSafeBound_valid(t *testing.T) {
-	k := &knownSafeBound{bound: 10, absoluteAddr: 12345}
-	require.True(t, k.valid())
-	k.bound = 0
-	require.False(t, k.valid())
-}
-
-func TestCompiler_finalizeKnownSafeBoundsAtTheEndOoBlock(t *testing.T) {
-	c := NewFrontendCompiler(&wasm.Module{}, ssa.NewBuilder(), nil, false, false, false)
-	blk := c.ssaBuilder.AllocateBasicBlock()
-	require.True(t, len(c.getKnownSafeBoundsAtTheEndOfBlocks(blk.ID()).View()) == 0)
-	c.ssaBuilder.SetCurrentBlock(blk)
-	c.knownSafeBoundsSet = []ssa.ValueID{0, 2, 5}
-	c.knownSafeBounds = []knownSafeBound{
-		{bound: 1, absoluteAddr: ssa.Value(1)},
-		{},
-		{bound: 2, absoluteAddr: ssa.Value(2)},
-		{},
-		{},
-		{bound: 3, absoluteAddr: ssa.Value(3)},
-	}
-	c.finalizeKnownSafeBoundsAtTheEndOfBlock(blk.ID())
-	require.True(t, len(c.knownSafeBoundsSet) == 0)
-	finalized := c.getKnownSafeBoundsAtTheEndOfBlocks(blk.ID())
-	require.Equal(t, 3, len(finalized.View()))
-}
-
-func TestCompiler_initializeCurrentBlockKnownBounds(t *testing.T) {
-	t.Run("single (sealed)", func(t *testing.T) {
-		c := NewFrontendCompiler(&wasm.Module{}, ssa.NewBuilder(), nil, false, false, false)
-		builder := c.ssaBuilder
-		child := builder.AllocateBasicBlock()
-		{
-			parent := builder.AllocateBasicBlock()
-			builder.SetCurrentBlock(parent)
-			c.recordKnownSafeBound(1, 99, 9999)
-			c.recordKnownSafeBound(2, 150, 9999)
-			c.recordKnownSafeBound(5, 666, 54321)
-			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
-			c.finalizeKnownSafeBoundsAtTheEndOfBlock(parent.ID())
-		}
-
-		// Seal the child: the absolute addresses will be propagated.
-		builder.Seal(child)
-		builder.SetCurrentBlock(child)
-		c.initializeCurrentBlockKnownBounds()
-		kb := c.getKnownSafeBound(1)
-		require.True(t, kb.valid())
-		require.Equal(t, uint64(99), kb.bound)
-		require.Equal(t, ssa.Value(9999), kb.absoluteAddr)
-		kb = c.getKnownSafeBound(2)
-		require.True(t, kb.valid())
-		require.Equal(t, uint64(150), kb.bound)
-		require.Equal(t, ssa.Value(9999), kb.absoluteAddr)
-		kb = c.getKnownSafeBound(5)
-		require.True(t, kb.valid())
-		require.Equal(t, uint64(666), kb.bound)
-		require.Equal(t, ssa.Value(54321), kb.absoluteAddr)
-	})
-	t.Run("single (unsealed)", func(t *testing.T) {
-		c := NewFrontendCompiler(&wasm.Module{}, ssa.NewBuilder(), nil, false, false, false)
-		builder := c.ssaBuilder
-		child := builder.AllocateBasicBlock()
-		{
-			parent := builder.AllocateBasicBlock()
-			builder.SetCurrentBlock(parent)
-			c.recordKnownSafeBound(1, 99, 9999)
-			c.recordKnownSafeBound(2, 150, 9999)
-			c.recordKnownSafeBound(5, 666, 54321)
-			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
-			c.finalizeKnownSafeBoundsAtTheEndOfBlock(parent.ID())
-		}
-
-		// Do not seal the child: the absolute addresses will be recomputed.
-		builder.SetCurrentBlock(child)
-		c.initializeCurrentBlockKnownBounds()
-		kb := c.getKnownSafeBound(1)
-		require.True(t, kb.valid())
-		require.Equal(t, uint64(99), kb.bound)
-		require.NotEqual(t, ssa.Value(9999), kb.absoluteAddr)
-		kb = c.getKnownSafeBound(2)
-		require.True(t, kb.valid())
-		require.Equal(t, uint64(150), kb.bound)
-		require.NotEqual(t, ssa.Value(9999), kb.absoluteAddr)
-		kb = c.getKnownSafeBound(5)
-		require.True(t, kb.valid())
-		require.Equal(t, uint64(666), kb.bound)
-		require.NotEqual(t, ssa.Value(54321), kb.absoluteAddr)
-	})
-	t.Run("multiple predecessors", func(t *testing.T) {
-		c := NewFrontendCompiler(&wasm.Module{}, ssa.NewBuilder(), nil, false, false, false)
-		builder := c.ssaBuilder
-		child := builder.AllocateBasicBlock()
-		{
-			p1 := builder.AllocateBasicBlock()
-			builder.SetCurrentBlock(p1)
-			c.recordKnownSafeBound(1, 99, 9999)
-			c.recordKnownSafeBound(2, 150, 9999)
-			c.recordKnownSafeBound(5, 666, 54321)
-			c.recordKnownSafeBound(592131, 666, 54321)
-			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
-			c.finalizeKnownSafeBoundsAtTheEndOfBlock(p1.ID())
-		}
-		{
-			p2 := builder.AllocateBasicBlock()
-			builder.SetCurrentBlock(p2)
-			c.recordKnownSafeBound(1, 100, 999419)
-			c.recordKnownSafeBound(2, 4, 9991239)
-			c.recordKnownSafeBound(5, 555, 54341221)
-			c.recordKnownSafeBound(6, 666, 54321)
-			c.recordKnownSafeBound(7, 666, 54321)
-			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
-			c.finalizeKnownSafeBoundsAtTheEndOfBlock(p2.ID())
-		}
-		{
-			p3 := builder.AllocateBasicBlock()
-			builder.SetCurrentBlock(p3)
-			c.recordKnownSafeBound(1, 1, 999419)
-			c.recordKnownSafeBound(2, 11111, 9991239)
-			c.recordKnownSafeBound(5, 5551231, 54341221)
-			c.recordKnownSafeBound(7, 666, 54321)
-			c.recordKnownSafeBound(60, 666, 54321)
-			builder.AllocateInstruction().AsJump(nil, child).Insert(builder)
-			c.finalizeKnownSafeBoundsAtTheEndOfBlock(p3.ID())
-		}
-
-		builder.SetCurrentBlock(child)
-		c.initializeCurrentBlockKnownBounds()
-		for _, tc := range []struct {
-			id    ssa.ValueID
-			valid bool
-			bound uint64
-		}{
-			{id: 0, valid: false},
-			{id: 1, valid: true, bound: 1},
-			{id: 2, valid: true, bound: 4},
-			{id: 3, valid: false},
-			{id: 4, valid: false},
-			{id: 5, valid: true, bound: 555},
-			{id: 6, valid: false},
-			{id: 7, valid: false},
-			{id: 60, valid: false},
-			{id: 592131, valid: false},
-		} {
-			t.Run(fmt.Sprintf("id=%d", tc.id), func(t *testing.T) {
-				kb := c.getKnownSafeBound(tc.id)
-				require.Equal(t, tc.valid, kb.valid())
-				if kb.valid() {
-					require.Equal(t, tc.bound, kb.bound)
-					require.Equal(t, ssa.ValueInvalid, kb.absoluteAddr)
-				}
-			})
-		}
-	})
 }

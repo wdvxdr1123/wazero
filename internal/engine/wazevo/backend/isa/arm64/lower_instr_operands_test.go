@@ -91,7 +91,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 			name: "non const instr",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				c := builder.AllocateInstruction()
-				sig := &types.Signature{Results: []types.Type{types.I64, types.F64, types.F64}}
+				sig := &types.Signature{Results: []*types.Type{types.I64, types.F64, types.F64}}
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)

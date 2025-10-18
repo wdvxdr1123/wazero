@@ -68,8 +68,8 @@ func TestAbiImpl_init(t *testing.T) {
 		{
 			name: "small sig",
 			sig: &types.Signature{
-				Params:  []types.Type{types.I32, types.F32, types.I32},
-				Results: []types.Type{types.I64, types.F64},
+				Params:  []*types.Type{types.I32, types.F32, types.I32},
+				Results: []*types.Type{types.I64, types.F64},
 			},
 			exp: FunctionABI{
 				Args: []ABIArg{
@@ -88,7 +88,7 @@ func TestAbiImpl_init(t *testing.T) {
 		{
 			name: "regs stack mix and match",
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					types.I32, types.F32,
 					types.I64, types.F64,
 					types.I32, types.F32,
@@ -106,7 +106,7 @@ func TestAbiImpl_init(t *testing.T) {
 					types.I32, types.F32,
 					types.I64, types.F64,
 				},
-				Results: []types.Type{
+				Results: []*types.Type{
 					types.I32, types.F32,
 					types.I64, types.F64,
 					types.I32, types.F32,
@@ -202,7 +202,7 @@ func TestAbiImpl_init(t *testing.T) {
 		{
 			name: "all regs",
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					types.I32, types.F32,
 					types.I64, types.F64,
 					types.I32, types.F32,
@@ -212,7 +212,7 @@ func TestAbiImpl_init(t *testing.T) {
 					types.I32, types.F32,
 					types.I64, types.F64,
 				},
-				Results: []types.Type{
+				Results: []*types.Type{
 					types.I32, types.F32,
 					types.I64, types.F64,
 					types.I32, types.F32,

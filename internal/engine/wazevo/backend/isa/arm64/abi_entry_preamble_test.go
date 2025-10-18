@@ -10,7 +10,7 @@ import (
 )
 
 func TestAbiImpl_constructEntryPreamble(t *testing.T) {
-	const i32, f32, i64, f64, v128 = types.I32, types.F32, types.I64, types.F64, types.V128
+	var i32, f32, i64, f64, v128 = types.I32, types.F32, types.I64, types.F64, types.V128
 
 	for _, tc := range []struct {
 		name string
@@ -38,7 +38,7 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		{
 			name: "float reg params",
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					i64, i64, // first and second will be skipped.
 					f32, f32, f32, f32, f64,
 				},
@@ -66,7 +66,7 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		{
 			name: "int reg params",
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					i64, i64, // first and second will be skipped.
 					i32, i32, i32, i64, i32,
 				},
@@ -94,7 +94,7 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		{
 			name: "int/float reg params interleaved",
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					i64, i64, // first and second will be skipped.
 					i32, f64, i32, f32, i64, i32, i64, f64, i32, f32, v128, f32,
 				},
@@ -129,11 +129,11 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		{
 			name: "int/float reg params/results interleaved",
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					i64, i64, // first and second will be skipped.
 					i32, f64, i32, f32, i64,
 				},
-				Results: []types.Type{f32, f64, i32, f32, i64, i32, f64},
+				Results: []*types.Type{f32, f64, i32, f32, i64, i32, f64},
 			},
 			exp: `
 	mov x20, x0
@@ -166,7 +166,7 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		{
 			name: "many results",
 			sig: &types.Signature{
-				Results: []types.Type{
+				Results: []*types.Type{
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					f32, f64, f64, f32, f64, v128, v128,
@@ -228,7 +228,7 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		{
 			name: "many params",
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					i32, i32, v128, v128, v128, i64, i32, i32, i64, i32, i64,
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					f32, f64, f64, f32, f64, v128, v128, v128, v128, v128,
@@ -296,12 +296,12 @@ func TestAbiImpl_constructEntryPreamble(t *testing.T) {
 		{
 			name: "many params and results",
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					i32, i32, v128, v128, v128, i64, i32, i32, i64, i32, i64,
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					f32, f64, f64, f32, f64, v128, v128, v128, v128, v128,
 				},
-				Results: []types.Type{
+				Results: []*types.Type{
 					f32, f64, i32, f32, i64, i32, i32, i64, i32, i64,
 					i32, i32, v128, v128, v128, i64, i32, i32, i64, i32, i64,
 				},

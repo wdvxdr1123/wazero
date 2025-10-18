@@ -1714,7 +1714,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				break
 			}
 
-			var scalarType types.Type
+			var scalarType *types.Type
 			switch vecOp {
 			case wasm.OpcodeVecV128Load32zero:
 				scalarType = types.F32
@@ -3172,7 +3172,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				size = 1
 			}
 
-			var typ types.Type
+			var typ *types.Type
 			switch atomicOp {
 			case wasm.OpcodeAtomicI64Load, wasm.OpcodeAtomicI64Load32U, wasm.OpcodeAtomicI64Load16U, wasm.OpcodeAtomicI64Load8U:
 				typ = types.I64
@@ -3496,7 +3496,7 @@ func (c *Compiler) lowerAccessTableWithBoundsCheck(tableIndex uint32, elementOff
 	return calcElementAddressInTable.Return()
 }
 
-func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Signature, args []ssa.Value, funcRefOrPtrValue uint64) {
+func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Signature, args []ssa.Value, funcRefOrPtrValue ssa.Value) {
 	builder := c.ssaBuilder
 	state := c.state()
 	var typIndex wasm.Index
@@ -3531,7 +3531,7 @@ func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Sign
 	if fnIndex >= c.m.ImportFunctionCount {
 		args = append(args, c.moduleCtxPtrValue) // This case the callee module is itself.
 		args = append(args, vs...)
-		return false, sig, args, uint64(FunctionIndexToFuncRef(fnIndex))
+		return false, sig, args, ssa.ValueFromFuncRef(FunctionIndexToFuncRef(fnIndex))
 	} else {
 		// This case we have to read the address of the imported function from the module context.
 		moduleCtx := c.moduleCtxPtrValue
@@ -3544,7 +3544,7 @@ func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Sign
 
 		args = append(args, loadModuleCtxPtr.Return())
 		args = append(args, vs...)
-		return true, sig, args, uint64(loadFuncPtr.Return())
+		return true, sig, args, loadFuncPtr.Return()
 	}
 }
 
@@ -3557,7 +3557,7 @@ func (c *Compiler) lowerCall(fnIndex uint32) {
 	if isIndirect {
 		call.AsCallIndirect(ssa.Value(funcRefOrPtrValue), sig, args)
 	} else {
-		call.AsCall(ssa.FuncRef(funcRefOrPtrValue), sig, args)
+		call.AsCall(funcRefOrPtrValue.FuncRef(), sig, args)
 	}
 	builder.InsertInstruction(call)
 
@@ -3673,7 +3673,7 @@ func (c *Compiler) lowerTailCallReturnCall(fnIndex uint32) {
 	if isIndirect {
 		call.AsTailCallReturnCallIndirect(ssa.Value(funcRefOrPtrValue), sig, args)
 	} else {
-		call.AsTailCallReturnCall(ssa.FuncRef(funcRefOrPtrValue), sig, args)
+		call.AsTailCallReturnCall(funcRefOrPtrValue.FuncRef(), sig, args)
 	}
 	builder.InsertInstruction(call)
 
@@ -4185,7 +4185,7 @@ func (c *Compiler) lowerBrTable(labels []uint32, index ssa.Value) {
 		trampoline := builder.AllocateBasicBlock()
 		builder.SetCurrentBlock(trampoline)
 		c.insertJumpToBlock(args, targetBlk)
-		trampolineBlockIDs = append(trampolineBlockIDs, ssa.Value(trampoline.ID()))
+		trampolineBlockIDs = append(trampolineBlockIDs, ssa.ValueFromBlockID(trampoline.ID()))
 	}
 	builder.SetCurrentBlock(currentBlk)
 
@@ -4195,7 +4195,7 @@ func (c *Compiler) lowerBrTable(labels []uint32, index ssa.Value) {
 	builder.InsertInstruction(brTable)
 
 	for _, trampolineID := range trampolineBlockIDs {
-		builder.Seal(builder.BasicBlock(ssa.BasicBlockID(trampolineID)))
+		builder.Seal(builder.BasicBlock(trampolineID.BlockID()))
 	}
 }
 

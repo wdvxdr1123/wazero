@@ -67,7 +67,7 @@ type Compiler interface {
 	Init()
 
 	// AllocateVReg allocates a new virtual register of the given type.
-	AllocateVReg(typ types.Type) regalloc.VReg
+	AllocateVReg(typ *types.Type) regalloc.VReg
 
 	// ValueDefinition returns the definition of the given value.
 	ValueDefinition(ssa.Value) SSAValueDefinition
@@ -75,8 +75,8 @@ type Compiler interface {
 	// VRegOf returns the virtual register of the given ssa.Value.
 	VRegOf(value ssa.Value) regalloc.VReg
 
-	// TypeOf returns the types.Type of the given virtual register.
-	TypeOf(regalloc.VReg) types.Type
+	// TypeOf returns the *types.Type of the given virtual register.
+	TypeOf(regalloc.VReg) *types.Type
 
 	// MatchInstr returns true if the given definition is from an instruction with the given opcode, the current group ID,
 	// and a refcount of 1. That means, the instruction can be merged/swapped within the current instruction group.
@@ -133,7 +133,7 @@ type compiler struct {
 	// returnVRegs is the list of virtual registers that store the return values.
 	returnVRegs  []regalloc.VReg
 	varEdges     [][2]regalloc.VReg
-	varEdgeTypes []types.Type
+	varEdgeTypes []*types.Type
 	constEdges   []struct {
 		cInst *ssa.Instruction
 		dst   regalloc.VReg
@@ -142,7 +142,7 @@ type compiler struct {
 	vRegIDs         []regalloc.VRegID
 	tempRegs        []regalloc.VReg
 	tmpVals         []ssa.Value
-	ssaTypeOfVRegID [] /* VRegID to */ types.Type
+	ssaTypeOfVRegID [] /* VRegID to */ *types.Type
 	buf             []byte
 	relocations     []RelocationInfo
 	sourceOffsets   []SourceOffsetInfo
@@ -252,13 +252,13 @@ func (c *compiler) assignVirtualRegisters() {
 }
 
 // AllocateVReg implements Compiler.AllocateVReg.
-func (c *compiler) AllocateVReg(typ types.Type) regalloc.VReg {
+func (c *compiler) AllocateVReg(typ *types.Type) regalloc.VReg {
 	regType := regalloc.RegTypeOf(typ)
 	r := regalloc.VReg(c.nextVRegID).SetRegType(regType)
 
 	id := r.ID()
 	if int(id) >= len(c.ssaTypeOfVRegID) {
-		c.ssaTypeOfVRegID = append(c.ssaTypeOfVRegID, make([]types.Type, id+1)...)
+		c.ssaTypeOfVRegID = append(c.ssaTypeOfVRegID, make([]*types.Type, id+1)...)
 	}
 	c.ssaTypeOfVRegID[id] = typ
 	c.nextVRegID++
@@ -298,7 +298,7 @@ func (c *compiler) Format() string {
 }
 
 // TypeOf implements Compiler.Format.
-func (c *compiler) TypeOf(v regalloc.VReg) types.Type {
+func (c *compiler) TypeOf(v regalloc.VReg) *types.Type {
 	return c.ssaTypeOfVRegID[v.ID()]
 }
 

@@ -58,7 +58,7 @@ type (
 		Reset()
 
 		// InsertMove inserts a move instruction from src to dst whose type is typ.
-		InsertMove(dst, src regalloc.VReg, typ types.Type)
+		InsertMove(dst, src regalloc.VReg, typ *types.Type)
 
 		// InsertReturn inserts the return instruction to return from the current function.
 		InsertReturn()

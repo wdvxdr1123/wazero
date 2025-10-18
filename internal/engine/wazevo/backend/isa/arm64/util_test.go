@@ -58,7 +58,7 @@ type mockCompiler struct {
 	vRegMap     map[ssa.Value]regalloc.VReg
 	definitions map[ssa.Value]backend.SSAValueDefinition
 	sigs        map[types.SignatureID]*types.Signature
-	typeOf      map[regalloc.VRegID]types.Type
+	typeOf      map[regalloc.VRegID]*types.Type
 	ssaBuilder  ssa.Builder
 	relocs      []backend.RelocationInfo
 	buf         []byte
@@ -97,7 +97,7 @@ func (m *mockCompiler) Emit8Bytes(b uint64) {
 
 func (m *mockCompiler) Encode()     {}
 func (m *mockCompiler) Buf() []byte { return m.buf }
-func (m *mockCompiler) TypeOf(v regalloc.VReg) (ret types.Type) {
+func (m *mockCompiler) TypeOf(v regalloc.VReg) (ret *types.Type) {
 	return m.typeOf[v.ID()]
 }
 func (m *mockCompiler) Finalize(context.Context) (err error) { return }
@@ -110,7 +110,7 @@ func newMockCompilationContext() *mockCompiler {
 	return &mockCompiler{
 		vRegMap:     make(map[ssa.Value]regalloc.VReg),
 		definitions: make(map[ssa.Value]backend.SSAValueDefinition),
-		typeOf:      map[regalloc.VRegID]types.Type{},
+		typeOf:      map[regalloc.VRegID]*types.Type{},
 	}
 }
 
@@ -120,7 +120,7 @@ func (m *mockCompiler) ResolveSignature(id types.SignatureID) *types.Signature {
 }
 
 // AllocateVReg implements backend.Compiler.
-func (m *mockCompiler) AllocateVReg(typ types.Type) regalloc.VReg {
+func (m *mockCompiler) AllocateVReg(typ *types.Type) regalloc.VReg {
 	m.vRegCounter++
 	regType := regalloc.RegTypeOf(typ)
 	ret := regalloc.VReg(m.vRegCounter).SetRegType(regType)

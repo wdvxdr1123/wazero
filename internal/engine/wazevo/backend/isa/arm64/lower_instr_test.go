@@ -246,7 +246,7 @@ func TestMachine_InsertMove(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		src, dst    regalloc.VReg
-		typ         types.Type
+		typ         *types.Type
 		instruction string
 	}{
 		{
@@ -373,7 +373,7 @@ L2:
 				regalloc.VReg(3).SetRegType(regalloc.RegTypeInt)
 			mc, _, m := newSetupWithMockContext()
 			m.maxSSABlockID, m.nextLabel = 1, 1
-			mc.typeOf = map[regalloc.VRegID]types.Type{execCtx.ID(): types.I64, 2: types.I64, 3: types.I64}
+			mc.typeOf = map[regalloc.VRegID]*types.Type{execCtx.ID(): types.I64, 2: types.I64, 3: types.I64}
 			m.lowerIDiv(execCtx, rd, operandNR(rn), operandNR(rm), tc._64bit, tc.signed)
 			require.Equal(t, tc.exp, "\n"+formatEmittedInstructionsInCurrentBlock(m)+"\n")
 		})
@@ -445,7 +445,7 @@ fcvtzu w1, s2
 		t.Run(tc.name, func(t *testing.T) {
 			mc, _, m := newSetupWithMockContext()
 			m.maxSSABlockID, m.nextLabel = 1, 1
-			mc.typeOf = map[regalloc.VRegID]types.Type{v2VReg.ID(): types.I64, x15VReg.ID(): types.I64}
+			mc.typeOf = map[regalloc.VRegID]*types.Type{v2VReg.ID(): types.I64, x15VReg.ID(): types.I64}
 			m.lowerFpuToInt(x1VReg, operandNR(v2VReg), x15VReg, false, false, false, tc.nontrapping)
 			require.Equal(t, tc.expectedAsm, "\n"+formatEmittedInstructionsInCurrentBlock(m)+"\n")
 
@@ -885,7 +885,7 @@ mov v5?.8b, v6?.8b
 	} {
 		t.Run(fmt.Sprintf("64bit=%v", tc._64bit), func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ, ftyp types.Type
+			var typ, ftyp *types.Type
 			if tc._64bit {
 				typ = types.I64
 				ftyp = types.F64
@@ -933,7 +933,7 @@ ror x4?, x2?, x1?
 	} {
 		t.Run(fmt.Sprintf("64bit=%v", tc._64bit), func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ types.Type
+			var typ *types.Type
 			if tc._64bit {
 				typ = types.I64
 			} else {
@@ -1359,7 +1359,7 @@ swpalb w3?, w4?, x2?
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ types.Type
+			var typ *types.Type
 			if tc._64bit {
 				typ = types.I64
 			} else {
@@ -1447,7 +1447,7 @@ casalb w2?, w3?, x1?
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ types.Type
+			var typ *types.Type
 			if tc._64bit {
 				typ = types.I64
 			} else {
@@ -1533,7 +1533,7 @@ ldarb w2?, x1?
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ types.Type
+			var typ *types.Type
 			if tc._64bit {
 				typ = types.I64
 			} else {
@@ -1617,7 +1617,7 @@ stlrb w2?, x1?
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, m := newSetupWithMockContext()
-			var typ types.Type
+			var typ *types.Type
 			if tc._64bit {
 				typ = types.I64
 			} else {

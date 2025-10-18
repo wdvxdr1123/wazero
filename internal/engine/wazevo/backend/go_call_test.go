@@ -21,28 +21,28 @@ func Test_goFunctionCallRequiredStackSize(t *testing.T) {
 		},
 		{
 			name: "only param",
-			sig:  &types.Signature{Params: []types.Type{types.I64, types.V128}},
+			sig:  &types.Signature{Params: []*types.Type{types.I64, types.V128}},
 			exp:  32,
 		},
 		{
 			name: "only result",
-			sig:  &types.Signature{Results: []types.Type{types.I64, types.V128, types.I32}},
+			sig:  &types.Signature{Results: []*types.Type{types.I64, types.V128, types.I32}},
 			exp:  32,
 		},
 		{
 			name: "param < result",
-			sig:  &types.Signature{Params: []types.Type{types.I64, types.V128}, Results: []types.Type{types.I64, types.V128, types.I32}},
+			sig:  &types.Signature{Params: []*types.Type{types.I64, types.V128}, Results: []*types.Type{types.I64, types.V128, types.I32}},
 			exp:  32,
 		},
 		{
 			name: "param > result",
-			sig:  &types.Signature{Params: []types.Type{types.I64, types.V128, types.I32}, Results: []types.Type{types.I64, types.V128}},
+			sig:  &types.Signature{Params: []*types.Type{types.I64, types.V128, types.I32}, Results: []*types.Type{types.I64, types.V128}},
 			exp:  32,
 		},
 		{
 			name:     "param < result / argBegin=2",
 			argBegin: 2,
-			sig:      &types.Signature{Params: []types.Type{types.I64, types.V128, types.I32}, Results: []types.Type{types.I64, types.F64}},
+			sig:      &types.Signature{Params: []*types.Type{types.I64, types.V128, types.I32}, Results: []*types.Type{types.I64, types.F64}},
 			exp:      16,
 		},
 	} {

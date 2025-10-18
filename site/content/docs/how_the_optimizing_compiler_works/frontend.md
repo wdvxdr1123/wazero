@@ -167,7 +167,7 @@ blk1: () <-- (blk0)
 
 `Iconst_32` takes no input value and produce value `v6`; `Isub` takes two input values (`v6`, `v2`)
 and produces value `v7`; `Jump` takes one input value (`v7`) and produces no value. All
-such values have the `i32` type. The wazero SSA's type system (`types.Type`) allows the following types:
+such values have the `i32` type. The wazero SSA's type system (`*types.Type`) allows the following types:
 
 - `i32`: 32-bit integer
 - `i64`: 64-bit integer

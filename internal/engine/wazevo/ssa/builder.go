@@ -32,8 +32,8 @@ type Builder interface {
 	// SetCurrentBlock sets the instruction insertion target to the BasicBlock `b`.
 	SetCurrentBlock(b *BasicBlock)
 
-	// DeclareVariable declares a Variable of the given types.Type.
-	DeclareVariable(types.Type) Variable
+	// DeclareVariable declares a Variable of the given *types.Type.
+	DeclareVariable(*types.Type) Variable
 
 	// DefineVariable defines a variable in the `block` with value.
 	// The defining instruction will be inserted into the `block`.
@@ -50,7 +50,7 @@ type Builder interface {
 	InsertInstruction(raw *Instruction)
 
 	// allocateValue allocates an unused Value.
-	allocateValue(typ types.Type) Value
+	allocateValue(typ *types.Type) Value
 
 	// MustFindValue searches the latest definition of the given Variable and returns the result.
 	MustFindValue(variable Variable) Value
@@ -126,7 +126,7 @@ type Builder interface {
 	Idom(blk *BasicBlock) *BasicBlock
 
 	// InsertZeroValue inserts a zero value constant instruction of the given type.
-	InsertZeroValue(t types.Type)
+	InsertZeroValue(t *types.Type)
 
 	// BasicBlock returns the BasicBlock of the given ID.
 	BasicBlock(id BasicBlockID) *BasicBlock
@@ -162,7 +162,7 @@ type builder struct {
 	// nextValueID is used by builder.AllocateValue.
 	nextValueID ValueID
 	// nextVariable is used by builder.AllocateVariable.
-	nextVariable Variable
+	nextVariable uint32
 
 	// valueAnnotations contains the annotations for each Value, only used for debugging.
 	valueAnnotations map[ValueID]string
@@ -195,7 +195,7 @@ type builder struct {
 	currentSourceOffset SourceOffset
 
 	// zeros are the zero value constants for each type.
-	zeros [types.V128 + 1]Value
+	zeros map[*types.Type]Value
 }
 
 // ValueInfo contains the data per Value used to lower the SSA in backend.
@@ -227,8 +227,8 @@ func (b *builder) basicBlock(id BasicBlockID) *BasicBlock {
 }
 
 // InsertZeroValue implements Builder.InsertZeroValue.
-func (b *builder) InsertZeroValue(t types.Type) {
-	if b.zeros[t].Valid() {
+func (b *builder) InsertZeroValue(t *types.Type) {
+	if _, ok := b.zeros[t]; ok {
 		return
 	}
 	zeroInst := b.AllocateInstruction()
@@ -258,7 +258,7 @@ func (b *builder) ReturnBlock() *BasicBlock {
 func (b *builder) Init(s *types.Signature) {
 	b.nextVariable = 0
 	b.currentSignature = s
-	b.zeros = [types.End]Value{ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid, ValueInvalid}
+	b.zeros = make(map[*types.Type]Value)
 	resetBasicBlock(b.returnBlk)
 	b.instructionsPool.Reset()
 	b.basicBlocksPool.Reset()
@@ -424,15 +424,15 @@ func (b *builder) EntryBlock() *BasicBlock {
 }
 
 // DeclareVariable implements Builder.DeclareVariable.
-func (b *builder) DeclareVariable(typ types.Type) Variable {
-	v := b.nextVariable
+func (b *builder) DeclareVariable(typ *types.Type) Variable {
+	v := Variable{id: b.nextVariable}
 	b.nextVariable++
 	return v.setType(typ)
 }
 
 // allocateValue implements Builder.AllocateValue.
-func (b *builder) allocateValue(typ types.Type) (v Value) {
-	v = Value(b.nextValueID)
+func (b *builder) allocateValue(typ *types.Type) (v Value) {
+	v = Value{id: b.nextValueID}
 	v = v.setType(typ)
 	b.nextValueID++
 	return
@@ -467,7 +467,7 @@ func (b *builder) MustFindValue(variable Variable) Value {
 // the section 2 of the paper https://link.springer.com/content/pdf/10.1007/978-3-642-37051-9_6.pdf.
 //
 // TODO: reimplement this in iterative, not recursive, to avoid stack overflow.
-func (b *builder) findValue(typ types.Type, variable Variable, blk *BasicBlock) Value {
+func (b *builder) findValue(typ *types.Type, variable Variable, blk *BasicBlock) Value {
 	if val, ok := blk.lastDefinitions[variable]; ok {
 		// The value is already defined in this block!
 		return val

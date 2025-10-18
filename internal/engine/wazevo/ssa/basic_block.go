@@ -117,7 +117,7 @@ func (bb *BasicBlock) ReturnBlock() bool {
 	return bb.id == basicBlockIDReturnBlock
 }
 
-func (bb *BasicBlock) AddParam(b Builder, typ types.Type) Value {
+func (bb *BasicBlock) AddParam(b Builder, typ *types.Type) Value {
 	paramValue := b.allocateValue(typ)
 	bb.Params = append(bb.Params, paramValue)
 	return paramValue
@@ -139,11 +139,11 @@ func (bb *BasicBlock) insertInstruction(b *builder, next *Instruction) {
 
 	switch next.opcode {
 	case OpcodeJump, OpcodeBrz, OpcodeBrnz:
-		target := BasicBlockID(next.rValue)
+		target := next.rValue.BlockID()
 		b.basicBlock(target).addPred(bb, next)
 	case OpcodeBrTable:
 		for _, _target := range next.rValues {
-			target := BasicBlockID(_target)
+			target := _target.BlockID()
 			b.basicBlock(target).addPred(bb, next)
 		}
 	}
@@ -241,7 +241,7 @@ func (bb *BasicBlock) validate(b *builder) {
 	if len(bb.Pred) > 0 {
 		for _, pred := range bb.Pred {
 			if pred.Branch.opcode != OpcodeBrTable {
-				blockID := int(pred.Branch.rValue)
+				blockID := int(pred.Branch.rValue.BlockID())
 				target := b.basicBlocksPool.View(blockID)
 				if target != bb {
 					panic(fmt.Sprintf("BUG: '%s' is not branch to %s, but to %s",

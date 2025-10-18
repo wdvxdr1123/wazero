@@ -37,13 +37,13 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 			exitCode:             wazevoapi.ExitCodeCallListenerBefore,
 			needModuleContextPtr: true,
 			sig: &types.Signature{
-				Params: []types.Type{
+				Params: []*types.Type{
 					types.I64, types.I64, types.V128, types.F32, types.V128,
 					types.I64, types.I64, types.V128, types.F32, types.V128,
 					types.I64, types.I64, types.V128, types.F32, types.V128,
 					types.I64, types.I64, types.V128, types.F32, types.V128,
 				},
-				Results: []types.Type{
+				Results: []*types.Type{
 					types.V128, types.I32, types.I64, types.V128, types.F32,
 					types.V128, types.I32, types.I64, types.V128, types.F32,
 					types.V128, types.I32, types.I64, types.V128, types.F32,
@@ -191,8 +191,8 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 			name:     "go call",
 			exitCode: wazevoapi.ExitCodeCallGoFunctionWithIndex(100, false),
 			sig: &types.Signature{
-				Params:  []types.Type{types.I64, types.I64, types.F64},
-				Results: []types.Type{types.I32, types.I64, types.F32, types.F64},
+				Params:  []*types.Type{types.I64, types.I64, types.F64},
+				Results: []*types.Type{types.I32, types.I64, types.F32, types.F64},
 			},
 			needModuleContextPtr: true,
 			exp: `
@@ -279,8 +279,8 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 			name:     "go call",
 			exitCode: wazevoapi.ExitCodeCallGoFunctionWithIndex(100, false),
 			sig: &types.Signature{
-				Params:  []types.Type{types.I64, types.I64, types.F64, types.F64, types.I32, types.I32},
-				Results: []types.Type{},
+				Params:  []*types.Type{types.I64, types.I64, types.F64, types.F64, types.I32, types.I32},
+				Results: []*types.Type{},
 			},
 			needModuleContextPtr: true,
 			exp: `
@@ -365,8 +365,8 @@ func TestMachine_CompileGoFunctionTrampoline(t *testing.T) {
 			name:     "grow memory",
 			exitCode: wazevoapi.ExitCodeGrowMemory,
 			sig: &types.Signature{
-				Params:  []types.Type{types.I32, types.I32},
-				Results: []types.Type{types.I32},
+				Params:  []*types.Type{types.I32, types.I32},
+				Results: []*types.Type{types.I32},
 			},
 			exp: `
 	stp x30, xzr, [sp, #-0x10]!

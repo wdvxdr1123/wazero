@@ -25,7 +25,7 @@ type Instruction struct {
 	v2     Value
 	v3     Value
 	vs     []Value
-	typ    types.Type
+	typ    *types.Type
 
 	// rValue is the (first) return value of this instruction.
 	// For branching instructions except for OpcodeBrTable, they hold BlockID to jump cast to Value.
@@ -219,10 +219,10 @@ const (
 	// OpcodeExtractlane extracts a lane value from a vector: `v = ExtractLane x, Idx`.
 	OpcodeExtractlane
 
-	// OpcodeLoad loads a types.Type value from the [base + offset] address: `v = Load base, offset`.
+	// OpcodeLoad loads a *types.Type value from the [base + offset] address: `v = Load base, offset`.
 	OpcodeLoad
 
-	// OpcodeStore stores a types.Type value to the [base + offset] address: `Store v, base, offset`.
+	// OpcodeStore stores a *types.Type value to the [base + offset] address: `Store v, base, offset`.
 	OpcodeStore
 
 	// OpcodeUload8 loads the 8-bit value from the [base + offset] address, zero-extended to 64 bits: `v = Uload8 base, offset`.
@@ -674,16 +674,16 @@ func (op AtomicRmwOp) String() string {
 
 // returnTypesFn provides the info to determine the type of instruction.
 // t1 is the type of the first result, ts are the types of the remaining results.
-type returnTypesFn func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type)
+type returnTypesFn func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type)
 
 var (
-	returnTypesFnNoReturns    returnTypesFn = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.Invalid, nil }
-	returnTypesFnSingle                     = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return instr.typ, nil }
-	returnTypesFnI32                        = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.I32, nil }
-	returnTypesFnF32                        = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.F32, nil }
-	returnTypesFnF64                        = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.F64, nil }
-	returnTypesFnV128                       = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) { return types.V128, nil }
-	returnTypesFnCallIndirect               = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) {
+	returnTypesFnNoReturns    returnTypesFn = func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type) { return types.Invalid, nil }
+	returnTypesFnSingle                     = func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type) { return instr.typ, nil }
+	returnTypesFnI32                        = func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type) { return types.I32, nil }
+	returnTypesFnF32                        = func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type) { return types.F32, nil }
+	returnTypesFnF64                        = func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type) { return types.F64, nil }
+	returnTypesFnV128                       = func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type) { return types.V128, nil }
+	returnTypesFnCallIndirect               = func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type) {
 		sigID := types.SignatureID(instr.u1)
 		sig, ok := b.signatures[sigID]
 		if !ok {
@@ -699,7 +699,7 @@ var (
 		}
 		return
 	}
-	returnTypesFnCall = func(b *builder, instr *Instruction) (t1 types.Type, ts []types.Type) {
+	returnTypesFnCall = func(b *builder, instr *Instruction) (t1 *types.Type, ts []*types.Type) {
 		sigID := types.SignatureID(instr.u2)
 		sig, ok := b.signatures[sigID]
 		if !ok {
@@ -1040,7 +1040,7 @@ var instructionReturnTypes = [opcodeEnd]returnTypesFn{
 }
 
 // AsLoad initializes this instruction as a store instruction with OpcodeLoad.
-func (i *Instruction) AsLoad(ptr Value, offset uint32, typ types.Type) *Instruction {
+func (i *Instruction) AsLoad(ptr Value, offset uint32, typ *types.Type) *Instruction {
 	i.opcode = OpcodeLoad
 	i.v = ptr
 	i.u1 = uint64(offset)
@@ -1062,18 +1062,18 @@ func (i *Instruction) AsExtLoad(op Opcode, ptr Value, offset uint32, dst64bit bo
 }
 
 // AsVZeroExtLoad initializes this instruction as a store instruction with OpcodeVExtLoad.
-func (i *Instruction) AsVZeroExtLoad(ptr Value, offset uint32, scalarType types.Type) *Instruction {
+func (i *Instruction) AsVZeroExtLoad(ptr Value, offset uint32, scalarType *types.Type) *Instruction {
 	i.opcode = OpcodeVZeroExtLoad
 	i.v = ptr
+	i.v2 = Value{typ: scalarType}
 	i.u1 = uint64(offset)
-	i.u2 = uint64(scalarType)
 	i.typ = types.V128
 	return i
 }
 
 // VZeroExtLoadData returns the operands for a load instruction. The returned `typ` is the scalar type of the load target.
-func (i *Instruction) VZeroExtLoadData() (ptr Value, offset uint32, typ types.Type) {
-	return i.v, uint32(i.u1), types.Type(i.u2)
+func (i *Instruction) VZeroExtLoadData() (ptr Value, offset uint32, typ *types.Type) {
+	return i.v, uint32(i.u1), i.v2.Type()
 }
 
 // AsLoadSplat initializes this instruction as a store instruction with OpcodeLoadSplat.
@@ -1087,7 +1087,7 @@ func (i *Instruction) AsLoadSplat(ptr Value, offset uint32, lane types.VecLane) 
 }
 
 // LoadData returns the operands for a load instruction.
-func (i *Instruction) LoadData() (ptr Value, offset uint32, typ types.Type) {
+func (i *Instruction) LoadData() (ptr Value, offset uint32, typ *types.Type) {
 	return i.v, uint32(i.u1), i.typ
 }
 
@@ -1953,7 +1953,7 @@ func (i *Instruction) AsReturn(vs []Value) *Instruction {
 }
 
 // AsIreduce initializes this instruction as a reduction instruction with OpcodeIreduce.
-func (i *Instruction) AsIreduce(v Value, dstType types.Type) *Instruction {
+func (i *Instruction) AsIreduce(v Value, dstType *types.Type) *Instruction {
 	i.opcode = OpcodeIreduce
 	i.v = v
 	i.typ = dstType
@@ -1980,7 +1980,7 @@ func (i *Instruction) AsWiden(v Value, lane types.VecLane, signed, low bool) *In
 
 // AsAtomicLoad initializes this instruction as an atomic load.
 // The size is in bytes and must be 1, 2, 4, or 8.
-func (i *Instruction) AsAtomicLoad(addr Value, size uint64, typ types.Type) *Instruction {
+func (i *Instruction) AsAtomicLoad(addr Value, size uint64, typ *types.Type) *Instruction {
 	i.opcode = OpcodeAtomicLoad
 	i.u1 = size
 	i.v = addr
@@ -2115,7 +2115,7 @@ func (i *Instruction) BranchData() (condVal Value, blockArgs []Value, target Bas
 		panic("BUG")
 	}
 	blockArgs = i.vs
-	target = BasicBlockID(i.rValue)
+	target = i.rValue.BlockID()
 	return
 }
 
@@ -2133,7 +2133,7 @@ func (i *Instruction) BrTableData() (index Value, targets []Value) {
 func (i *Instruction) AsJump(vs []Value, target *BasicBlock) *Instruction {
 	i.opcode = OpcodeJump
 	i.vs = vs
-	i.rValue = Value(target.ID())
+	i.rValue = ValueFromBlockID(target.ID())
 	return i
 }
 
@@ -2158,7 +2158,7 @@ func (i *Instruction) AsBrz(v Value, args []Value, target *BasicBlock) {
 	i.opcode = OpcodeBrz
 	i.v = v
 	i.vs = args
-	i.rValue = Value(target.ID())
+	i.rValue = ValueFromBlockID(target.ID())
 }
 
 // AsBrnz initializes this instruction as a branch-if-not-zero instruction with OpcodeBrnz.
@@ -2166,7 +2166,7 @@ func (i *Instruction) AsBrnz(v Value, args []Value, target *BasicBlock) *Instruc
 	i.opcode = OpcodeBrnz
 	i.v = v
 	i.vs = args
-	i.rValue = Value(target.ID())
+	i.rValue = ValueFromBlockID(target.ID())
 	return i
 }
 
@@ -2315,7 +2315,7 @@ func (i *Instruction) AsNearest(x Value) *Instruction {
 }
 
 // AsBitcast initializes this instruction as an instruction with OpcodeBitcast.
-func (i *Instruction) AsBitcast(x Value, dstType types.Type) *Instruction {
+func (i *Instruction) AsBitcast(x Value, dstType *types.Type) *Instruction {
 	i.opcode = OpcodeBitcast
 	i.v = x
 	i.typ = dstType
@@ -2323,7 +2323,7 @@ func (i *Instruction) AsBitcast(x Value, dstType types.Type) *Instruction {
 }
 
 // BitcastData returns the operands for a bitcast instruction.
-func (i *Instruction) BitcastData() (x Value, dstType types.Type) {
+func (i *Instruction) BitcastData() (x Value, dstType *types.Type) {
 	return i.v, i.typ
 }
 
@@ -2560,7 +2560,7 @@ func (i *Instruction) Format(b Builder) string {
 		if i.IsFallthroughJump() {
 			vs[0] = " fallthrough"
 		} else {
-			blockId := BasicBlockID(i.rValue)
+			blockId := i.rValue.BlockID()
 			vs[0] = " " + b.BasicBlock(blockId).Name()
 		}
 		for idx := range view {
@@ -2572,7 +2572,7 @@ func (i *Instruction) Format(b Builder) string {
 		view := i.vs
 		vs := make([]string, len(view)+2)
 		vs[0] = " " + i.v.Format(b)
-		blockId := BasicBlockID(i.rValue)
+		blockId := i.rValue.BlockID()
 		vs[1] = b.BasicBlock(blockId).Name()
 		for idx := range view {
 			vs[idx+2] = view[idx].Format(b)
@@ -2583,7 +2583,7 @@ func (i *Instruction) Format(b Builder) string {
 		instSuffix = fmt.Sprintf(" %s", i.v.Format(b))
 		instSuffix += ", ["
 		for i, target := range i.rValues {
-			blk := b.BasicBlock(BasicBlockID(target))
+			blk := b.BasicBlock(target.BlockID())
 			if i == 0 {
 				instSuffix += blk.Name()
 			} else {

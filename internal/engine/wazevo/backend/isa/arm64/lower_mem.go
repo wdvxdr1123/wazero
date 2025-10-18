@@ -225,7 +225,7 @@ func (m *machine) lowerExtLoad(op ssa.Opcode, ptr ssa.Value, offset uint32, ret 
 	m.insert(load)
 }
 
-func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ types.Type, ret ssa.Value) {
+func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ *types.Type, ret ssa.Value) {
 	amode := m.lowerToAddressMode(ptr, offset, typ.Bits())
 
 	dst := m.compiler.VRegOf(ret)

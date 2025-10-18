@@ -46,7 +46,7 @@ func (m *machine) lowerFconst(dst regalloc.VReg, c uint64, _64 bool) {
 		xor := m.allocateInstr().asZeros(dst)
 		m.insert(xor)
 	} else {
-		var tmpType types.Type
+		var tmpType *types.Type
 		if _64 {
 			tmpType = types.I64
 		} else {
