@@ -127,8 +127,7 @@ func (c *compiler) lowerFunctionArguments(entry *ssa.BasicBlock) {
 
 	c.tmpVals = c.tmpVals[:0]
 	data := c.ssaBuilder.ValuesInfo()
-	for i := 0; i < entry.Params(); i++ {
-		p := entry.Param(i)
+	for _, p := range entry.Params {
 		if data[p.ID()].RefCount > 0 {
 			c.tmpVals = append(c.tmpVals, p)
 		} else {
@@ -142,7 +141,7 @@ func (c *compiler) lowerFunctionArguments(entry *ssa.BasicBlock) {
 
 // lowerBlockArguments lowers how to pass arguments to the given successor block.
 func (c *compiler) lowerBlockArguments(args []ssa.Value, succ *ssa.BasicBlock) {
-	if len(args) != succ.Params() {
+	if len(args) != len(succ.Params) {
 		panic("BUG: mismatched number of arguments")
 	}
 
@@ -150,7 +149,7 @@ func (c *compiler) lowerBlockArguments(args []ssa.Value, succ *ssa.BasicBlock) {
 	c.varEdgeTypes = c.varEdgeTypes[:0]
 	c.constEdges = c.constEdges[:0]
 	for i := 0; i < len(args); i++ {
-		dst := succ.Param(i)
+		dst := succ.Params[i]
 		src := args[i]
 
 		dstReg := c.VRegOf(dst)

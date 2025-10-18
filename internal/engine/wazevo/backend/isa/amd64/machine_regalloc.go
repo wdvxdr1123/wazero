@@ -137,8 +137,8 @@ func (f *regAllocFn) Pred(pos *labelPosition, i int) *labelPosition {
 func (f *regAllocFn) BlockParams(pos *labelPosition, regs *[]regalloc.VReg) []regalloc.VReg {
 	c := f.m.c
 	*regs = (*regs)[:0]
-	for i := 0; i < pos.sb.Params(); i++ {
-		v := c.VRegOf(pos.sb.Param(i))
+	for _, p := range pos.sb.Params {
+		v := c.VRegOf(p)
 		*regs = append(*regs, v)
 	}
 	return *regs

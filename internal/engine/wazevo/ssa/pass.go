@@ -114,7 +114,7 @@ func redundantPhiElimination(b *builder) {
 		_ = b.blockIteratorReversePostOrderBegin() // skip entry block!
 		// Below, we intentionally use the named iteration variable name, as this comes with inevitable nested for loops!
 		for blk := b.blockIteratorReversePostOrderNext(); blk != nil; blk = b.blockIteratorReversePostOrderNext() {
-			params := blk.params
+			params := blk.Params
 			paramNum := len(params)
 
 			for paramIndex := 0; paramIndex < paramNum; paramIndex++ {
@@ -197,7 +197,7 @@ func redundantPhiElimination(b *builder) {
 					redundantParamsCur++
 				}
 			}
-			blk.params = blk.params[:paramsCur]
+			blk.Params = blk.Params[:paramsCur]
 
 			// Clears the map for the next iteration.
 			redundantParams = redundantParams[:0]

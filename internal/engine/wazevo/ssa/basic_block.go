@@ -21,9 +21,9 @@ import (
 type BasicBlock struct {
 	id    BasicBlockID
 	instr []*Instruction
-	// params are Values that represent parameters to a basicBlock.
+	// Params are Values that represent parameters to a basicBlock.
 	// Each parameter can be considered as an output of PHI instruction in traditional SSA.
-	params []Value
+	Params []Value
 	Pred   []PredInfo
 	Succ   []*BasicBlock
 	// lastDefinitions maps Variable to its last definition in this block.
@@ -119,21 +119,8 @@ func (bb *BasicBlock) ReturnBlock() bool {
 
 func (bb *BasicBlock) AddParam(b Builder, typ types.Type) Value {
 	paramValue := b.allocateValue(typ)
-	bb.params = append(bb.params, paramValue)
+	bb.Params = append(bb.Params, paramValue)
 	return paramValue
-}
-
-// addParamOn adds a parameter to this block whose value is already allocated.
-func (bb *BasicBlock) addParamOn(b *builder, value Value) {
-	bb.params = append(bb.params, value)
-}
-
-func (bb *BasicBlock) Params() int {
-	return len(bb.params)
-}
-
-func (bb *BasicBlock) Param(i int) Value {
-	return bb.params[i]
 }
 
 // Valid is true if this block is still valid even after optimizations.
@@ -185,7 +172,7 @@ func (bb *BasicBlock) Tail() *Instruction {
 
 // reset resets the basicBlock to its initial state so that it can be reused for another function.
 func resetBasicBlock(bb *BasicBlock) {
-	bb.params = bb.params[:0]
+	bb.Params = bb.Params[:0]
 	bb.instr = bb.instr[:0]
 	bb.Pred = bb.Pred[:0]
 	bb.Succ = bb.Succ[:0]
@@ -225,8 +212,8 @@ func (bb *BasicBlock) addPred(pred *BasicBlock, branch *Instruction) {
 
 // formatHeader returns the string representation of the header of the basicBlock.
 func (bb *BasicBlock) formatHeader(b Builder) string {
-	ps := make([]string, len(bb.params))
-	for i, p := range bb.params {
+	ps := make([]string, len(bb.Params))
+	for i, p := range bb.Params {
 		ps[i] = p.formatWithType(b)
 	}
 
@@ -266,14 +253,14 @@ func (bb *BasicBlock) validate(b *builder) {
 			if bb.ReturnBlock() {
 				exp = len(b.currentSignature.Results)
 			} else {
-				exp = len(bb.params)
+				exp = len(bb.Params)
 			}
 
 			if len(pred.Branch.vs) != exp {
 				panic(fmt.Sprintf(
 					"BUG: len(argument at %s) != len(params at %s): %d != %d: %s",
 					pred.Block.Name(), bb.Name(),
-					len(pred.Branch.vs), len(bb.params), pred.Branch.Format(b),
+					len(pred.Branch.vs), len(bb.Params), pred.Branch.Format(b),
 				))
 			}
 

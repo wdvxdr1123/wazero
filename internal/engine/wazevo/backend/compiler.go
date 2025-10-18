@@ -214,8 +214,7 @@ func (c *compiler) assignVirtualRegisters() {
 
 	for blk := builder.BlockIteratorReversePostOrderBegin(); blk != nil; blk = builder.BlockIteratorReversePostOrderNext() {
 		// First we assign a virtual register to each parameter.
-		for i := 0; i < blk.Params(); i++ {
-			p := blk.Param(i)
+		for _, p := range blk.Params {
 			pid := p.ID()
 			typ := p.Type()
 			vreg := c.AllocateVReg(typ)
@@ -244,8 +243,8 @@ func (c *compiler) assignVirtualRegisters() {
 		}
 	}
 
-	for i, retBlk := 0, builder.ReturnBlock(); i < retBlk.Params(); i++ {
-		typ := retBlk.Param(i).Type()
+	for i, retBlk := 0, builder.ReturnBlock(); i < len(retBlk.Params); i++ {
+		typ := retBlk.Params[i].Type()
 		vReg := c.AllocateVReg(typ)
 		c.returnVRegs = append(c.returnVRegs, vReg)
 		c.ssaTypeOfVRegID[vReg.ID()] = typ

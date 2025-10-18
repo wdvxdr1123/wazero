@@ -4149,9 +4149,8 @@ func (c *Compiler) switchTo(originalStackLen int, targetBlk *ssa.BasicBlock) {
 
 	// At this point, blocks params consist only of the Wasm-level parameters,
 	// (since it's added only when we are trying to resolve variable *inside* this block).
-	for i := 0; i < targetBlk.Params(); i++ {
-		value := targetBlk.Param(i)
-		c.loweringState.push(value)
+	for _, p := range targetBlk.Params {
+		c.loweringState.push(p)
 	}
 }
 
@@ -4224,11 +4223,10 @@ func (c *Compiler) callListenerBefore() {
 		AsLoad(beforeListeners1stElement, uint32(c.wasmFunctionTypeIndex)*8 /* 8 bytes per index */, types.I64).Insert(builder).Return()
 
 	entry := builder.EntryBlock()
-	ps := entry.Params()
 
 	args := []ssa.Value{c.execCtxPtrValue, builder.AllocateInstruction().AsIconst32(c.wasmLocalFunctionIndex).Insert(builder).Return()}
-	for i := 2; i < ps; i++ {
-		args = append(args, entry.Param(i))
+	for i := 2; i < len(entry.Params); i++ {
+		args = append(args, entry.Params[i])
 	}
 
 	beforeSig := c.listenerSignatures[c.wasmFunctionTyp][0]
