@@ -20,23 +20,23 @@ type Builder interface {
 	BlockIDMax() BasicBlockID
 
 	// AllocateBasicBlock creates a basic block in SSA function.
-	AllocateBasicBlock() BasicBlock
+	AllocateBasicBlock() *BasicBlock
 
 	// CurrentBlock returns the currently handled BasicBlock which is set by the latest call to SetCurrentBlock.
-	CurrentBlock() BasicBlock
+	CurrentBlock() *BasicBlock
 
 	// EntryBlock returns the entry BasicBlock of the currently-compiled function.
-	EntryBlock() BasicBlock
+	EntryBlock() *BasicBlock
 
 	// SetCurrentBlock sets the instruction insertion target to the BasicBlock `b`.
-	SetCurrentBlock(b BasicBlock)
+	SetCurrentBlock(b *BasicBlock)
 
 	// DeclareVariable declares a Variable of the given Type.
 	DeclareVariable(Type) Variable
 
 	// DefineVariable defines a variable in the `block` with value.
 	// The defining instruction will be inserted into the `block`.
-	DefineVariable(variable Variable, value Value, block BasicBlock)
+	DefineVariable(variable Variable, value Value, block *BasicBlock)
 
 	// DefineVariableInCurrentBB is the same as DefineVariable except the definition is
 	// inserted into the current BasicBlock. Alias to DefineVariable(x, y, CurrentBlock()).
@@ -60,7 +60,7 @@ type Builder interface {
 
 	// Seal declares that we've known all the predecessors to this block and were added via AddPred.
 	// After calling this, AddPred will be forbidden.
-	Seal(blk BasicBlock)
+	Seal(blk *BasicBlock)
 
 	// AnnotateValue is for debugging purpose.
 	AnnotateValue(value Value, annotation string)
@@ -88,11 +88,11 @@ type Builder interface {
 	//	}
 	//
 	// The returned blocks are ordered in the order of AllocateBasicBlock being called.
-	BlockIteratorBegin() BasicBlock
+	BlockIteratorBegin() *BasicBlock
 
 	// BlockIteratorNext advances the state for iteration initialized by BlockIteratorBegin.
 	// Returns nil if there's no unseen BasicBlock.
-	BlockIteratorNext() BasicBlock
+	BlockIteratorNext() *BasicBlock
 
 	// ValuesInfo returns the data per Value used to lower the SSA in backend.
 	// This is indexed by ValueID.
@@ -100,14 +100,14 @@ type Builder interface {
 
 	// BlockIteratorReversePostOrderBegin is almost the same as BlockIteratorBegin except it returns the BasicBlock in the reverse post-order.
 	// This is available after RunPasses is run.
-	BlockIteratorReversePostOrderBegin() BasicBlock
+	BlockIteratorReversePostOrderBegin() *BasicBlock
 
 	// BlockIteratorReversePostOrderNext is almost the same as BlockIteratorPostOrderNext except it returns the BasicBlock in the reverse post-order.
 	// This is available after RunPasses is run.
-	BlockIteratorReversePostOrderNext() BasicBlock
+	BlockIteratorReversePostOrderNext() *BasicBlock
 
 	// ReturnBlock returns the BasicBlock which is used to return from the function.
-	ReturnBlock() BasicBlock
+	ReturnBlock() *BasicBlock
 
 	// InsertUndefined inserts an undefined instruction at the current position.
 	InsertUndefined()
@@ -116,13 +116,13 @@ type Builder interface {
 	SetCurrentSourceOffset(line SourceOffset)
 
 	// LoopNestingForestRoots returns the roots of the loop nesting forest.
-	LoopNestingForestRoots() []BasicBlock
+	LoopNestingForestRoots() []*BasicBlock
 
 	// LowestCommonAncestor returns the lowest common ancestor in the dominator tree of the given BasicBlock(s).
-	LowestCommonAncestor(blk1, blk2 BasicBlock) BasicBlock
+	LowestCommonAncestor(blk1, blk2 *BasicBlock) *BasicBlock
 
 	// Idom returns the immediate dominator of the given BasicBlock.
-	Idom(blk BasicBlock) BasicBlock
+	Idom(blk *BasicBlock) *BasicBlock
 
 	// VarLengthPool returns the VarLengthPool of Value.
 	VarLengthPool() *wazevoapi.VarLengthPool[Value]
@@ -131,7 +131,7 @@ type Builder interface {
 	InsertZeroValue(t Type)
 
 	// BasicBlock returns the BasicBlock of the given ID.
-	BasicBlock(id BasicBlockID) BasicBlock
+	BasicBlock(id BasicBlockID) *BasicBlock
 
 	// InstructionOfValue returns the Instruction that produces the given Value or nil if the Value is not produced by any Instruction.
 	InstructionOfValue(v Value) *Instruction
@@ -141,27 +141,27 @@ type Builder interface {
 func NewBuilder() Builder {
 	return &builder{
 		instructionsPool:        wazevoapi.NewPool[Instruction](resetInstruction),
-		basicBlocksPool:         wazevoapi.NewPool[basicBlock](resetBasicBlock),
-		varLengthBasicBlockPool: wazevoapi.NewVarLengthPool[BasicBlock](),
+		basicBlocksPool:         wazevoapi.NewPool[BasicBlock](resetBasicBlock),
+		varLengthBasicBlockPool: wazevoapi.NewVarLengthPool[*BasicBlock](),
 		varLengthPool:           wazevoapi.NewVarLengthPool[Value](),
 		valueAnnotations:        make(map[ValueID]string),
 		signatures:              make(map[SignatureID]*Signature),
-		returnBlk:               &basicBlock{id: basicBlockIDReturnBlock},
+		returnBlk:               &BasicBlock{id: basicBlockIDReturnBlock},
 	}
 }
 
 // builder implements Builder interface.
 type builder struct {
-	basicBlocksPool  wazevoapi.Pool[basicBlock]
+	basicBlocksPool  wazevoapi.Pool[BasicBlock]
 	instructionsPool wazevoapi.Pool[Instruction]
 	varLengthPool    wazevoapi.VarLengthPool[Value]
 	signatures       map[SignatureID]*Signature
 	currentSignature *Signature
 
 	// reversePostOrderedBasicBlocks are the BasicBlock(s) ordered in the reverse post-order after passCalculateImmediateDominators.
-	reversePostOrderedBasicBlocks []*basicBlock
-	currentBB                     *basicBlock
-	returnBlk                     *basicBlock
+	reversePostOrderedBasicBlocks []*BasicBlock
+	currentBB                     *BasicBlock
+	returnBlk                     *BasicBlock
 
 	// nextValueID is used by builder.AllocateValue.
 	nextValueID ValueID
@@ -176,18 +176,18 @@ type builder struct {
 
 	// dominators stores the immediate dominator of each BasicBlock.
 	// The index is blockID of the BasicBlock.
-	dominators []*basicBlock
+	dominators []*BasicBlock
 	sparseTree dominatorSparseTree
 
-	varLengthBasicBlockPool wazevoapi.VarLengthPool[BasicBlock]
+	varLengthBasicBlockPool wazevoapi.VarLengthPool[*BasicBlock]
 
 	// loopNestingForestRoots are the roots of the loop nesting forest.
-	loopNestingForestRoots []BasicBlock
+	loopNestingForestRoots []*BasicBlock
 
 	// The followings are used for optimization passes/deterministic compilation.
 	instStack       []*Instruction
-	blkStack        []*basicBlock
-	blkStack2       []*basicBlock
+	blkStack        []*BasicBlock
+	blkStack2       []*BasicBlock
 	redundantParams []redundantParam
 
 	// blockIterCur is used to implement blockIteratorBegin and blockIteratorNext.
@@ -219,11 +219,11 @@ type redundantParam struct {
 }
 
 // BasicBlock implements Builder.BasicBlock.
-func (b *builder) BasicBlock(id BasicBlockID) BasicBlock {
+func (b *builder) BasicBlock(id BasicBlockID) *BasicBlock {
 	return b.basicBlock(id)
 }
 
-func (b *builder) basicBlock(id BasicBlockID) *basicBlock {
+func (b *builder) basicBlock(id BasicBlockID) *BasicBlock {
 	if id == basicBlockIDReturnBlock {
 		return b.returnBlk
 	}
@@ -258,7 +258,7 @@ func (b *builder) VarLengthPool() *wazevoapi.VarLengthPool[Value] {
 }
 
 // ReturnBlock implements Builder.ReturnBlock.
-func (b *builder) ReturnBlock() BasicBlock {
+func (b *builder) ReturnBlock() *BasicBlock {
 	return b.returnBlk
 }
 
@@ -351,12 +351,12 @@ func (b *builder) ResolveSignature(id SignatureID) *Signature {
 }
 
 // AllocateBasicBlock implements Builder.AllocateBasicBlock.
-func (b *builder) AllocateBasicBlock() BasicBlock {
+func (b *builder) AllocateBasicBlock() *BasicBlock {
 	return b.allocateBasicBlock()
 }
 
 // allocateBasicBlock allocates a new basicBlock.
-func (b *builder) allocateBasicBlock() *basicBlock {
+func (b *builder) allocateBasicBlock() *BasicBlock {
 	id := BasicBlockID(b.basicBlocksPool.Allocated())
 	blk := b.basicBlocksPool.Allocate()
 	blk.id = id
@@ -364,7 +364,7 @@ func (b *builder) allocateBasicBlock() *basicBlock {
 }
 
 // Idom implements Builder.Idom.
-func (b *builder) Idom(blk BasicBlock) BasicBlock {
+func (b *builder) Idom(blk *BasicBlock) *BasicBlock {
 	return b.dominators[blk.ID()]
 }
 
@@ -408,9 +408,8 @@ func (b *builder) InsertInstruction(instr *Instruction) {
 }
 
 // DefineVariable implements Builder.DefineVariable.
-func (b *builder) DefineVariable(variable Variable, value Value, block BasicBlock) {
-	bb := block.(*basicBlock)
-	bb.lastDefinitions[variable] = value
+func (b *builder) DefineVariable(variable Variable, value Value, block *BasicBlock) {
+	block.lastDefinitions[variable] = value
 }
 
 // DefineVariableInCurrentBB implements Builder.DefineVariableInCurrentBB.
@@ -419,17 +418,17 @@ func (b *builder) DefineVariableInCurrentBB(variable Variable, value Value) {
 }
 
 // SetCurrentBlock implements Builder.SetCurrentBlock.
-func (b *builder) SetCurrentBlock(bb BasicBlock) {
-	b.currentBB = bb.(*basicBlock)
+func (b *builder) SetCurrentBlock(bb *BasicBlock) {
+	b.currentBB = bb
 }
 
 // CurrentBlock implements Builder.CurrentBlock.
-func (b *builder) CurrentBlock() BasicBlock {
+func (b *builder) CurrentBlock() *BasicBlock {
 	return b.currentBB
 }
 
 // EntryBlock implements Builder.EntryBlock.
-func (b *builder) EntryBlock() BasicBlock {
+func (b *builder) EntryBlock() *BasicBlock {
 	return b.entryBlk()
 }
 
@@ -453,7 +452,7 @@ func (b *builder) FindValueInLinearPath(variable Variable) Value {
 	return b.findValueInLinearPath(variable, b.currentBB)
 }
 
-func (b *builder) findValueInLinearPath(variable Variable, blk *basicBlock) Value {
+func (b *builder) findValueInLinearPath(variable Variable, blk *BasicBlock) Value {
 	if val, ok := blk.lastDefinitions[variable]; ok {
 		return val
 	} else if !blk.sealed {
@@ -480,7 +479,7 @@ func (b *builder) MustFindValue(variable Variable) Value {
 // the section 2 of the paper https://link.springer.com/content/pdf/10.1007/978-3-642-37051-9_6.pdf.
 //
 // TODO: reimplement this in iterative, not recursive, to avoid stack overflow.
-func (b *builder) findValue(typ Type, variable Variable, blk *basicBlock) Value {
+func (b *builder) findValue(typ Type, variable Variable, blk *BasicBlock) Value {
 	if val, ok := blk.lastDefinitions[variable]; ok {
 		// The value is already defined in this block!
 		return val
@@ -553,8 +552,7 @@ func (b *builder) findValue(typ Type, variable Variable, blk *basicBlock) Value 
 }
 
 // Seal implements Builder.Seal.
-func (b *builder) Seal(raw BasicBlock) {
-	blk := raw.(*basicBlock)
+func (b *builder) Seal(blk *BasicBlock) {
 	if len(blk.preds) == 1 {
 		blk.singlePred = blk.preds[0].blk
 	}
@@ -589,7 +587,7 @@ func (b *builder) Format() string {
 		}
 	}
 
-	var iterBegin, iterNext func() *basicBlock
+	var iterBegin, iterNext func() *BasicBlock
 	if b.doneBlockLayout {
 		iterBegin, iterNext = b.blockIteratorReversePostOrderBegin, b.blockIteratorReversePostOrderNext
 	} else {
@@ -610,7 +608,7 @@ func (b *builder) Format() string {
 }
 
 // BlockIteratorNext implements Builder.BlockIteratorNext.
-func (b *builder) BlockIteratorNext() BasicBlock {
+func (b *builder) BlockIteratorNext() *BasicBlock {
 	if blk := b.blockIteratorNext(); blk == nil {
 		return nil // BasicBlock((*basicBlock)(nil)) != BasicBlock(nil)
 	} else {
@@ -619,7 +617,7 @@ func (b *builder) BlockIteratorNext() BasicBlock {
 }
 
 // BlockIteratorNext implements Builder.BlockIteratorNext.
-func (b *builder) blockIteratorNext() *basicBlock {
+func (b *builder) blockIteratorNext() *BasicBlock {
 	index := b.blockIterCur
 	for {
 		if index == b.basicBlocksPool.Allocated() {
@@ -635,29 +633,29 @@ func (b *builder) blockIteratorNext() *basicBlock {
 }
 
 // BlockIteratorBegin implements Builder.BlockIteratorBegin.
-func (b *builder) BlockIteratorBegin() BasicBlock {
+func (b *builder) BlockIteratorBegin() *BasicBlock {
 	return b.blockIteratorBegin()
 }
 
 // BlockIteratorBegin implements Builder.BlockIteratorBegin.
-func (b *builder) blockIteratorBegin() *basicBlock {
+func (b *builder) blockIteratorBegin() *BasicBlock {
 	b.blockIterCur = 0
 	return b.blockIteratorNext()
 }
 
 // BlockIteratorReversePostOrderBegin implements Builder.BlockIteratorReversePostOrderBegin.
-func (b *builder) BlockIteratorReversePostOrderBegin() BasicBlock {
+func (b *builder) BlockIteratorReversePostOrderBegin() *BasicBlock {
 	return b.blockIteratorReversePostOrderBegin()
 }
 
 // BlockIteratorBegin implements Builder.BlockIteratorBegin.
-func (b *builder) blockIteratorReversePostOrderBegin() *basicBlock {
+func (b *builder) blockIteratorReversePostOrderBegin() *BasicBlock {
 	b.blockIterCur = 0
 	return b.blockIteratorReversePostOrderNext()
 }
 
 // BlockIteratorReversePostOrderNext implements Builder.BlockIteratorReversePostOrderNext.
-func (b *builder) BlockIteratorReversePostOrderNext() BasicBlock {
+func (b *builder) BlockIteratorReversePostOrderNext() *BasicBlock {
 	if blk := b.blockIteratorReversePostOrderNext(); blk == nil {
 		return nil // BasicBlock((*basicBlock)(nil)) != BasicBlock(nil)
 	} else {
@@ -666,7 +664,7 @@ func (b *builder) BlockIteratorReversePostOrderNext() BasicBlock {
 }
 
 // BlockIteratorNext implements Builder.BlockIteratorNext.
-func (b *builder) blockIteratorReversePostOrderNext() *basicBlock {
+func (b *builder) blockIteratorReversePostOrderNext() *BasicBlock {
 	if b.blockIterCur >= len(b.reversePostOrderedBasicBlocks) {
 		return nil
 	} else {
@@ -733,13 +731,13 @@ func (b *builder) resolveAlias(v Value) Value {
 }
 
 // entryBlk returns the entry block of the function.
-func (b *builder) entryBlk() *basicBlock {
+func (b *builder) entryBlk() *BasicBlock {
 	return b.basicBlocksPool.View(0)
 }
 
 // isDominatedBy returns true if the given block `n` is dominated by the given block `d`.
 // Before calling this, the builder must pass by passCalculateImmediateDominators.
-func (b *builder) isDominatedBy(n *basicBlock, d *basicBlock) bool {
+func (b *builder) isDominatedBy(n *BasicBlock, d *BasicBlock) bool {
 	if len(b.dominators) == 0 {
 		panic("BUG: passCalculateImmediateDominators must be called before calling isDominatedBy")
 	}
@@ -764,12 +762,12 @@ func (b *builder) InsertUndefined() {
 }
 
 // LoopNestingForestRoots implements Builder.LoopNestingForestRoots.
-func (b *builder) LoopNestingForestRoots() []BasicBlock {
+func (b *builder) LoopNestingForestRoots() []*BasicBlock {
 	return b.loopNestingForestRoots
 }
 
 // LowestCommonAncestor implements Builder.LowestCommonAncestor.
-func (b *builder) LowestCommonAncestor(blk1, blk2 BasicBlock) BasicBlock {
+func (b *builder) LowestCommonAncestor(blk1, blk2 *BasicBlock) *BasicBlock {
 	return b.sparseTree.findLCA(blk1.ID(), blk2.ID())
 }
 

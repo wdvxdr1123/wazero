@@ -33,7 +33,7 @@ type (
 		// blk is the loop header if this is loop, and is the else-block if this is an if frame.
 		blk,
 		// followingBlock is the basic block we enter if we reach "end" of block.
-		followingBlock ssa.BasicBlock
+		followingBlock *ssa.BasicBlock
 		blockType *wasm.FunctionType
 		// clonedArgs hold the arguments to Else block.
 		clonedArgs ssa.Values
@@ -145,7 +145,7 @@ func (l *loweringState) ctrlPeekAt(n int) (ret *controlFrame) {
 }
 
 // lowerBody lowers the body of the Wasm function to the SSA form.
-func (c *Compiler) lowerBody(entryBlk ssa.BasicBlock) {
+func (c *Compiler) lowerBody(entryBlk *ssa.BasicBlock) {
 	c.ssaBuilder.Seal(entryBlk)
 
 	if c.needListener {
@@ -4107,7 +4107,7 @@ func (c *Compiler) readMemArg() (align, offset uint32) {
 }
 
 // insertJumpToBlock inserts a jump instruction to the given block in the current block.
-func (c *Compiler) insertJumpToBlock(args ssa.Values, targetBlk ssa.BasicBlock) {
+func (c *Compiler) insertJumpToBlock(args ssa.Values, targetBlk *ssa.BasicBlock) {
 	if targetBlk.ReturnBlock() {
 		if c.needListener {
 			c.callListenerAfter()
@@ -4135,7 +4135,7 @@ func (c *Compiler) insertIntegerExtend(signed bool, from, to byte) {
 	state.push(value)
 }
 
-func (c *Compiler) switchTo(originalStackLen int, targetBlk ssa.BasicBlock) {
+func (c *Compiler) switchTo(originalStackLen int, targetBlk *ssa.BasicBlock) {
 	if targetBlk.Preds() == 0 {
 		c.loweringState.unreachable = true
 	}
@@ -4199,7 +4199,7 @@ func (c *Compiler) lowerBrTable(labels []uint32, index ssa.Value) {
 	}
 }
 
-func (l *loweringState) brTargetArgNumFor(labelIndex uint32) (targetBlk ssa.BasicBlock, argNum int) {
+func (l *loweringState) brTargetArgNumFor(labelIndex uint32) (targetBlk *ssa.BasicBlock, argNum int) {
 	targetFrame := l.ctrlPeekAt(int(labelIndex))
 	if targetFrame.isLoop() {
 		targetBlk, argNum = targetFrame.blk, len(targetFrame.blockType.Params)

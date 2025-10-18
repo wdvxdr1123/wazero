@@ -387,7 +387,7 @@ func WasmTypeToSSAType(vt wasm.ValueType) ssa.Type {
 }
 
 // addBlockParamsFromWasmTypes adds the block parameters to the given block.
-func (c *Compiler) addBlockParamsFromWasmTypes(tps []wasm.ValueType, blk ssa.BasicBlock) {
+func (c *Compiler) addBlockParamsFromWasmTypes(tps []wasm.ValueType, blk *ssa.BasicBlock) {
 	for _, typ := range tps {
 		st := WasmTypeToSSAType(typ)
 		blk.AddParam(c.ssaBuilder, st)

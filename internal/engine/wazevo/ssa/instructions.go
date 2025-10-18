@@ -2129,7 +2129,7 @@ func (i *Instruction) BrTableData() (index Value, targets Values) {
 }
 
 // AsJump initializes this instruction as a jump instruction with OpcodeJump.
-func (i *Instruction) AsJump(vs Values, target BasicBlock) *Instruction {
+func (i *Instruction) AsJump(vs Values, target *BasicBlock) *Instruction {
 	i.opcode = OpcodeJump
 	i.vs = vs
 	i.rValue = Value(target.ID())
@@ -2153,7 +2153,7 @@ func (i *Instruction) AsFallthroughJump() {
 }
 
 // AsBrz initializes this instruction as a branch-if-zero instruction with OpcodeBrz.
-func (i *Instruction) AsBrz(v Value, args Values, target BasicBlock) {
+func (i *Instruction) AsBrz(v Value, args Values, target *BasicBlock) {
 	i.opcode = OpcodeBrz
 	i.v = v
 	i.vs = args
@@ -2161,7 +2161,7 @@ func (i *Instruction) AsBrz(v Value, args Values, target BasicBlock) {
 }
 
 // AsBrnz initializes this instruction as a branch-if-not-zero instruction with OpcodeBrnz.
-func (i *Instruction) AsBrnz(v Value, args Values, target BasicBlock) *Instruction {
+func (i *Instruction) AsBrnz(v Value, args Values, target *BasicBlock) *Instruction {
 	i.opcode = OpcodeBrnz
 	i.v = v
 	i.vs = args

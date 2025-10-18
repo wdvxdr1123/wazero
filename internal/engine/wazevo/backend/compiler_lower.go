@@ -21,7 +21,7 @@ func (c *compiler) lowerBlocks() {
 	}
 
 	// After lowering all blocks, we need to link adjacent blocks to layout one single instruction list.
-	var prev ssa.BasicBlock
+	var prev *ssa.BasicBlock
 	for next := builder.BlockIteratorReversePostOrderBegin(); next != nil; next = builder.BlockIteratorReversePostOrderNext() {
 		if prev != nil {
 			c.mach.LinkAdjacentBlocks(prev, next)
@@ -30,7 +30,7 @@ func (c *compiler) lowerBlocks() {
 	}
 }
 
-func (c *compiler) lowerBlock(blk ssa.BasicBlock) {
+func (c *compiler) lowerBlock(blk *ssa.BasicBlock) {
 	mach := c.mach
 	mach.StartBlock(blk)
 
@@ -122,7 +122,7 @@ func (c *compiler) lowerBranches(br0, br1 *ssa.Instruction) {
 	mach.FlushPendingInstructions()
 }
 
-func (c *compiler) lowerFunctionArguments(entry ssa.BasicBlock) {
+func (c *compiler) lowerFunctionArguments(entry *ssa.BasicBlock) {
 	mach := c.mach
 
 	c.tmpVals = c.tmpVals[:0]
@@ -141,7 +141,7 @@ func (c *compiler) lowerFunctionArguments(entry ssa.BasicBlock) {
 }
 
 // lowerBlockArguments lowers how to pass arguments to the given successor block.
-func (c *compiler) lowerBlockArguments(args []ssa.Value, succ ssa.BasicBlock) {
+func (c *compiler) lowerBlockArguments(args []ssa.Value, succ *ssa.BasicBlock) {
 	if len(args) != succ.Params() {
 		panic("BUG: mismatched number of arguments")
 	}

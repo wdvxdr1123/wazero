@@ -75,7 +75,7 @@ func calculateImmediateDominators(b *builder) {
 	b.dominators = b.dominators[:cap(b.dominators)]
 	if len(b.dominators) < b.basicBlocksPool.Allocated() {
 		// Generously reserve space in the slice because the slice will be reused future allocation.
-		b.dominators = append(b.dominators, make([]*basicBlock, b.basicBlocksPool.Allocated())...)
+		b.dominators = append(b.dominators, make([]*BasicBlock, b.basicBlocksPool.Allocated())...)
 	}
 	calculateDominators(reversePostOrder, b.dominators)
 
@@ -96,7 +96,7 @@ func calculateImmediateDominators(b *builder) {
 // The following code almost matches the pseudocode in the paper with one exception (see the code comment below).
 //
 // The result slice `doms` must be pre-allocated with the size larger than the size of dfsBlocks.
-func calculateDominators(reversePostOrderedBlks []*basicBlock, doms []*basicBlock) {
+func calculateDominators(reversePostOrderedBlks []*BasicBlock, doms []*BasicBlock) {
 	entry, reversePostOrderedBlks := reversePostOrderedBlks[0], reversePostOrderedBlks[1: /* skips entry point */]
 	for _, blk := range reversePostOrderedBlks {
 		doms[blk.id] = nil
@@ -107,7 +107,7 @@ func calculateDominators(reversePostOrderedBlks []*basicBlock, doms []*basicBloc
 	for changed {
 		changed = false
 		for _, blk := range reversePostOrderedBlks {
-			var u *basicBlock
+			var u *BasicBlock
 			for i := range blk.preds {
 				pred := blk.preds[i].blk
 				// Skip if this pred is not reachable yet. Note that this is not described in the paper,
@@ -134,7 +134,7 @@ func calculateDominators(reversePostOrderedBlks []*basicBlock, doms []*basicBloc
 // intersect returns the common dominator of blk1 and blk2.
 //
 // This is the `intersect` function in the paper.
-func intersect(doms []*basicBlock, blk1 *basicBlock, blk2 *basicBlock) *basicBlock {
+func intersect(doms []*BasicBlock, blk1 *BasicBlock, blk2 *BasicBlock) *BasicBlock {
 	finger1, finger2 := blk1, blk2
 	for finger1 != finger2 {
 		// Move the 'finger1' upwards to its immediate dominator.
@@ -160,7 +160,7 @@ func subPassLoopDetection(b *builder) {
 				continue
 			}
 			if b.isDominatedBy(pred, blk) {
-				blk.loopHeader = true
+				blk.LoopHeader = true
 			}
 		}
 	}
@@ -173,38 +173,38 @@ func buildLoopNestingForest(b *builder) {
 	doms := b.dominators
 	for _, blk := range b.reversePostOrderedBasicBlocks {
 		n := doms[blk.id]
-		for !n.loopHeader && n != ent {
+		for !n.LoopHeader && n != ent {
 			n = doms[n.id]
 		}
 
-		if n == ent && blk.loopHeader {
+		if n == ent && blk.LoopHeader {
 			b.loopNestingForestRoots = append(b.loopNestingForestRoots, blk)
 		} else if n == ent {
-		} else if n.loopHeader {
+		} else if n.LoopHeader {
 			n.loopNestingForestChildren = n.loopNestingForestChildren.Append(&b.varLengthBasicBlockPool, blk)
 		}
 	}
 
 	if wazevoapi.SSALoggingEnabled {
 		for _, root := range b.loopNestingForestRoots {
-			printLoopNestingForest(root.(*basicBlock), 0)
+			printLoopNestingForest(root, 0)
 		}
 	}
 }
 
-func printLoopNestingForest(root *basicBlock, depth int) {
+func printLoopNestingForest(root *BasicBlock, depth int) {
 	fmt.Println(strings.Repeat("\t", depth), "loop nesting forest root:", root.ID())
 	for _, child := range root.loopNestingForestChildren.View() {
 		fmt.Println(strings.Repeat("\t", depth+1), "child:", child.ID())
-		if child.LoopHeader() {
-			printLoopNestingForest(child.(*basicBlock), depth+2)
+		if child.LoopHeader {
+			printLoopNestingForest(child, depth+2)
 		}
 	}
 }
 
 type dominatorSparseTree struct {
 	time         int32
-	euler        []*basicBlock
+	euler        []*BasicBlock
 	first, depth []int32
 	table        [][]int32
 }
@@ -232,7 +232,7 @@ func buildDominatorTree(b *builder) {
 	// Reset the state from the previous computation.
 	n := b.basicBlocksPool.Allocated()
 	st := &b.sparseTree
-	st.euler = append(st.euler[:0], make([]*basicBlock, 2*n-1)...)
+	st.euler = append(st.euler[:0], make([]*BasicBlock, 2*n-1)...)
 	st.first = append(st.first[:0], make([]int32, n)...)
 	for i := range st.first {
 		st.first[i] = -1
@@ -245,7 +245,7 @@ func buildDominatorTree(b *builder) {
 	st.buildSparseTable()
 }
 
-func (dt *dominatorSparseTree) eulerTour(node *basicBlock, height int32) {
+func (dt *dominatorSparseTree) eulerTour(node *BasicBlock, height int32) {
 	if wazevoapi.SSALoggingEnabled {
 		fmt.Println(strings.Repeat("\t", int(height)), "euler tour:", node.ID())
 	}
@@ -304,7 +304,7 @@ func (dt *dominatorSparseTree) rmq(l, r int32) int32 {
 }
 
 // findLCA finds the LCA using the Euler tour and RMQ.
-func (dt *dominatorSparseTree) findLCA(u, v BasicBlockID) *basicBlock {
+func (dt *dominatorSparseTree) findLCA(u, v BasicBlockID) *BasicBlock {
 	first := dt.first
 	if first[u] > first[v] {
 		u, v = v, u

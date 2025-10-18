@@ -11,7 +11,7 @@ import (
 // mockMachine implements Machine for testing.
 type mockMachine struct {
 	argResultInts, argResultFloats []regalloc.RealReg
-	startBlock                     func(block ssa.BasicBlock)
+	startBlock                     func(block *ssa.BasicBlock)
 	lowerSingleBranch              func(b *ssa.Instruction)
 	lowerConditionalBranch         func(b *ssa.Instruction)
 	lowerInstr                     func(instruction *ssa.Instruction)
@@ -21,7 +21,7 @@ type mockMachine struct {
 	insertMove                     func(dst, src regalloc.VReg)
 	insertLoadConstant             func(instr *ssa.Instruction, vr regalloc.VReg)
 	format                         func() string
-	linkAdjacentBlocks             func(prev, next ssa.BasicBlock)
+	linkAdjacentBlocks             func(prev, next *ssa.BasicBlock)
 }
 
 func (m mockMachine) StartLoweringFunction(maxBlockID ssa.BasicBlockID) { panic("implement me") }
@@ -64,7 +64,7 @@ func (m mockMachine) PostRegAlloc() {}
 func (m mockMachine) InsertReturn() { panic("TODO") }
 
 // LinkAdjacentBlocks implements Machine.LinkAdjacentBlocks.
-func (m mockMachine) LinkAdjacentBlocks(prev, next ssa.BasicBlock) { m.linkAdjacentBlocks(prev, next) }
+func (m mockMachine) LinkAdjacentBlocks(prev, next *ssa.BasicBlock) { m.linkAdjacentBlocks(prev, next) }
 
 // SetCurrentABI implements Machine.SetCurrentABI.
 func (m mockMachine) SetCurrentABI(*FunctionABI) {}
@@ -73,7 +73,7 @@ func (m mockMachine) SetCurrentABI(*FunctionABI) {}
 func (m mockMachine) SetCompiler(Compiler) {}
 
 // StartBlock implements Machine.StartBlock.
-func (m mockMachine) StartBlock(block ssa.BasicBlock) {
+func (m mockMachine) StartBlock(block *ssa.BasicBlock) {
 	m.startBlock(block)
 }
 

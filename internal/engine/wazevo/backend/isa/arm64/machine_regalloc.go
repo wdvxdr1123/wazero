@@ -11,7 +11,7 @@ import (
 type regAllocFn struct {
 	ssaB                   ssa.Builder
 	m                      *machine
-	loopNestingForestRoots []ssa.BasicBlock
+	loopNestingForestRoots []*ssa.BasicBlock
 	blockIter              int
 }
 
@@ -215,7 +215,7 @@ func (pos *labelPosition) Entry() bool { return pos.sb.EntryBlock() }
 func (pos *labelPosition) Succs() int { return pos.sb.Succs() }
 
 // LoopHeader implements regalloc.Block.
-func (pos *labelPosition) LoopHeader() bool { return pos.sb.LoopHeader() }
+func (pos *labelPosition) LoopHeader() bool { return pos.sb.LoopHeader }
 
 // LoopNestingForestChildren implements regalloc.Block.
 func (pos *labelPosition) LoopNestingForestChildren() int {

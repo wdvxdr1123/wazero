@@ -37,7 +37,7 @@ func layoutBlocks(b *builder) {
 		}
 	}
 
-	var trampolines []*basicBlock
+	var trampolines []*BasicBlock
 
 	// Reset the order slice since we update on the fly by splitting critical edges.
 	b.reversePostOrderedBasicBlocks = b.reversePostOrderedBasicBlocks[:0]
@@ -171,7 +171,7 @@ func markFallthroughJumps(b *builder) {
 // nextInRPO is the next block in the reverse post-order.
 //
 // Returns true if the branch is inverted for testing purpose.
-func maybeInvertBranches(b *builder, now *basicBlock, nextInRPO *basicBlock) bool {
+func maybeInvertBranches(b *builder, now *BasicBlock, nextInRPO *BasicBlock) bool {
 	fallthroughBranch := now.Tail()
 	if fallthroughBranch.opcode == OpcodeBrTable {
 		return false
@@ -196,13 +196,13 @@ func maybeInvertBranches(b *builder, now *basicBlock, nextInRPO *basicBlock) boo
 	fallthroughTarget := b.basicBlock(BasicBlockID(fallthroughBranch.rValue))
 	condTarget := b.basicBlock(BasicBlockID(condBranch.rValue))
 
-	if fallthroughTarget.loopHeader {
+	if fallthroughTarget.LoopHeader {
 		// First, if the tail's target is loopHeader, we don't need to do anything here,
 		// because the edge is likely to be critical edge for complex loops (e.g. loop with branches inside it).
 		// That means, we will split the edge in the end of LayoutBlocks function, and insert the trampoline block
 		// right after this block, which will be fallthrough in any way.
 		return false
-	} else if condTarget.loopHeader {
+	} else if condTarget.LoopHeader {
 		// On the other hand, if the condBranch's target is loopHeader, we invert the condition of the branch
 		// so that we could get the fallthrough to the trampoline block.
 		goto invert
@@ -260,7 +260,7 @@ invert:
 //   - https://nickdesaulniers.github.io/blog/2023/01/27/critical-edge-splitting/
 //
 // The returned basic block is the trampoline block which is inserted to split the critical edge.
-func (b *builder) splitCriticalEdge(pred, succ *basicBlock, predInfo *basicBlockPredecessorInfo) *basicBlock {
+func (b *builder) splitCriticalEdge(pred, succ *BasicBlock, predInfo *basicBlockPredecessorInfo) *BasicBlock {
 	// In the following, we convert the following CFG:
 	//
 	//     pred --(originalBranch)--> succ
@@ -273,7 +273,7 @@ func (b *builder) splitCriticalEdge(pred, succ *basicBlock, predInfo *basicBlock
 
 	trampoline := b.allocateBasicBlock()
 	if int(trampoline.id) >= len(b.dominators) {
-		b.dominators = append(b.dominators, make([]*basicBlock, trampoline.id+1)...)
+		b.dominators = append(b.dominators, make([]*BasicBlock, trampoline.id+1)...)
 	}
 	b.dominators[trampoline.id] = pred
 
@@ -319,7 +319,7 @@ func (b *builder) splitCriticalEdge(pred, succ *basicBlock, predInfo *basicBlock
 }
 
 // replaceInstruction replaces `old` in the block `blk` with `New`.
-func replaceInstruction(blk *basicBlock, old, New *Instruction) {
+func replaceInstruction(blk *BasicBlock, old, New *Instruction) {
 	oid := -1
 	for i := range blk.instr {
 		if blk.instr[i] == old {

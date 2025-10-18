@@ -16,12 +16,12 @@ type (
 		StartLoweringFunction(maxBlockID ssa.BasicBlockID)
 
 		// LinkAdjacentBlocks is called after finished lowering all blocks in order to create one single instruction list.
-		LinkAdjacentBlocks(prev, next ssa.BasicBlock)
+		LinkAdjacentBlocks(prev, next *ssa.BasicBlock)
 
 		// StartBlock is called when the compilation of the given block is started.
 		// The order of this being called is the reverse post order of the ssa.BasicBlock(s) as we iterate with
 		// ssa.Builder BlockIteratorReversePostOrderBegin and BlockIteratorReversePostOrderEnd.
-		StartBlock(ssa.BasicBlock)
+		StartBlock(blk *ssa.BasicBlock)
 
 		// EndBlock is called when the compilation of the current block is finished.
 		EndBlock()

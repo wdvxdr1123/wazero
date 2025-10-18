@@ -536,7 +536,7 @@ func TestBuilder_passCalculateImmediateDominators(t *testing.T) {
 
 			for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
 				_, expLoop := tc.expLoops[blk.id]
-				require.Equal(t, expLoop, blk.loopHeader, blk.String())
+				require.Equal(t, expLoop, blk.LoopHeader, blk.String())
 			}
 		})
 	}
@@ -651,7 +651,7 @@ func TestBuildLoopNestingForest(t *testing.T) {
 			calculateImmediateDominators(b)
 			buildLoopNestingForest(b)
 
-			blocks := map[BasicBlockID]*basicBlock{}
+			blocks := map[BasicBlockID]*BasicBlock{}
 			for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
 				blocks[blk.id] = blk
 			}
@@ -659,7 +659,7 @@ func TestBuildLoopNestingForest(t *testing.T) {
 			// Check the result of buildLoopNestingForest.
 			var forestRoots []BasicBlockID
 			for _, root := range b.loopNestingForestRoots {
-				forestRoots = append(forestRoots, root.(*basicBlock).id)
+				forestRoots = append(forestRoots, root.id)
 			}
 			sort.Slice(forestRoots, func(i, j int) bool {
 				return forestRoots[i] < forestRoots[j]
@@ -670,7 +670,7 @@ func TestBuildLoopNestingForest(t *testing.T) {
 				expChildren := tc.expLNF.children[expBlkID]
 				var actualChildren []BasicBlockID
 				for _, child := range blk.loopNestingForestChildren.View() {
-					actualChildren = append(actualChildren, child.(*basicBlock).id)
+					actualChildren = append(actualChildren, child.id)
 				}
 				sort.Slice(actualChildren, func(i, j int) bool {
 					return actualChildren[i] < actualChildren[j]

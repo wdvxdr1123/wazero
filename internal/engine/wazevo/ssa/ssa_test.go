@@ -26,9 +26,9 @@ func constructGraphFromEdges(edges edgesCase) (b *builder) {
 	}
 
 	// Allocate blocks.
-	blocks := make(map[BasicBlockID]*basicBlock, maxID+1)
+	blocks := make(map[BasicBlockID]*BasicBlock, maxID+1)
 	for i := 0; i < int(maxID)+1; i++ {
-		blk := b.AllocateBasicBlock().(*basicBlock)
+		blk := b.AllocateBasicBlock()
 		blocks[blk.id] = blk
 	}
 

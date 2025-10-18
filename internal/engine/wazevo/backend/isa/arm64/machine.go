@@ -128,7 +128,7 @@ type (
 	// This implements regalloc.Block.
 	labelPosition struct {
 		// sb is not nil if this corresponds to a ssa.BasicBlock.
-		sb ssa.BasicBlock
+		sb *ssa.BasicBlock
 		// cur is used to walk through the instructions in the block during the register allocation.
 		cur,
 		// begin and end are the first and last instructions of the block.
@@ -157,15 +157,15 @@ func NewBackend() backend.Machine {
 	m := &machine{
 		spillSlots:        make(map[regalloc.VRegID]int64),
 		regAlloc:          regalloc.NewAllocator[*instruction, *labelPosition, *regAllocFn](regInfo),
-		amodePool:         wazevoapi.NewPool[addressMode](resetAddressMode),
-		instrPool:         wazevoapi.NewPool[instruction](resetInstruction),
-		labelPositionPool: wazevoapi.NewIDedPool[labelPosition](resetLabelPosition),
+		amodePool:         wazevoapi.NewPool(resetAddressMode),
+		instrPool:         wazevoapi.NewPool(resetInstruction),
+		labelPositionPool: wazevoapi.NewIDedPool(resetLabelPosition),
 	}
 	m.regAllocFn.m = m
 	return m
 }
 
-func ssaBlockLabel(sb ssa.BasicBlock) label {
+func ssaBlockLabel(sb *ssa.BasicBlock) label {
 	if sb.ReturnBlock() {
 		return labelReturn
 	}
@@ -173,7 +173,7 @@ func ssaBlockLabel(sb ssa.BasicBlock) label {
 }
 
 // getOrAllocateSSABlockLabelPosition returns the labelPosition for the given basic block.
-func (m *machine) getOrAllocateSSABlockLabelPosition(sb ssa.BasicBlock) *labelPosition {
+func (m *machine) getOrAllocateSSABlockLabelPosition(sb *ssa.BasicBlock) *labelPosition {
 	if sb.ReturnBlock() {
 		m.returnLabelPos.sb = sb
 		return &m.returnLabelPos
@@ -186,13 +186,13 @@ func (m *machine) getOrAllocateSSABlockLabelPosition(sb ssa.BasicBlock) *labelPo
 }
 
 // LinkAdjacentBlocks implements backend.Machine.
-func (m *machine) LinkAdjacentBlocks(prev, next ssa.BasicBlock) {
+func (m *machine) LinkAdjacentBlocks(prev, next *ssa.BasicBlock) {
 	prevPos, nextPos := m.getOrAllocateSSABlockLabelPosition(prev), m.getOrAllocateSSABlockLabelPosition(next)
 	prevPos.end.next = nextPos.begin
 }
 
 // StartBlock implements backend.Machine.
-func (m *machine) StartBlock(blk ssa.BasicBlock) {
+func (m *machine) StartBlock(blk *ssa.BasicBlock) {
 	m.currentLabelPos = m.getOrAllocateSSABlockLabelPosition(blk)
 	labelPos := m.currentLabelPos
 	end := m.allocateNop()

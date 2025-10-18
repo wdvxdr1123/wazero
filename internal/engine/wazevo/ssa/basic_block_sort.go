@@ -4,8 +4,8 @@ import (
 	"slices"
 )
 
-func sortBlocks(blocks []*basicBlock) {
-	slices.SortFunc(blocks, func(i, j *basicBlock) int {
+func sortBlocks(blocks []*BasicBlock) {
+	slices.SortFunc(blocks, func(i, j *BasicBlock) int {
 		jIsReturn := j.ReturnBlock()
 		iIsReturn := i.ReturnBlock()
 		if iIsReturn && jIsReturn {
@@ -17,7 +17,7 @@ func sortBlocks(blocks []*basicBlock) {
 		if iIsReturn {
 			return -1
 		}
-		iRoot, jRoot := i.Root(), j.Root()
+		iRoot, jRoot := i.Head(), j.Head()
 		if iRoot == nil && jRoot == nil { // For testing.
 			return 0
 		}

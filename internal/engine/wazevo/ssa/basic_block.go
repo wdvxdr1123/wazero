@@ -17,109 +17,53 @@ import (
 //
 // Note: we use "parameter/param" as a placeholder which represents a variant of PHI, and "argument/arg" as an actual
 // Value passed to that "parameter/param".
-type BasicBlock interface {
-	// ID returns the unique ID of this block.
-	ID() BasicBlockID
+type BasicBlock struct {
+	id    BasicBlockID
+	instr []*Instruction
+	// params are Values that represent parameters to a basicBlock.
+	// Each parameter can be considered as an output of PHI instruction in traditional SSA.
+	params  Values
+	preds   []basicBlockPredecessorInfo
+	success []*BasicBlock
+	// singlePred is the alias to preds[0] for fast lookup, and only set after Seal is called.
+	singlePred *BasicBlock
+	// lastDefinitions maps Variable to its last definition in this block.
+	lastDefinitions map[Variable]Value
+	// unknownsValues are used in builder.findValue. The usage is well-described in the paper.
+	unknownValues []unknownValue
+	// invalid is true if this block is made invalid during optimizations.
+	invalid bool
+	// sealed is true if this is sealed (all the predecessors are known).
+	sealed bool
 
-	// Name returns the unique string ID of this block. e.g. blk0, blk1, ...
-	Name() string
+	// loopHeader is true if this block is a loop header:
+	//
+	// > A loop header (sometimes called the entry point of the loop) is a dominator that is the target
+	// > of a loop-forming back edge. The loop header dominates all blocks in the loop body.
+	// > A block may be a loop header for more than one loop. A loop may have multiple entry points,
+	// > in which case it has no "loop header".
+	//
+	// See https://en.wikipedia.org/wiki/Control-flow_graph for more details.
+	//
+	// This is modified during the subPassLoopDetection pass.
+	LoopHeader bool
 
-	// AddParam adds the parameter to the block whose type specified by `t`.
-	AddParam(b Builder, t Type) Value
+	// loopNestingForestChildren holds the children of this block in the loop nesting forest.
+	// Non-empty if and only if this block is a loop header (i.e. loopHeader=true)
+	loopNestingForestChildren wazevoapi.VarLength[*BasicBlock]
 
-	// Params returns the number of parameters to this block.
-	Params() int
+	// reversePostOrder is used to sort all the blocks in the function in reverse post order.
+	// This is used in builder.LayoutBlocks.
+	reversePostOrder int32
 
-	// Param returns (Variable, Value) which corresponds to the i-th parameter of this block.
-	// The returned Value is the definition of the param in this block.
-	Param(i int) Value
+	// visited is used during various traversals.
+	visited int32
 
-	// Instructions returns the list of instructions in this block.
-	Instructions() []*Instruction
-
-	// Root returns the root instruction of this block.
-	Root() *Instruction
-
-	// Tail returns the tail instruction of this block.
-	Tail() *Instruction
-
-	// EntryBlock returns true if this block represents the function entry.
-	EntryBlock() bool
-
-	// ReturnBlock returns true if this block represents the function return.
-	ReturnBlock() bool
-
-	// Valid is true if this block is still valid even after optimizations.
-	Valid() bool
-
-	// Sealed is true if this block has been sealed.
-	Sealed() bool
-
-	// Preds returns the number of predecessors of this block.
-	Preds() int
-
-	// Pred returns the i-th predecessor of this block.
-	Pred(i int) BasicBlock
-
-	// Succs returns the number of successors of this block.
-	Succs() int
-
-	// Succ returns the i-th successor of this block.
-	Succ(i int) BasicBlock
-
-	// LoopHeader returns true if this block is a loop header.
-	LoopHeader() bool
-
-	// LoopNestingForestChildren returns the children of this block in the loop nesting forest.
-	LoopNestingForestChildren() []BasicBlock
+	// child and sibling are the ones in the dominator tree.
+	child, sibling *BasicBlock
 }
 
 type (
-	// basicBlock is a basic block in a SSA-transformed function.
-	basicBlock struct {
-		id    BasicBlockID
-		instr []*Instruction
-		// params are Values that represent parameters to a basicBlock.
-		// Each parameter can be considered as an output of PHI instruction in traditional SSA.
-		params  Values
-		preds   []basicBlockPredecessorInfo
-		success []*basicBlock
-		// singlePred is the alias to preds[0] for fast lookup, and only set after Seal is called.
-		singlePred *basicBlock
-		// lastDefinitions maps Variable to its last definition in this block.
-		lastDefinitions map[Variable]Value
-		// unknownsValues are used in builder.findValue. The usage is well-described in the paper.
-		unknownValues []unknownValue
-		// invalid is true if this block is made invalid during optimizations.
-		invalid bool
-		// sealed is true if this is sealed (all the predecessors are known).
-		sealed bool
-		// loopHeader is true if this block is a loop header:
-		//
-		// > A loop header (sometimes called the entry point of the loop) is a dominator that is the target
-		// > of a loop-forming back edge. The loop header dominates all blocks in the loop body.
-		// > A block may be a loop header for more than one loop. A loop may have multiple entry points,
-		// > in which case it has no "loop header".
-		//
-		// See https://en.wikipedia.org/wiki/Control-flow_graph for more details.
-		//
-		// This is modified during the subPassLoopDetection pass.
-		loopHeader bool
-
-		// loopNestingForestChildren holds the children of this block in the loop nesting forest.
-		// Non-empty if and only if this block is a loop header (i.e. loopHeader=true)
-		loopNestingForestChildren wazevoapi.VarLength[BasicBlock]
-
-		// reversePostOrder is used to sort all the blocks in the function in reverse post order.
-		// This is used in builder.LayoutBlocks.
-		reversePostOrder int32
-
-		// visited is used during various traversals.
-		visited int32
-
-		// child and sibling are the ones in the dominator tree.
-		child, sibling *basicBlock
-	}
 	// BasicBlockID is the unique ID of a basicBlock.
 	BasicBlockID uint32
 
@@ -132,12 +76,12 @@ type (
 )
 
 // basicBlockVarLengthNil is the default nil value for basicBlock.loopNestingForestChildren.
-var basicBlockVarLengthNil = wazevoapi.NewNilVarLength[BasicBlock]()
+var basicBlockVarLengthNil = wazevoapi.NewNilVarLength[*BasicBlock]()
 
 const basicBlockIDReturnBlock = 0xffffffff
 
-// Name implements BasicBlock.Name.
-func (bb *basicBlock) Name() string {
+// Name returns the unique string ID of this block. e.g. blk0, blk1, ...
+func (bb *BasicBlock) Name() string {
 	if bb.id == basicBlockIDReturnBlock {
 		return "blk_ret"
 	} else {
@@ -154,62 +98,57 @@ func (bid BasicBlockID) String() string {
 	}
 }
 
-// ID implements BasicBlock.ID.
-func (bb *basicBlock) ID() BasicBlockID {
+// ID returns the unique ID of this block.
+func (bb *BasicBlock) ID() BasicBlockID {
 	return bb.id
 }
 
 // basicBlockPredecessorInfo is the information of a predecessor of a basicBlock.
 // predecessor is determined by a pair of block and the branch instruction used to jump to the successor.
 type basicBlockPredecessorInfo struct {
-	blk    *basicBlock
+	blk    *BasicBlock
 	branch *Instruction
 }
 
-// EntryBlock implements BasicBlock.EntryBlock.
-func (bb *basicBlock) EntryBlock() bool {
+func (bb *BasicBlock) EntryBlock() bool {
 	return bb.id == 0
 }
 
-// ReturnBlock implements BasicBlock.ReturnBlock.
-func (bb *basicBlock) ReturnBlock() bool {
+func (bb *BasicBlock) ReturnBlock() bool {
 	return bb.id == basicBlockIDReturnBlock
 }
 
-// AddParam implements BasicBlock.AddParam.
-func (bb *basicBlock) AddParam(b Builder, typ Type) Value {
+func (bb *BasicBlock) AddParam(b Builder, typ Type) Value {
 	paramValue := b.allocateValue(typ)
 	bb.params = bb.params.Append(&b.(*builder).varLengthPool, paramValue)
 	return paramValue
 }
 
 // addParamOn adds a parameter to this block whose value is already allocated.
-func (bb *basicBlock) addParamOn(b *builder, value Value) {
+func (bb *BasicBlock) addParamOn(b *builder, value Value) {
 	bb.params = bb.params.Append(&b.varLengthPool, value)
 }
 
-// Params implements BasicBlock.Params.
-func (bb *basicBlock) Params() int {
+func (bb *BasicBlock) Params() int {
 	return len(bb.params.View())
 }
 
-// Param implements BasicBlock.Param.
-func (bb *basicBlock) Param(i int) Value {
+func (bb *BasicBlock) Param(i int) Value {
 	return bb.params.View()[i]
 }
 
-// Valid implements BasicBlock.Valid.
-func (bb *basicBlock) Valid() bool {
+// Valid is true if this block is still valid even after optimizations.
+func (bb *BasicBlock) Valid() bool {
 	return !bb.invalid
 }
 
-// Sealed implements BasicBlock.Sealed.
-func (bb *basicBlock) Sealed() bool {
+// Sealed is true if this block has been sealed.
+func (bb *BasicBlock) Sealed() bool {
 	return bb.sealed
 }
 
 // insertInstruction implements BasicBlock.InsertInstruction.
-func (bb *basicBlock) insertInstruction(b *builder, next *Instruction) {
+func (bb *BasicBlock) insertInstruction(b *builder, next *Instruction) {
 	bb.instr = append(bb.instr, next)
 
 	switch next.opcode {
@@ -224,44 +163,41 @@ func (bb *basicBlock) insertInstruction(b *builder, next *Instruction) {
 	}
 }
 
-// NumPreds implements BasicBlock.NumPreds.
-func (bb *basicBlock) NumPreds() int {
+func (bb *BasicBlock) NumPreds() int {
 	return len(bb.preds)
 }
 
-// Preds implements BasicBlock.Preds.
-func (bb *basicBlock) Preds() int {
+func (bb *BasicBlock) Preds() int {
 	return len(bb.preds)
 }
 
-// Pred implements BasicBlock.Pred.
-func (bb *basicBlock) Pred(i int) BasicBlock {
+func (bb *BasicBlock) Pred(i int) *BasicBlock {
 	return bb.preds[i].blk
 }
 
-// Succs implements BasicBlock.Succs.
-func (bb *basicBlock) Succs() int {
+func (bb *BasicBlock) Succs() int {
 	return len(bb.success)
 }
 
-// Succ implements BasicBlock.Succ.
-func (bb *basicBlock) Succ(i int) BasicBlock {
+func (bb *BasicBlock) Succ(i int) *BasicBlock {
 	return bb.success[i]
 }
 
-func (bb *basicBlock) Instructions() []*Instruction {
+// Instructions returns the list of instructions in this block.
+func (bb *BasicBlock) Instructions() []*Instruction {
 	return bb.instr
 }
 
-// Root implements BasicBlock.Root.
-func (bb *basicBlock) Root() *Instruction {
+// Head returns the head instruction of this block.
+func (bb *BasicBlock) Head() *Instruction {
 	if len(bb.instr) == 0 {
 		return nil
 	}
 	return bb.instr[0]
 }
 
-func (bb *basicBlock) Tail() *Instruction {
+// Tail returns the tail instruction of this block.
+func (bb *BasicBlock) Tail() *Instruction {
 	if len(bb.instr) == 0 {
 		return nil
 	}
@@ -269,7 +205,7 @@ func (bb *basicBlock) Tail() *Instruction {
 }
 
 // reset resets the basicBlock to its initial state so that it can be reused for another function.
-func resetBasicBlock(bb *basicBlock) {
+func resetBasicBlock(bb *BasicBlock) {
 	bb.params = ValuesNil
 	bb.instr = bb.instr[:0]
 	bb.preds = bb.preds[:0]
@@ -281,18 +217,17 @@ func resetBasicBlock(bb *basicBlock) {
 	bb.reversePostOrder = -1
 	bb.visited = 0
 	bb.loopNestingForestChildren = basicBlockVarLengthNil
-	bb.loopHeader = false
+	bb.LoopHeader = false
 	bb.sibling = nil
 	bb.child = nil
 }
 
 // addPred adds a predecessor to this block specified by the branch instruction.
-func (bb *basicBlock) addPred(blk BasicBlock, branch *Instruction) {
+func (bb *BasicBlock) addPred(pred *BasicBlock, branch *Instruction) {
 	if bb.sealed {
 		panic("BUG: trying to add predecessor to a sealed block: " + bb.Name())
 	}
 
-	pred := blk.(*basicBlock)
 	for i := range bb.preds {
 		existingPred := &bb.preds[i]
 		if existingPred.blk == pred && existingPred.branch != branch {
@@ -311,7 +246,7 @@ func (bb *basicBlock) addPred(blk BasicBlock, branch *Instruction) {
 }
 
 // formatHeader returns the string representation of the header of the basicBlock.
-func (bb *basicBlock) formatHeader(b Builder) string {
+func (bb *BasicBlock) formatHeader(b Builder) string {
 	ps := make([]string, len(bb.params.View()))
 	for i, p := range bb.params.View() {
 		ps[i] = p.formatWithType(b)
@@ -334,7 +269,7 @@ func (bb *basicBlock) formatHeader(b Builder) string {
 }
 
 // validates validates the basicBlock for debugging purpose.
-func (bb *basicBlock) validate(b *builder) {
+func (bb *BasicBlock) validate(b *builder) {
 	if bb.invalid {
 		panic("BUG: trying to validate an invalid block: " + bb.Name())
 	}
@@ -369,16 +304,11 @@ func (bb *basicBlock) validate(b *builder) {
 }
 
 // String implements fmt.Stringer for debugging purpose only.
-func (bb *basicBlock) String() string {
+func (bb *BasicBlock) String() string {
 	return strconv.Itoa(int(bb.id))
 }
 
-// LoopNestingForestChildren implements BasicBlock.LoopNestingForestChildren.
-func (bb *basicBlock) LoopNestingForestChildren() []BasicBlock {
+// LoopNestingForestChildren returns the children of this block in the loop nesting forest.
+func (bb *BasicBlock) LoopNestingForestChildren() []*BasicBlock {
 	return bb.loopNestingForestChildren.View()
-}
-
-// LoopHeader implements BasicBlock.LoopHeader.
-func (bb *basicBlock) LoopHeader() bool {
-	return bb.loopHeader
 }

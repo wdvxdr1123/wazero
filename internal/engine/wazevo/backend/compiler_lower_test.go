@@ -12,11 +12,11 @@ import (
 func TestCompiler_lowerBlockArguments(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		setup func(builder ssa.Builder) (c *compiler, args []ssa.Value, succ ssa.BasicBlock, verify func(t *testing.T))
+		setup func(builder ssa.Builder) (c *compiler, args []ssa.Value, succ *ssa.BasicBlock, verify func(t *testing.T))
 	}{
 		{
 			name: "all consts",
-			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, ssa.BasicBlock, func(t *testing.T)) {
+			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, *ssa.BasicBlock, func(t *testing.T)) {
 				entryBlk := builder.AllocateBasicBlock()
 				builder.SetCurrentBlock(entryBlk)
 				i1 := builder.AllocateInstruction()
@@ -73,7 +73,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 		},
 		{
 			name: "overlap",
-			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, ssa.BasicBlock, func(t *testing.T)) {
+			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, *ssa.BasicBlock, func(t *testing.T)) {
 				blk := builder.AllocateBasicBlock()
 				v1 := blk.AddParam(builder, ssa.TypeI32)
 				v2 := blk.AddParam(builder, ssa.TypeI32)
@@ -108,7 +108,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 		},
 		{
 			name: "no overlap",
-			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, ssa.BasicBlock, func(t *testing.T)) {
+			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, *ssa.BasicBlock, func(t *testing.T)) {
 				blk := builder.AllocateBasicBlock()
 				builder.SetCurrentBlock(blk)
 				i32 := blk.AddParam(builder, ssa.TypeI32)

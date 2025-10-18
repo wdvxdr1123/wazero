@@ -7,14 +7,14 @@ import (
 )
 
 func Test_maybeInvertBranch(t *testing.T) {
-	insertJump := func(b *builder, src, dst *basicBlock) {
+	insertJump := func(b *builder, src, dst *BasicBlock) {
 		b.SetCurrentBlock(src)
 		jump := b.AllocateInstruction()
 		jump.AsJump(ValuesNil, dst)
 		b.InsertInstruction(jump)
 	}
 
-	insertBrz := func(b *builder, src, dst *basicBlock) {
+	insertBrz := func(b *builder, src, dst *BasicBlock) {
 		b.SetCurrentBlock(src)
 		vinst := b.AllocateInstruction()
 		vinst.AsIconst32(0)
@@ -27,12 +27,12 @@ func Test_maybeInvertBranch(t *testing.T) {
 
 	for _, tc := range []struct {
 		name  string
-		setup func(b *builder) (now, next *basicBlock, verify func(t *testing.T))
+		setup func(b *builder) (now, next *BasicBlock, verify func(t *testing.T))
 		exp   bool
 	}{
 		{
 			name: "ends with br_table",
-			setup: func(b *builder) (now, next *basicBlock, verify func(t *testing.T)) {
+			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
 				inst := b.AllocateInstruction()
 				// TODO: we haven't implemented AsBrTable on Instruction.
@@ -44,7 +44,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "no conditional branch without previous instruction",
-			setup: func(b *builder) (now, next *basicBlock, verify func(t *testing.T)) {
+			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, now, next)
 				verify = func(t *testing.T) {
@@ -56,7 +56,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "no conditional branch with previous instruction",
-			setup: func(b *builder) (now, next *basicBlock, verify func(t *testing.T)) {
+			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
 				b.SetCurrentBlock(now)
 				prev := b.AllocateInstruction()
@@ -72,9 +72,9 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "tail target is already loop",
-			setup: func(b *builder) (now, next *basicBlock, verify func(t *testing.T)) {
+			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next, loopHeader, dummy := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
-				loopHeader.loopHeader = true
+				loopHeader.LoopHeader = true
 				insertBrz(b, now, dummy)
 				insertJump(b, now, loopHeader)
 				verify = func(t *testing.T) {
@@ -88,7 +88,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "tail target is already the next block",
-			setup: func(b *builder) (now, next *basicBlock, verify func(t *testing.T)) {
+			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next, dummy := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertBrz(b, now, dummy)
 				insertJump(b, now, next)
@@ -103,9 +103,9 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "conditional target is loop",
-			setup: func(b *builder) (now, next *basicBlock, verify func(t *testing.T)) {
+			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next, loopHeader := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
-				loopHeader.loopHeader = true
+				loopHeader.LoopHeader = true
 				insertBrz(b, now, loopHeader) // jump to loop, which needs inversion.
 				insertJump(b, now, next)
 
@@ -131,7 +131,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "conditional target is the next block",
-			setup: func(b *builder) (now, next *basicBlock, verify func(t *testing.T)) {
+			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
 				nowTarget := b.allocateBasicBlock()
 				insertBrz(b, now, next) // jump to the next block in conditional, which needs inversion.
@@ -191,7 +191,7 @@ func TestBuilder_splitCriticalEdge(t *testing.T) {
 
 	require.Equal(t, trampoline, predInfo.blk)
 	require.Equal(t, originalBrz, predInfo.branch)
-	require.Equal(t, trampoline.Root(), predInfo.branch)
+	require.Equal(t, trampoline.Head(), predInfo.branch)
 	require.Equal(t, trampoline.Tail(), predInfo.branch)
 	require.Equal(t, trampoline.success[0], dummyBlk)
 
@@ -217,7 +217,7 @@ func Test_swapInstruction(t *testing.T) {
 		newi.AsIconst32(100)
 		replaceInstruction(blk, i2, newi)
 
-		require.Equal(t, i1, blk.Root())
+		require.Equal(t, i1, blk.Head())
 	})
 	t.Run("swap tail", func(t *testing.T) {
 		b := NewBuilder().(*builder)
@@ -233,13 +233,13 @@ func Test_swapInstruction(t *testing.T) {
 		newi.AsIconst32(100)
 		replaceInstruction(blk, i2, newi)
 
-		require.Equal(t, i1, blk.Root())
+		require.Equal(t, i1, blk.Head())
 		require.Equal(t, newi, blk.Tail())
 	})
 }
 
 func TestBuilder_LayoutBlocks(t *testing.T) {
-	insertJump := func(b *builder, src, dst *basicBlock, vs ...Value) {
+	insertJump := func(b *builder, src, dst *BasicBlock, vs ...Value) {
 		b.SetCurrentBlock(src)
 		jump := b.AllocateInstruction()
 		args := b.varLengthPool.Allocate(len(vs))
@@ -248,7 +248,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 		b.InsertInstruction(jump)
 	}
 
-	insertBrz := func(b *builder, src, dst *basicBlock, condVal Value, vs ...Value) {
+	insertBrz := func(b *builder, src, dst *BasicBlock, condVal Value, vs ...Value) {
 		b.SetCurrentBlock(src)
 		vinst := b.AllocateInstruction().AsIconst32(0)
 		b.InsertInstruction(vinst)
@@ -582,7 +582,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 
 			var actual []BasicBlockID
 			for blk := b.BlockIteratorReversePostOrderBegin(); blk != nil; blk = b.BlockIteratorReversePostOrderNext() {
-				actual = append(actual, blk.(*basicBlock).id)
+				actual = append(actual, blk.id)
 			}
 			require.Equal(t, tc.exp, actual)
 		})

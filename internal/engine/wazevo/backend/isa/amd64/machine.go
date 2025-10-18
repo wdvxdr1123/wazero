@@ -125,7 +125,7 @@ type (
 	// This implements regalloc.Block.
 	labelPosition struct {
 		// sb is not nil if this corresponds to a ssa.BasicBlock.
-		sb ssa.BasicBlock
+		sb *ssa.BasicBlock
 		// cur is used to walk through the instructions in the block during the register allocation.
 		cur,
 		// begin and end are the first and last instructions of the block.
@@ -146,7 +146,7 @@ func resetLabelPosition(l *labelPosition) {
 
 const labelReturn = math.MaxUint32
 
-func ssaBlockLabel(sb ssa.BasicBlock) label {
+func ssaBlockLabel(sb *ssa.BasicBlock) label {
 	if sb.ReturnBlock() {
 		return labelReturn
 	}
@@ -154,7 +154,7 @@ func ssaBlockLabel(sb ssa.BasicBlock) label {
 }
 
 // getOrAllocateSSABlockLabelPosition returns the labelPosition for the given basic block.
-func (m *machine) getOrAllocateSSABlockLabelPosition(sb ssa.BasicBlock) *labelPosition {
+func (m *machine) getOrAllocateSSABlockLabelPosition(sb *ssa.BasicBlock) *labelPosition {
 	if sb.ReturnBlock() {
 		m.returnLabelPos.sb = sb
 		return &m.returnLabelPos
@@ -228,13 +228,13 @@ func (m *machine) StartLoweringFunction(maxBlockID ssa.BasicBlockID) {
 }
 
 // LinkAdjacentBlocks implements backend.Machine.
-func (m *machine) LinkAdjacentBlocks(prev, next ssa.BasicBlock) {
+func (m *machine) LinkAdjacentBlocks(prev, next *ssa.BasicBlock) {
 	prevPos, nextPos := m.getOrAllocateSSABlockLabelPosition(prev), m.getOrAllocateSSABlockLabelPosition(next)
 	prevPos.end.next = nextPos.begin
 }
 
 // StartBlock implements backend.Machine.
-func (m *machine) StartBlock(blk ssa.BasicBlock) {
+func (m *machine) StartBlock(blk *ssa.BasicBlock) {
 	m.currentLabelPos = m.getOrAllocateSSABlockLabelPosition(blk)
 	labelPos := m.currentLabelPos
 	end := m.allocateNop()
