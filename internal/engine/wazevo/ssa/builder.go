@@ -459,13 +459,10 @@ func (b *builder) findValueInLinearPath(variable Variable, blk *BasicBlock) Valu
 		return ValueInvalid
 	}
 
-	if pred := blk.singlePred; pred != nil {
+	if len(blk.Pred) == 1 {
 		// If this block is sealed and have only one predecessor,
 		// we can use the value in that block without ambiguity on definition.
-		return b.findValueInLinearPath(variable, pred)
-	}
-	if len(blk.preds) == 1 {
-		panic("BUG")
+		return b.findValueInLinearPath(variable, blk.Pred[0].Block)
 	}
 	return ValueInvalid
 }
@@ -503,11 +500,11 @@ func (b *builder) findValue(typ Type, variable Variable, blk *BasicBlock) Value 
 		return b.zeros[variable.getType()]
 	}
 
-	if pred := blk.singlePred; pred != nil {
+	if len(blk.Pred) == 1 {
 		// If this block is sealed and have only one predecessor,
 		// we can use the value in that block without ambiguity on definition.
-		return b.findValue(typ, variable, pred)
-	} else if len(blk.preds) == 0 {
+		return b.findValue(typ, variable, blk.Pred[0].Block)
+	} else if len(blk.Pred) == 0 {
 		panic("BUG: value is not defined for " + variable.String())
 	}
 
@@ -520,8 +517,8 @@ func (b *builder) findValue(typ Type, variable Variable, blk *BasicBlock) Value 
 	b.DefineVariable(variable, tmpValue, blk)
 	// Check all the predecessors if they have the same definition.
 	uniqueValue := ValueInvalid
-	for i := range blk.preds {
-		predValue := b.findValue(typ, variable, blk.preds[i].blk)
+	for i := range blk.Pred {
+		predValue := b.findValue(typ, variable, blk.Pred[i].Block)
 		if uniqueValue == ValueInvalid {
 			uniqueValue = predValue
 		} else if uniqueValue != predValue {
@@ -542,10 +539,9 @@ func (b *builder) findValue(typ Type, variable Variable, blk *BasicBlock) Value 
 		// After the new param is added, we have to manipulate the original branching instructions
 		// in predecessors so that they would pass the definition of `variable` as the argument to
 		// the newly added PHI.
-		for i := range blk.preds {
-			pred := &blk.preds[i]
-			value := b.findValue(typ, variable, pred.blk)
-			pred.branch.addArgumentBranchInst(b, value)
+		for _, pred := range blk.Pred {
+			value := b.findValue(typ, variable, pred.Block)
+			pred.Branch.addArgumentBranchInst(b, value)
 		}
 		return tmpValue
 	}
@@ -553,22 +549,18 @@ func (b *builder) findValue(typ Type, variable Variable, blk *BasicBlock) Value 
 
 // Seal implements Builder.Seal.
 func (b *builder) Seal(blk *BasicBlock) {
-	if len(blk.preds) == 1 {
-		blk.singlePred = blk.preds[0].blk
-	}
 	blk.sealed = true
 
 	for _, v := range blk.unknownValues {
 		variable, phiValue := v.variable, v.value
 		typ := variable.getType()
 		blk.addParamOn(b, phiValue)
-		for i := range blk.preds {
-			pred := &blk.preds[i]
-			predValue := b.findValue(typ, variable, pred.blk)
+		for _, pred := range blk.Pred {
+			predValue := b.findValue(typ, variable, pred.Block)
 			if !predValue.Valid() {
 				panic("BUG: value is not defined anywhere in the predecessors in the CFG")
 			}
-			pred.branch.addArgumentBranchInst(b, predValue)
+			pred.Branch.addArgumentBranchInst(b, predValue)
 		}
 	}
 }

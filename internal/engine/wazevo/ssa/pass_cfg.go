@@ -43,7 +43,7 @@ func calculateImmediateDominators(b *builder) {
 			// So push this block again to the stack.
 			exploreStack = append(exploreStack, blk)
 			// And push the successors to the stack if necessary.
-			for _, succ := range blk.success {
+			for _, succ := range blk.Succ {
 				if succ.ReturnBlock() || succ.invalid {
 					continue
 				}
@@ -108,8 +108,8 @@ func calculateDominators(reversePostOrderedBlks []*BasicBlock, doms []*BasicBloc
 		changed = false
 		for _, blk := range reversePostOrderedBlks {
 			var u *BasicBlock
-			for i := range blk.preds {
-				pred := blk.preds[i].blk
+			for i := range blk.Pred {
+				pred := blk.Pred[i].Block
 				// Skip if this pred is not reachable yet. Note that this is not described in the paper,
 				// but it is necessary to handle nested loops etc.
 				if doms[pred.id] == nil {
@@ -154,8 +154,8 @@ func intersect(doms []*BasicBlock, blk1 *BasicBlock, blk2 *BasicBlock) *BasicBlo
 // This is run at the last of passCalculateImmediateDominators.
 func subPassLoopDetection(b *builder) {
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		for i := range blk.preds {
-			pred := blk.preds[i].blk
+		for i := range blk.Pred {
+			pred := blk.Pred[i].Block
 			if pred.invalid {
 				continue
 			}

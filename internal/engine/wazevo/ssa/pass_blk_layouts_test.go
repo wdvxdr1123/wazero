@@ -113,8 +113,8 @@ func Test_maybeInvertBranch(t *testing.T) {
 				conditionalBr := now.instr[len(now.instr)-2]
 
 				// Sanity check before inversion.
-				require.Equal(t, conditionalBr, loopHeader.preds[0].branch)
-				require.Equal(t, tail, next.preds[0].branch)
+				require.Equal(t, conditionalBr, loopHeader.Pred[0].Branch)
+				require.Equal(t, tail, next.Pred[0].Branch)
 				verify = func(t *testing.T) {
 					require.Equal(t, OpcodeJump, tail.opcode)
 					require.Equal(t, OpcodeBrnz, conditionalBr.opcode)                       // inversion.
@@ -122,8 +122,8 @@ func Test_maybeInvertBranch(t *testing.T) {
 					require.Equal(t, next, b.basicBlock(BasicBlockID(conditionalBr.rValue))) // swapped.
 
 					// Predecessor info should correctly point to the inverted jump instruction.
-					require.Equal(t, tail, loopHeader.preds[0].branch)
-					require.Equal(t, conditionalBr, next.preds[0].branch)
+					require.Equal(t, tail, loopHeader.Pred[0].Branch)
+					require.Equal(t, conditionalBr, next.Pred[0].Branch)
 				}
 				return
 			},
@@ -141,8 +141,8 @@ func Test_maybeInvertBranch(t *testing.T) {
 				conditionalBr := now.instr[len(now.instr)-2]
 
 				// Sanity check before inversion.
-				require.Equal(t, tail, nowTarget.preds[0].branch)
-				require.Equal(t, conditionalBr, next.preds[0].branch)
+				require.Equal(t, tail, nowTarget.Pred[0].Branch)
+				require.Equal(t, conditionalBr, next.Pred[0].Branch)
 
 				verify = func(t *testing.T) {
 					require.Equal(t, OpcodeJump, tail.opcode)
@@ -150,8 +150,8 @@ func Test_maybeInvertBranch(t *testing.T) {
 					require.Equal(t, next, b.basicBlock(BasicBlockID(tail.rValue)))               // swapped.
 					require.Equal(t, nowTarget, b.basicBlock(BasicBlockID(conditionalBr.rValue))) // swapped.
 
-					require.Equal(t, conditionalBr, nowTarget.preds[0].branch)
-					require.Equal(t, tail, next.preds[0].branch)
+					require.Equal(t, conditionalBr, nowTarget.Pred[0].Branch)
+					require.Equal(t, tail, next.Pred[0].Branch)
 				}
 				return
 			},
@@ -184,16 +184,16 @@ func TestBuilder_splitCriticalEdge(t *testing.T) {
 	dummyJump.AsJump(ValuesNil, dummyBlk2)
 	b.InsertInstruction(dummyJump)
 
-	predInfo := &basicBlockPredecessorInfo{blk: predBlk, branch: originalBrz}
+	predInfo := &PredInfo{Block: predBlk, Branch: originalBrz}
 	trampoline := b.splitCriticalEdge(predBlk, dummyBlk, predInfo)
 	require.NotNil(t, trampoline)
 	require.Equal(t, int32(100), trampoline.reversePostOrder)
 
-	require.Equal(t, trampoline, predInfo.blk)
-	require.Equal(t, originalBrz, predInfo.branch)
-	require.Equal(t, trampoline.Head(), predInfo.branch)
-	require.Equal(t, trampoline.Tail(), predInfo.branch)
-	require.Equal(t, trampoline.success[0], dummyBlk)
+	require.Equal(t, trampoline, predInfo.Block)
+	require.Equal(t, originalBrz, predInfo.Branch)
+	require.Equal(t, trampoline.Head(), predInfo.Branch)
+	require.Equal(t, trampoline.Tail(), predInfo.Branch)
+	require.Equal(t, trampoline.Succ[0], dummyBlk)
 
 	replacedBrz := predBlk.instr[1] // predBlk.Root().Next
 	require.Equal(t, OpcodeBrz, replacedBrz.opcode)

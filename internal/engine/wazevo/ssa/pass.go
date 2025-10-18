@@ -78,7 +78,7 @@ func deadBlockElim(b *builder) {
 			reachableBlk.validate(b)
 		}
 
-		for _, succ := range reachableBlk.success {
+		for _, succ := range reachableBlk.Succ {
 			if succ.visited == 1 {
 				continue
 			}
@@ -122,8 +122,8 @@ func redundantPhiElimination(b *builder) {
 				redundant := true
 
 				nonSelfReferencingValue := ValueInvalid
-				for predIndex := range blk.preds {
-					br := blk.preds[predIndex].branch
+				for predIndex := range blk.Pred {
+					br := blk.Pred[predIndex].Branch
 					// Resolve the alias in the arguments so that we could use the previous iteration's result.
 					b.resolveArgumentAlias(br)
 					pred := br.vs.View()[paramIndex]
@@ -161,10 +161,10 @@ func redundantPhiElimination(b *builder) {
 			changed = true
 
 			// Remove the redundant PHIs from the argument list of branching instructions.
-			for predIndex := range blk.preds {
+			for predIndex := range blk.Pred {
 				redundantParamsCur, predParamCur := 0, 0
-				predBlk := blk.preds[predIndex]
-				branchInst := predBlk.branch
+				predBlk := blk.Pred[predIndex]
+				branchInst := predBlk.Branch
 				view := branchInst.vs.View()
 				for argIndex, value := range view {
 					if len(redundantParams) == redundantParamsCur ||
@@ -377,6 +377,6 @@ func nopElimination(b *builder) {
 func sortSuccessors(b *builder) {
 	for i := 0; i < b.basicBlocksPool.Allocated(); i++ {
 		blk := b.basicBlocksPool.View(i)
-		sortBlocks(blk.success)
+		sortBlocks(blk.Succ)
 	}
 }

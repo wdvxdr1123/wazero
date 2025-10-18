@@ -4136,7 +4136,7 @@ func (c *Compiler) insertIntegerExtend(signed bool, from, to byte) {
 }
 
 func (c *Compiler) switchTo(originalStackLen int, targetBlk *ssa.BasicBlock) {
-	if targetBlk.Preds() == 0 {
+	if len(targetBlk.Pred) == 0 {
 		c.loweringState.unreachable = true
 	}
 

@@ -22,11 +22,9 @@ type BasicBlock struct {
 	instr []*Instruction
 	// params are Values that represent parameters to a basicBlock.
 	// Each parameter can be considered as an output of PHI instruction in traditional SSA.
-	params  Values
-	preds   []basicBlockPredecessorInfo
-	success []*BasicBlock
-	// singlePred is the alias to preds[0] for fast lookup, and only set after Seal is called.
-	singlePred *BasicBlock
+	params Values
+	Pred   []PredInfo
+	Succ   []*BasicBlock
 	// lastDefinitions maps Variable to its last definition in this block.
 	lastDefinitions map[Variable]Value
 	// unknownsValues are used in builder.findValue. The usage is well-described in the paper.
@@ -103,11 +101,11 @@ func (bb *BasicBlock) ID() BasicBlockID {
 	return bb.id
 }
 
-// basicBlockPredecessorInfo is the information of a predecessor of a basicBlock.
+// PredInfo is the information of a predecessor of a basicBlock.
 // predecessor is determined by a pair of block and the branch instruction used to jump to the successor.
-type basicBlockPredecessorInfo struct {
-	blk    *BasicBlock
-	branch *Instruction
+type PredInfo struct {
+	Block  *BasicBlock
+	Branch *Instruction
 }
 
 func (bb *BasicBlock) EntryBlock() bool {
@@ -163,26 +161,6 @@ func (bb *BasicBlock) insertInstruction(b *builder, next *Instruction) {
 	}
 }
 
-func (bb *BasicBlock) NumPreds() int {
-	return len(bb.preds)
-}
-
-func (bb *BasicBlock) Preds() int {
-	return len(bb.preds)
-}
-
-func (bb *BasicBlock) Pred(i int) *BasicBlock {
-	return bb.preds[i].blk
-}
-
-func (bb *BasicBlock) Succs() int {
-	return len(bb.success)
-}
-
-func (bb *BasicBlock) Succ(i int) *BasicBlock {
-	return bb.success[i]
-}
-
 // Instructions returns the list of instructions in this block.
 func (bb *BasicBlock) Instructions() []*Instruction {
 	return bb.instr
@@ -208,10 +186,9 @@ func (bb *BasicBlock) Tail() *Instruction {
 func resetBasicBlock(bb *BasicBlock) {
 	bb.params = ValuesNil
 	bb.instr = bb.instr[:0]
-	bb.preds = bb.preds[:0]
-	bb.success = bb.success[:0]
+	bb.Pred = bb.Pred[:0]
+	bb.Succ = bb.Succ[:0]
 	bb.invalid, bb.sealed = false, false
-	bb.singlePred = nil
 	bb.unknownValues = bb.unknownValues[:0]
 	bb.lastDefinitions = wazevoapi.ResetMap(bb.lastDefinitions)
 	bb.reversePostOrder = -1
@@ -228,21 +205,21 @@ func (bb *BasicBlock) addPred(pred *BasicBlock, branch *Instruction) {
 		panic("BUG: trying to add predecessor to a sealed block: " + bb.Name())
 	}
 
-	for i := range bb.preds {
-		existingPred := &bb.preds[i]
-		if existingPred.blk == pred && existingPred.branch != branch {
+	for i := range bb.Pred {
+		existingPred := bb.Pred[i]
+		if existingPred.Block == pred && existingPred.Branch != branch {
 			// If the target is already added, then this must come from the same BrTable,
 			// otherwise such redundant branch should be eliminated by the frontend. (which should be simpler).
 			panic(fmt.Sprintf("BUG: redundant non BrTable jumps in %s whose targes are the same", bb.Name()))
 		}
 	}
 
-	bb.preds = append(bb.preds, basicBlockPredecessorInfo{
-		blk:    pred,
-		branch: branch,
+	bb.Pred = append(bb.Pred, PredInfo{
+		Block:  pred,
+		Branch: branch,
 	})
 
-	pred.success = append(pred.success, bb)
+	pred.Succ = append(pred.Succ, bb)
 }
 
 // formatHeader returns the string representation of the header of the basicBlock.
@@ -252,13 +229,13 @@ func (bb *BasicBlock) formatHeader(b Builder) string {
 		ps[i] = p.formatWithType(b)
 	}
 
-	if len(bb.preds) > 0 {
-		preds := make([]string, 0, len(bb.preds))
-		for _, pred := range bb.preds {
-			if pred.blk.invalid {
+	if len(bb.Pred) > 0 {
+		preds := make([]string, 0, len(bb.Pred))
+		for _, pred := range bb.Pred {
+			if pred.Block.invalid {
 				continue
 			}
-			preds = append(preds, fmt.Sprintf("blk%d", pred.blk.id))
+			preds = append(preds, fmt.Sprintf("blk%d", pred.Block.id))
 
 		}
 		return fmt.Sprintf("blk%d: (%s) <-- (%s)",
@@ -273,14 +250,14 @@ func (bb *BasicBlock) validate(b *builder) {
 	if bb.invalid {
 		panic("BUG: trying to validate an invalid block: " + bb.Name())
 	}
-	if len(bb.preds) > 0 {
-		for _, pred := range bb.preds {
-			if pred.branch.opcode != OpcodeBrTable {
-				blockID := int(pred.branch.rValue)
+	if len(bb.Pred) > 0 {
+		for _, pred := range bb.Pred {
+			if pred.Branch.opcode != OpcodeBrTable {
+				blockID := int(pred.Branch.rValue)
 				target := b.basicBlocksPool.View(blockID)
 				if target != bb {
 					panic(fmt.Sprintf("BUG: '%s' is not branch to %s, but to %s",
-						pred.branch.Format(b), bb.Name(), target.Name()))
+						pred.Branch.Format(b), bb.Name(), target.Name()))
 				}
 			}
 
@@ -291,11 +268,11 @@ func (bb *BasicBlock) validate(b *builder) {
 				exp = len(bb.params.View())
 			}
 
-			if len(pred.branch.vs.View()) != exp {
+			if len(pred.Branch.vs.View()) != exp {
 				panic(fmt.Sprintf(
 					"BUG: len(argument at %s) != len(params at %s): %d != %d: %s",
-					pred.blk.Name(), bb.Name(),
-					len(pred.branch.vs.View()), len(bb.params.View()), pred.branch.Format(b),
+					pred.Block.Name(), bb.Name(),
+					len(pred.Branch.vs.View()), len(bb.params.View()), pred.Branch.Format(b),
 				))
 			}
 

@@ -500,10 +500,10 @@ func (c *Compiler) finalizeKnownSafeBoundsAtTheEndOfBlock(bID ssa.BasicBlockID) 
 
 func (c *Compiler) initializeCurrentBlockKnownBounds() {
 	currentBlk := c.ssaBuilder.CurrentBlock()
-	switch preds := currentBlk.Preds(); preds {
+	switch preds := len(currentBlk.Pred); preds {
 	case 0:
 	case 1:
-		pred := currentBlk.Pred(0).ID()
+		pred := currentBlk.Pred[0].Block.ID()
 		for _, kb := range c.getKnownSafeBoundsAtTheEndOfBlocks(pred).View() {
 			// Unless the block is sealed, we cannot assume the absolute address is valid:
 			// later we might add another predecessor that has no visibility of that value.
@@ -517,7 +517,7 @@ func (c *Compiler) initializeCurrentBlockKnownBounds() {
 		c.pointers = c.pointers[:0]
 		c.bounds = c.bounds[:0]
 		for i := 0; i < preds; i++ {
-			c.bounds = append(c.bounds, c.getKnownSafeBoundsAtTheEndOfBlocks(currentBlk.Pred(i).ID()).View())
+			c.bounds = append(c.bounds, c.getKnownSafeBoundsAtTheEndOfBlocks(currentBlk.Pred[i].Block.ID()).View())
 			c.pointers = append(c.pointers, 0)
 		}
 

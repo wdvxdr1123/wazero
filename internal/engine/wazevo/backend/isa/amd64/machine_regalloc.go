@@ -119,7 +119,7 @@ func (f *regAllocFn) LoopNestingForestChild(pos *labelPosition, i int) *labelPos
 
 // Succ implements regalloc.Block.
 func (f *regAllocFn) Succ(pos *labelPosition, i int) *labelPosition {
-	succSB := pos.sb.Succ(i)
+	succSB := pos.sb.Succ[i]
 	if succSB.ReturnBlock() {
 		return nil
 	}
@@ -128,7 +128,7 @@ func (f *regAllocFn) Succ(pos *labelPosition, i int) *labelPosition {
 
 // Pred implements regalloc.Block.
 func (f *regAllocFn) Pred(pos *labelPosition, i int) *labelPosition {
-	predSB := pos.sb.Pred(i)
+	predSB := pos.sb.Pred[i].Block
 	return f.m.getOrAllocateSSABlockLabelPosition(predSB)
 }
 
@@ -204,13 +204,13 @@ func (pos *labelPosition) LastInstrForInsertion() *instruction {
 }
 
 // Preds implements regalloc.Block.
-func (pos *labelPosition) Preds() int { return pos.sb.Preds() }
+func (pos *labelPosition) Preds() int { return len(pos.sb.Pred) }
 
 // Entry implements regalloc.Block.
 func (pos *labelPosition) Entry() bool { return pos.sb.EntryBlock() }
 
 // Succs implements regalloc.Block.
-func (pos *labelPosition) Succs() int { return pos.sb.Succs() }
+func (pos *labelPosition) Succs() int { return len(pos.sb.Succ) }
 
 // LoopHeader implements regalloc.Block.
 func (pos *labelPosition) LoopHeader() bool { return pos.sb.LoopHeader }

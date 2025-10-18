@@ -43,8 +43,8 @@ func layoutBlocks(b *builder) {
 	b.reversePostOrderedBasicBlocks = b.reversePostOrderedBasicBlocks[:0]
 	uninsertedTrampolines := b.blkStack2[:0]
 	for _, blk := range nonSplitBlocks {
-		for i := range blk.preds {
-			pred := blk.preds[i].blk
+		for i := range blk.Pred {
+			pred := blk.Pred[i].Block
 			if pred.visited == 1 || !pred.Valid() {
 				continue
 			} else if pred.reversePostOrder < blk.reversePostOrder {
@@ -60,7 +60,7 @@ func layoutBlocks(b *builder) {
 		b.reversePostOrderedBasicBlocks = append(b.reversePostOrderedBasicBlocks, blk)
 		blk.visited = 1 // mark as inserted.
 
-		if len(blk.success) < 2 {
+		if len(blk.Succ) < 2 {
 			// There won't be critical edge originating from this block.
 			continue
 		} else if blk.Tail().opcode == OpcodeBrTable {
@@ -68,20 +68,19 @@ func layoutBlocks(b *builder) {
 			continue
 		}
 
-		for sidx, succ := range blk.success {
+		for sidx, succ := range blk.Succ {
 			if !succ.ReturnBlock() && // If the successor is a return block, we need to split the edge any way because we need "epilogue" to be inserted.
 				// Plus if there's no multiple incoming edges to this successor, (pred, succ) is not critical.
-				len(succ.preds) < 2 {
+				len(succ.Pred) < 2 {
 				continue
 			}
 
 			// Otherwise, we are sure this is a critical edge. To modify the CFG, we need to find the predecessor info
 			// from the successor.
-			var predInfo *basicBlockPredecessorInfo
-			for i := range succ.preds { // This linear search should not be a problem since the number of predecessors should almost always small.
-				pred := &succ.preds[i]
-				if pred.blk == blk {
-					predInfo = pred
+			var predInfo *PredInfo
+			for i, pred := range succ.Pred { // This linear search should not be a problem since the number of predecessors should almost always small.
+				if pred.Block == blk {
+					predInfo = &succ.Pred[i]
 					break
 				}
 			}
@@ -93,12 +92,12 @@ func layoutBlocks(b *builder) {
 
 			if wazevoapi.SSALoggingEnabled {
 				fmt.Printf("trying to split edge from %d->%d at %s\n",
-					blk.ID(), succ.ID(), predInfo.branch.Format(b))
+					blk.ID(), succ.ID(), predInfo.Branch.Format(b))
 			}
 
 			trampoline := b.splitCriticalEdge(blk, succ, predInfo)
 			// Update the successors slice because the target is no longer the original `succ`.
-			blk.success[sidx] = trampoline
+			blk.Succ[sidx] = trampoline
 
 			if wazevoapi.SSAValidationEnabled {
 				trampolines = append(trampolines, trampoline)
@@ -106,7 +105,7 @@ func layoutBlocks(b *builder) {
 
 			if wazevoapi.SSALoggingEnabled {
 				fmt.Printf("edge split from %d->%d at %s as %d->%d->%d \n",
-					blk.ID(), succ.ID(), predInfo.branch.Format(b),
+					blk.ID(), succ.ID(), predInfo.Branch.Format(b),
 					blk.ID(), trampoline.ID(), succ.ID())
 			}
 
@@ -121,7 +120,7 @@ func layoutBlocks(b *builder) {
 		}
 
 		for _, trampoline := range uninsertedTrampolines {
-			if trampoline.success[0].reversePostOrder <= trampoline.reversePostOrder { // "<=", not "<" because the target might be itself.
+			if trampoline.Succ[0].reversePostOrder <= trampoline.reversePostOrder { // "<=", not "<" because the target might be itself.
 				// This means the critical edge was backward, so we insert after the current block immediately.
 				b.reversePostOrderedBasicBlocks = append(b.reversePostOrderedBasicBlocks, trampoline)
 				trampoline.visited = 1 // mark as inserted.
@@ -222,17 +221,17 @@ func maybeInvertBranches(b *builder, now *BasicBlock, nextInRPO *BasicBlock) boo
 	}
 
 invert:
-	for i := range fallthroughTarget.preds {
-		pred := &fallthroughTarget.preds[i]
-		if pred.branch == fallthroughBranch {
-			pred.branch = condBranch
+	for i := range fallthroughTarget.Pred {
+		pred := &fallthroughTarget.Pred[i]
+		if pred.Branch == fallthroughBranch {
+			pred.Branch = condBranch
 			break
 		}
 	}
-	for i := range condTarget.preds {
-		pred := &condTarget.preds[i]
-		if pred.branch == condBranch {
-			pred.branch = fallthroughBranch
+	for i := range condTarget.Pred {
+		pred := &condTarget.Pred[i]
+		if pred.Branch == condBranch {
+			pred.Branch = fallthroughBranch
 			break
 		}
 	}
@@ -260,7 +259,7 @@ invert:
 //   - https://nickdesaulniers.github.io/blog/2023/01/27/critical-edge-splitting/
 //
 // The returned basic block is the trampoline block which is inserted to split the critical edge.
-func (b *builder) splitCriticalEdge(pred, succ *BasicBlock, predInfo *basicBlockPredecessorInfo) *BasicBlock {
+func (b *builder) splitCriticalEdge(pred, succ *BasicBlock, predInfo *PredInfo) *BasicBlock {
 	// In the following, we convert the following CFG:
 	//
 	//     pred --(originalBranch)--> succ
@@ -277,7 +276,7 @@ func (b *builder) splitCriticalEdge(pred, succ *BasicBlock, predInfo *basicBlock
 	}
 	b.dominators[trampoline.id] = pred
 
-	originalBranch := predInfo.branch
+	originalBranch := predInfo.Branch
 
 	// Replace originalBranch with the newBranch.
 	newBranch := b.AllocateInstruction()
@@ -296,14 +295,14 @@ func (b *builder) splitCriticalEdge(pred, succ *BasicBlock, predInfo *basicBlock
 
 	// Replace the original branch with the new branch.
 	trampoline.instr = []*Instruction{originalBranch}
-	trampoline.success = append(trampoline.success, succ) // Do not use []*basicBlock{pred} because we might have already allocated the slice.
-	trampoline.preds = append(trampoline.preds,           // same as ^.
-		basicBlockPredecessorInfo{blk: pred, branch: newBranch})
+	trampoline.Succ = append(trampoline.Succ, succ) // Do not use []*basicBlock{pred} because we might have already allocated the slice.
+	trampoline.Pred = append(trampoline.Pred,
+		PredInfo{Block: pred, Branch: newBranch})
 	b.Seal(trampoline)
 
 	// Update the original branch to point to the trampoline.
-	predInfo.blk = trampoline
-	predInfo.branch = originalBranch
+	predInfo.Block = trampoline
+	predInfo.Branch = originalBranch
 
 	if wazevoapi.SSAValidationEnabled {
 		trampoline.validate(b)
