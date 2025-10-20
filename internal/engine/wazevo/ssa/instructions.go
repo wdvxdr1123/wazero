@@ -107,9 +107,6 @@ type InstructionGroupID uint32
 // Returns Value(s) produced by this instruction if any.
 // The `first` is the first return value, and `rest` is the rest of the values.
 func (i *Instruction) Returns() (first Value, rest []Value) {
-	if i.IsBranching() {
-		return ValueInvalid, nil
-	}
 	return i.rValue, i.rValues
 }
 
@@ -158,16 +155,6 @@ func (i *Instruction) Arg3() (Value, Value, Value) {
 	return i.v, i.v2, i.v3
 }
 
-// IsBranching returns true if this instruction is a branching instruction.
-func (i *Instruction) IsBranching() bool {
-	switch i.opcode {
-	case OpcodeJump, OpcodeBrz, OpcodeBrnz, OpcodeBrTable:
-		return true
-	default:
-		return false
-	}
-}
-
 // TODO: complete opcode comments.
 const (
 	OpcodeInvalid Opcode = iota
@@ -175,19 +162,6 @@ const (
 	// OpcodeUndefined is a placeholder for undefined opcode. This can be used for debugging to intentionally
 	// cause a crash at certain point.
 	OpcodeUndefined
-
-	// OpcodeJump takes the list of args to the `block` and unconditionally jumps to it.
-	OpcodeJump
-
-	// OpcodeBrz branches into `blk` with `args`  if the value `c` equals zero: `Brz c, blk, args`.
-	OpcodeBrz
-
-	// OpcodeBrnz branches into `blk` with `args`  if the value `c` is not zero: `Brnz c, blk, args`.
-	OpcodeBrnz
-
-	// OpcodeBrTable takes the index value `index`, and branches into `labelX`. If the `index` is out of range,
-	// it branches into the last labelN: `BrTable index, [label1, label2, ... labelN]`.
-	OpcodeBrTable
 
 	// OpcodeExitWithCode exit the execution immediately.
 	OpcodeExitWithCode
@@ -735,7 +709,6 @@ const (
 // Instructions with side effects must not be eliminated regardless whether the result is used or not.
 var instructionSideEffects = [opcodeEnd]sideEffect{
 	OpcodeUndefined:                   sideEffectStrict,
-	OpcodeJump:                        sideEffectStrict,
 	OpcodeIconst:                      sideEffectNone,
 	OpcodeCall:                        sideEffectStrict,
 	OpcodeCallIndirect:                sideEffectStrict,
@@ -787,9 +760,6 @@ var instructionSideEffects = [opcodeEnd]sideEffect{
 	OpcodeExitWithCode:                sideEffectStrict,
 	OpcodeExitIfTrueWithCode:          sideEffectStrict,
 	OpcodeReturn:                      sideEffectStrict,
-	OpcodeBrz:                         sideEffectStrict,
-	OpcodeBrnz:                        sideEffectStrict,
-	OpcodeBrTable:                     sideEffectStrict,
 	OpcodeFdiv:                        sideEffectNone,
 	OpcodeFmul:                        sideEffectNone,
 	OpcodeFmax:                        sideEffectNone,
@@ -937,7 +907,6 @@ var instructionReturnTypes = [opcodeEnd]returnTypesFn{
 	OpcodeUdiv:                        returnTypesFnSingle,
 	OpcodeUrem:                        returnTypesFnSingle,
 	OpcodeUshr:                        returnTypesFnSingle,
-	OpcodeJump:                        returnTypesFnNoReturns,
 	OpcodeUndefined:                   returnTypesFnNoReturns,
 	OpcodeIconst:                      returnTypesFnSingle,
 	OpcodeSelect:                      returnTypesFnSingle,
@@ -988,9 +957,6 @@ var instructionReturnTypes = [opcodeEnd]returnTypesFn{
 	OpcodeExitWithCode:                returnTypesFnNoReturns,
 	OpcodeExitIfTrueWithCode:          returnTypesFnNoReturns,
 	OpcodeReturn:                      returnTypesFnNoReturns,
-	OpcodeBrz:                         returnTypesFnNoReturns,
-	OpcodeBrnz:                        returnTypesFnNoReturns,
-	OpcodeBrTable:                     returnTypesFnNoReturns,
 	OpcodeUload8:                      returnTypesFnSingle,
 	OpcodeUload16:                     returnTypesFnSingle,
 	OpcodeUload32:                     returnTypesFnSingle,
@@ -2092,92 +2058,6 @@ func (i *Instruction) ExitIfTrueWithCodeData() (ctx, c Value, code wazevoapi.Exi
 	return i.v, i.v2, wazevoapi.ExitCode(i.u1)
 }
 
-// InvertBrx inverts either OpcodeBrz or OpcodeBrnz to the other.
-func (i *Instruction) InvertBrx() {
-	switch i.opcode {
-	case OpcodeBrz:
-		i.opcode = OpcodeBrnz
-	case OpcodeBrnz:
-		i.opcode = OpcodeBrz
-	default:
-		panic("BUG")
-	}
-}
-
-// BranchData returns the branch data for this instruction necessary for backends.
-func (i *Instruction) BranchData() (condVal Value, blockArgs []Value, target BasicBlockID) {
-	switch i.opcode {
-	case OpcodeJump:
-		condVal = ValueInvalid
-	case OpcodeBrz, OpcodeBrnz:
-		condVal = i.v
-	default:
-		panic("BUG")
-	}
-	blockArgs = i.vs
-	target = i.rValue.BlockID()
-	return
-}
-
-// BrTableData returns the branch table data for this instruction necessary for backends.
-func (i *Instruction) BrTableData() (index Value, targets []Value) {
-	if i.opcode != OpcodeBrTable {
-		panic("BUG: BrTableData only available for OpcodeBrTable")
-	}
-	index = i.v
-	targets = i.rValues
-	return
-}
-
-// AsJump initializes this instruction as a jump instruction with OpcodeJump.
-func (i *Instruction) AsJump(vs []Value, target *BasicBlock) *Instruction {
-	i.opcode = OpcodeJump
-	i.vs = vs
-	i.rValue = ValueFromBlockID(target.ID())
-	return i
-}
-
-// IsFallthroughJump returns true if this instruction is a fallthrough jump.
-func (i *Instruction) IsFallthroughJump() bool {
-	if i.opcode != OpcodeJump {
-		panic("BUG: IsFallthrough only available for OpcodeJump")
-	}
-	return i.opcode == OpcodeJump && i.u1 != 0
-}
-
-// AsFallthroughJump marks this instruction as a fallthrough jump.
-func (i *Instruction) AsFallthroughJump() {
-	if i.opcode != OpcodeJump {
-		panic("BUG: AsFallthroughJump only available for OpcodeJump")
-	}
-	i.u1 = 1
-}
-
-// AsBrz initializes this instruction as a branch-if-zero instruction with OpcodeBrz.
-func (i *Instruction) AsBrz(v Value, args []Value, target *BasicBlock) {
-	i.opcode = OpcodeBrz
-	i.v = v
-	i.vs = args
-	i.rValue = ValueFromBlockID(target.ID())
-}
-
-// AsBrnz initializes this instruction as a branch-if-not-zero instruction with OpcodeBrnz.
-func (i *Instruction) AsBrnz(v Value, args []Value, target *BasicBlock) *Instruction {
-	i.opcode = OpcodeBrnz
-	i.v = v
-	i.vs = args
-	i.rValue = ValueFromBlockID(target.ID())
-	return i
-}
-
-// AsBrTable initializes this instruction as a branch-table instruction with OpcodeBrTable.
-// targets is a list of basic block IDs cast to Values.
-func (i *Instruction) AsBrTable(index Value, targets []Value) {
-	i.opcode = OpcodeBrTable
-	i.v = index
-	i.rValues = targets
-}
-
 // AsCall initializes this instruction as a call instruction with OpcodeCall.
 func (i *Instruction) AsCall(ref FuncRef, sig *types.Signature, args []Value) {
 	i.opcode = OpcodeCall
@@ -2554,43 +2434,6 @@ func (i *Instruction) Format(b Builder) string {
 			vs[idx] = view[idx].Format(b)
 		}
 		instSuffix = fmt.Sprintf(" %s", strings.Join(vs, ", "))
-	case OpcodeJump:
-		view := i.vs
-		vs := make([]string, len(view)+1)
-		if i.IsFallthroughJump() {
-			vs[0] = " fallthrough"
-		} else {
-			blockId := i.rValue.BlockID()
-			vs[0] = " " + b.BasicBlock(blockId).Name()
-		}
-		for idx := range view {
-			vs[idx+1] = view[idx].Format(b)
-		}
-
-		instSuffix = strings.Join(vs, ", ")
-	case OpcodeBrz, OpcodeBrnz:
-		view := i.vs
-		vs := make([]string, len(view)+2)
-		vs[0] = " " + i.v.Format(b)
-		blockId := i.rValue.BlockID()
-		vs[1] = b.BasicBlock(blockId).Name()
-		for idx := range view {
-			vs[idx+2] = view[idx].Format(b)
-		}
-		instSuffix = strings.Join(vs, ", ")
-	case OpcodeBrTable:
-		// `BrTable index, [label1, label2, ... labelN]`
-		instSuffix = fmt.Sprintf(" %s", i.v.Format(b))
-		instSuffix += ", ["
-		for i, target := range i.rValues {
-			blk := b.BasicBlock(target.BlockID())
-			if i == 0 {
-				instSuffix += blk.Name()
-			} else {
-				instSuffix += ", " + blk.Name()
-			}
-		}
-		instSuffix += "]"
 	case OpcodeBand, OpcodeBor, OpcodeBxor, OpcodeRotr, OpcodeRotl, OpcodeIshl, OpcodeSshr, OpcodeUshr,
 		OpcodeSdiv, OpcodeUdiv, OpcodeFcopysign, OpcodeSrem, OpcodeUrem,
 		OpcodeVbnot, OpcodeVbxor, OpcodeVbor, OpcodeVband, OpcodeVbandnot, OpcodeVIcmp, OpcodeVFcmp:
@@ -2679,16 +2522,6 @@ func (i *Instruction) Format(b Builder) string {
 	}
 }
 
-// addArgumentBranchInst adds an argument to this instruction.
-func (i *Instruction) addArgumentBranchInst(b *builder, v Value) {
-	switch i.opcode {
-	case OpcodeJump, OpcodeBrz, OpcodeBrnz:
-		i.vs = append(i.vs, v)
-	default:
-		panic("BUG: " + i.opcode.String())
-	}
-}
-
 // Constant returns true if this instruction is a constant instruction.
 func (i *Instruction) Constant() bool {
 	switch i.opcode {
@@ -2717,14 +2550,6 @@ func (o Opcode) String() (ret string) {
 		return "invalid"
 	case OpcodeUndefined:
 		return "Undefined"
-	case OpcodeJump:
-		return "Jump"
-	case OpcodeBrz:
-		return "Brz"
-	case OpcodeBrnz:
-		return "Brnz"
-	case OpcodeBrTable:
-		return "BrTable"
 	case OpcodeExitWithCode:
 		return "Exit"
 	case OpcodeExitIfTrueWithCode:

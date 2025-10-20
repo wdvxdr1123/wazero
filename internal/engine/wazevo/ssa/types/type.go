@@ -69,6 +69,17 @@ func (t Type) Invalid() bool {
 	return t.Kind == KindInvalid
 }
 
+func (t Type) IsTuple() bool {
+	return t.Kind == KindTuple
+}
+
+func (t Type) At(i int) *Type {
+	if !t.IsTuple() {
+		panic("At() is only valid for tuple types")
+	}
+	return t.elements[i]
+}
+
 func (t Type) String() string {
 	switch t.Kind {
 	case KindInvalid:
@@ -98,4 +109,11 @@ func (t Type) String() string {
 		return sb.String()
 	}
 	return "unknown"
+}
+
+func NewTuple(elements ...*Type) *Type {
+	return &Type{
+		Kind:     KindTuple,
+		elements: elements,
+	}
 }

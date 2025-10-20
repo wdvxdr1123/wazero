@@ -41,11 +41,8 @@ type (
 		// This is only called once per Machine, i.e. before the first compilation.
 		SetCompiler(Compiler)
 
-		// LowerSingleBranch is called when the compilation of the given single branch is started.
-		LowerSingleBranch(b *ssa.Instruction)
-
-		// LowerConditionalBranch is called when the compilation of the given conditional branch is started.
-		LowerConditionalBranch(b *ssa.Instruction)
+		// LowerBlockBranch is called when the compilation of the given block branch ends.
+		LowerBlockBranch(b *ssa.BasicBlock)
 
 		// LowerInstr is called for each instruction in the given block except for the ones marked as already lowered
 		// via Compiler.MarkLowered. The order is reverse, i.e. from the last instruction to the first one.

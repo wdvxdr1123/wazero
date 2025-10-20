@@ -68,6 +68,45 @@ L0 (SSA Block: blk0):
 		},
 		{
 			name: "selects", m: testcases.Selects.Module,
+			afterFinalizeAMD64: `
+L0 (SSA Block: blk0):
+	pushq %rbp
+	movq %rsp, %rbp
+	pushq %rdx
+	cmpq %r8, %rsi
+	setz %rax
+	movzx.bq %rax, %rax
+	cmpq %r8, %rsi
+	movl %edi, %edx
+	cmovzl %ecx, %edx
+	testl %edi, %edi
+	cmovnzq %rsi, %r8
+	movq %r8, %rbx
+	ucomisd %xmm3, %xmm2
+	setnbe %rcx
+	movzx.bq %rcx, %rcx
+	testl %ecx, %ecx
+	movss %xmm1, %xmm4
+	jz L2
+	movss %xmm0, %xmm4
+L2:
+	ucomiss %xmm1, %xmm0
+	setp %rcx
+	setnz %rsi
+	or %ecx, %esi
+	movzx.bq %rsi, %rcx
+	testl %ecx, %ecx
+	jz L3
+	movsd %xmm2, %xmm3
+L3:
+	movdqu %xmm3, %xmm1
+	movss %xmm4, %xmm0
+	movl %edx, %eax
+	popq %rdx
+	movq %rbp, %rsp
+	popq %rbp
+	ret
+`,
 			afterFinalizeARM64: `
 L0 (SSA Block: blk0):
 	stp x30, xzr, [sp, #-0x10]!
@@ -207,6 +246,16 @@ L0 (SSA Block: blk0):
 		},
 		{
 			name: "swap_param_and_return", m: testcases.SwapParamAndReturn.Module,
+			afterFinalizeAMD64: `
+L0 (SSA Block: blk0):
+	pushq %rbp
+	movq %rsp, %rbp
+	movl %edi, %eax
+	movl %ecx, %ebx
+	movq %rbp, %rsp
+	popq %rbp
+	ret
+`,
 			afterLoweringARM64: `
 L0 (SSA Block: blk0):
 	mov x130?, x2
@@ -491,6 +540,24 @@ L3 (SSA Block: blk3):
 		},
 		{
 			name: "multi_predecessor_local_ref", m: testcases.MultiPredecessorLocalRef.Module,
+			afterFinalizeAMD64: `
+L0 (SSA Block: blk0):
+	pushq %rbp
+	movq %rsp, %rbp
+	testl %ecx, %ecx
+	jz L2
+	jmp L1
+L1 (SSA Block: blk1):
+	jmp L3
+L2 (SSA Block: blk2):
+	movl %edi, %ecx
+	jmp L3
+L3 (SSA Block: blk3):
+	movl %ecx, %eax
+	movq %rbp, %rsp
+	popq %rbp
+	ret
+`,
 			afterLoweringARM64: `
 L0 (SSA Block: blk0):
 	mov x130?, x2
@@ -2277,6 +2344,7 @@ L0 (SSA Block: blk0):
 	movq %rsp, %rbp
 	testl %edi, %ecx
 	jnz L2
+	jmp L1
 L1 (SSA Block: blk1):
 	movl $1, %eax
 	movq %rbp, %rsp
@@ -2307,6 +2375,31 @@ L2 (SSA Block: blk2):
 `,
 		},
 		{
+			name: "tail_call_return_call_count",
+			m:    testcases.CountTailRecursive.Module,
+			afterFinalizeAMD64: `
+L0 (SSA Block: blk0):
+	pushq %rbp
+	movq %rsp, %rbp
+	cmpq $0, %rcx
+	jnz L2
+	jmp L1
+L1 (SSA Block: blk1):
+	jmp L3
+L3 (SSA Block: blk3):
+	movq %rdi, %rax
+	movq %rbp, %rsp
+	popq %rbp
+	ret
+L2 (SSA Block: blk2):
+	sub $1, %rcx
+	add $1, %rdi
+	movq %rbp, %rsp
+	popq %rbp
+	tailCall f0
+`,
+		},
+		{
 			name: "tail_recursive_fibonacci",
 			m:    testcases.FibonacciTailRecursive.Module,
 			afterFinalizeAMD64: `
@@ -2316,14 +2409,18 @@ L0 (SSA Block: blk0):
 	sub $16, %rsp
 	cmpl $0, %ecx
 	jnz L2
+	jmp L1
 L1 (SSA Block: blk1):
 	jmp L3
 L2 (SSA Block: blk2):
 	cmpl $1, %ecx
 	jnz L5
+	jmp L4
 L4 (SSA Block: blk4):
+	jmp L6
 L6 (SSA Block: blk6):
 	movl %esi, %edi
+	jmp L3
 L3 (SSA Block: blk3):
 	movl %edi, %eax
 	add $16, %rsp

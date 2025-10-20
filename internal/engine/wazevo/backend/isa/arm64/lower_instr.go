@@ -16,104 +16,42 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
-// LowerSingleBranch implements backend.Machine.
-func (m *machine) LowerSingleBranch(br *ssa.Instruction) {
-	switch br.Opcode() {
-	case ssa.OpcodeJump:
-		_, _, targetBlkID := br.BranchData()
-		if br.IsFallthroughJump() {
+func (m *machine) jumpTo(target *ssa.BasicBlock) {
+	b := m.allocateInstr()
+	if target.ReturnBlock() {
+		b.asRet()
+	} else {
+		b.asBr(ssaBlockLabel(target))
+	}
+	m.insert(b)
+}
+
+func (m *machine) LowerBlockBranch(blk *ssa.BasicBlock) {
+	switch blk.Kind {
+	case ssa.BlockPlain:
+		if len(blk.Succ) == 0 {
 			return
 		}
-		b := m.allocateInstr()
-		targetBlk := m.compiler.SSABuilder().BasicBlock(targetBlkID)
-		if targetBlk.ReturnBlock() {
-			b.asRet()
-		} else {
-			b.asBr(ssaBlockLabel(targetBlk))
-		}
-		m.insert(b)
-	case ssa.OpcodeBrTable:
-		m.lowerBrTable(br)
-	default:
-		panic("BUG: unexpected branch opcode" + br.Opcode().String())
-	}
-}
+		m.jumpTo(blk.Succ[0])
 
-func (m *machine) lowerBrTable(i *ssa.Instruction) {
-	index, targetBlockIDs := i.BrTableData()
-	targetBlockCount := len(targetBlockIDs)
-	indexOperand := m.getOperand_NR(m.compiler.ValueDefinition(index), extModeNone)
-
-	// Firstly, we have to do the bounds check of the index, and
-	// set it to the default target (sitting at the end of the list) if it's out of bounds.
-
-	// mov  maxIndexReg #maximum_index
-	// subs wzr, index, maxIndexReg
-	// csel adjustedIndex, maxIndexReg, index, hs ;; if index is higher or equal than maxIndexReg.
-	maxIndexReg := m.compiler.AllocateVReg(types.I32)
-	m.lowerConstantI32(maxIndexReg, int32(targetBlockCount-1))
-	subs := m.allocateInstr()
-	subs.asALU(aluOpSubS, xzrVReg, indexOperand, operandNR(maxIndexReg), false)
-	m.insert(subs)
-	csel := m.allocateInstr()
-	adjustedIndex := m.compiler.AllocateVReg(types.I32)
-	csel.asCSel(adjustedIndex, operandNR(maxIndexReg), indexOperand, hs, false)
-	m.insert(csel)
-
-	brSequence := m.allocateInstr()
-
-	tableIndex := m.addJmpTableTarget(targetBlockIDs)
-	brSequence.asBrTableSequence(adjustedIndex, tableIndex, targetBlockCount)
-	m.insert(brSequence)
-}
-
-// LowerConditionalBranch implements backend.Machine.
-func (m *machine) LowerConditionalBranch(b *ssa.Instruction) {
-	cval, args, targetBlkID := b.BranchData()
-	if len(args) > 0 {
-		panic(fmt.Sprintf(
-			"conditional branch shouldn't have args; likely a bug in critical edge splitting: from %s to %s",
-			m.currentLabelPos.sb,
-			targetBlkID,
-		))
-	}
-
-	targetBlk := m.compiler.SSABuilder().BasicBlock(targetBlkID)
-	target := ssaBlockLabel(targetBlk)
-	cvalDef := m.compiler.ValueDefinition(cval)
-
-	switch {
-	case m.compiler.MatchInstr(cvalDef, ssa.OpcodeIcmp): // This case, we can use the ALU flag set by SUBS instruction.
-		cvalInstr := cvalDef.Instr
-		x, y, c := cvalInstr.IcmpData()
-		cc, signed := condFlagFromSSAIntegerCmpCond(c), c.Signed()
-		if b.Opcode() == ssa.OpcodeBrz {
-			cc = cc.invert()
+	case ssa.BlockIf, ssa.BlockIfNot:
+		cval := blk.ControlValue
+		targetBlk := blk.Succ[0]
+		args := blk.SuccArguments[0]
+		if len(args) > 0 {
+			panic(fmt.Sprintf(
+				"conditional branch shouldn't have args; likely a bug in critical edge splitting: from %s to %s",
+				m.currentLabelPos.sb,
+				targetBlk,
+			))
 		}
 
-		if !m.tryLowerBandToFlag(x, y) {
-			m.lowerIcmpToFlag(x, y, signed)
-		}
-		cbr := m.allocateInstr()
-		cbr.asCondBr(cc.asCond(), target, false /* ignored */)
-		m.insert(cbr)
-		cvalDef.Instr.MarkLowered()
-	case m.compiler.MatchInstr(cvalDef, ssa.OpcodeFcmp): // This case we can use the Fpu flag directly.
-		cvalInstr := cvalDef.Instr
-		x, y, c := cvalInstr.FcmpData()
-		cc := condFlagFromSSAFloatCmpCond(c)
-		if b.Opcode() == ssa.OpcodeBrz {
-			cc = cc.invert()
-		}
-		m.lowerFcmpToFlag(x, y)
-		cbr := m.allocateInstr()
-		cbr.asCondBr(cc.asCond(), target, false /* ignored */)
-		m.insert(cbr)
-		cvalDef.Instr.MarkLowered()
-	default:
+		// TODO: peephole
+		target := ssaBlockLabel(targetBlk)
+		cvalDef := m.compiler.ValueDefinition(cval)
 		rn := m.getOperand_NR(cvalDef, extModeNone)
 		var c cond
-		if b.Opcode() == ssa.OpcodeBrz {
+		if blk.Kind == ssa.BlockIfNot {
 			c = registerAsRegZeroCond(rn.nr())
 		} else {
 			c = registerAsRegNotZeroCond(rn.nr())
@@ -121,6 +59,39 @@ func (m *machine) LowerConditionalBranch(b *ssa.Instruction) {
 		cbr := m.allocateInstr()
 		cbr.asCondBr(c, target, false)
 		m.insert(cbr)
+		// Emit the jump to the 'Else' block.
+		m.jumpTo(blk.Succ[1])
+
+	case ssa.BlockJumpTable:
+		index := blk.ControlValue
+		count := len(blk.Succ)
+		indexOperand := m.getOperand_NR(m.compiler.ValueDefinition(index), extModeNone)
+
+		// Firstly, we have to do the bounds check of the index, and
+		// set it to the default target (sitting at the end of the list) if it's out of bounds.
+
+		// mov  maxIndexReg #maximum_index
+		// subs wzr, index, maxIndexReg
+		// csel adjustedIndex, maxIndexReg, index, hs ;; if index is higher or equal than maxIndexReg.
+		maxIndexReg := m.compiler.AllocateVReg(types.I32)
+		m.lowerConstantI32(maxIndexReg, int32(count-1))
+		subs := m.allocateInstr()
+		subs.asALU(aluOpSubS, xzrVReg, indexOperand, operandNR(maxIndexReg), false)
+		m.insert(subs)
+		csel := m.allocateInstr()
+		adjustedIndex := m.compiler.AllocateVReg(types.I32)
+		csel.asCSel(adjustedIndex, operandNR(maxIndexReg), indexOperand, hs, false)
+		m.insert(csel)
+
+		brSequence := m.allocateInstr()
+
+		tableIndex := m.addJmpTableTarget(blk.Succ)
+		brSequence.asBrTableSequence(adjustedIndex, tableIndex, count)
+		m.insert(brSequence)
+
+	case ssa.BlockReturn:
+	default:
+		panic("BUG: unsupported block kind: " + blk.Kind.String())
 	}
 }
 
@@ -157,8 +128,6 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 	}
 
 	switch op := instr.Opcode(); op {
-	case ssa.OpcodeBrz, ssa.OpcodeBrnz, ssa.OpcodeJump, ssa.OpcodeBrTable:
-		panic("BUG: branching instructions are handled by LowerBranches")
 	case ssa.OpcodeReturn:
 		panic("BUG: return must be handled by backend.Compiler")
 	case ssa.OpcodeIadd, ssa.OpcodeIsub:

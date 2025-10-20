@@ -39,23 +39,8 @@ func (c *compiler) lowerBlock(blk *ssa.BasicBlock) {
 	insts := blk.Instructions()
 	cur := len(insts) - 1
 
-	// First gather the branching instructions at the end of the blocks.
-	var br0, br1 *ssa.Instruction
-	if insts[cur].IsBranching() {
-		br0 = insts[cur]
-		cur--
-		if cur >= 0 && insts[cur].IsBranching() {
-			br1 = insts[cur]
-			cur--
-		}
-	}
-
-	if br0 != nil {
-		c.lowerBranches(br0, br1)
-	}
-
-	if br1 != nil && br0 == nil {
-		panic("BUG? when a block has conditional branch but doesn't end with an unconditional branch?")
+	if blk.Kind != ssa.BlockReturn {
+		c.lowerBranches(blk)
 	}
 
 	// Now start lowering the non-branching instructions.
@@ -92,34 +77,32 @@ func (c *compiler) lowerBlock(blk *ssa.BasicBlock) {
 // At least br0 is not nil, but br1 can be nil if there's no branching before br0.
 //
 // See ssa.Instruction IsBranching, and the comment on ssa.BasicBlock.
-func (c *compiler) lowerBranches(br0, br1 *ssa.Instruction) {
-	mach := c.mach
-
-	c.setCurrentGroupID(br0.GroupID())
-	c.mach.LowerSingleBranch(br0)
-	mach.FlushPendingInstructions()
-	if br1 != nil {
-		c.setCurrentGroupID(br1.GroupID())
-		c.mach.LowerConditionalBranch(br1)
-		mach.FlushPendingInstructions()
-	}
-
-	if br0.Opcode() == ssa.OpcodeJump {
-		_, args, targetBlockID := br0.BranchData()
-		argExists := len(args) != 0
-		if argExists && br1 != nil {
-			panic("BUG: critical edge split failed")
+func (c *compiler) lowerBranches(b *ssa.BasicBlock) {
+	switch b.Kind {
+	case ssa.BlockPlain:
+		if len(b.Succ) == 0 {
+			break
 		}
-		target := c.ssaBuilder.BasicBlock(targetBlockID)
-		if argExists && target.ReturnBlock() {
-			if len(args) > 0 {
+		args := b.SuccArguments[0]
+		target := b.Succ[0]
+		if len(args) > 0 {
+			if target.ReturnBlock() {
 				c.mach.LowerReturns(args)
+			} else {
+				c.lowerBlockArguments(args, target)
 			}
-		} else if argExists {
-			c.lowerBlockArguments(args, target)
+		}
+	case ssa.BlockIf, ssa.BlockIfNot, ssa.BlockJumpTable:
+		for i := range b.Succ {
+			args := b.SuccArguments[i]
+			if len(args) > 0 {
+				panic("BUG: critical edge split failed")
+			}
 		}
 	}
-	mach.FlushPendingInstructions()
+
+	c.mach.LowerBlockBranch(b)
+	c.mach.FlushPendingInstructions()
 }
 
 func (c *compiler) lowerFunctionArguments(entry *ssa.BasicBlock) {

@@ -6,6 +6,8 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
+const debugSSAPass = false
+
 type pass struct {
 	name string
 	fn   func(b *builder)
@@ -13,7 +15,6 @@ type pass struct {
 
 var passes = []pass{
 	// Pre block layout passes
-	{"sort-successors", sortSuccessors},
 	{"dead-block-elimination", deadBlockElim},
 	// The result of passCalculateImmediateDominators will be used by various passes below.
 	{"calculate-immediate-dominators", calculateImmediateDominators},
@@ -43,7 +44,6 @@ var passes = []pass{
 	// Finalizing passes
 	{"build-loop-nesting-forest", buildLoopNestingForest},
 	{"build-dominator-tree", buildDominatorTree},
-	{"mark-fallthrough-jumps", markFallthroughJumps},
 }
 
 // RunPasses implements Builder.RunPasses.
@@ -58,6 +58,9 @@ func (b *builder) RunPasses() {
 			fmt.Printf("Running pass: %s\n", p.name)
 		}
 		p.fn(b)
+		if debugSSAPass {
+			fmt.Printf("After pass: %s\n%s\n", p.name, b.Format())
+		}
 	}
 }
 
@@ -115,19 +118,21 @@ func redundantPhiElimination(b *builder) {
 		// Below, we intentionally use the named iteration variable name, as this comes with inevitable nested for loops!
 		for blk := b.blockIteratorReversePostOrderNext(); blk != nil; blk = b.blockIteratorReversePostOrderNext() {
 			params := blk.Params
-			paramNum := len(params)
-
-			for paramIndex := 0; paramIndex < paramNum; paramIndex++ {
-				phiValue := params[paramIndex]
+			for idx, phi := range params {
 				redundant := true
 
 				nonSelfReferencingValue := ValueInvalid
-				for predIndex := range blk.Pred {
-					br := blk.Pred[predIndex].Branch
+				for _, pred := range blk.Pred {
+					succIndex := pred.findSucc(blk)
+					br := pred.SuccArguments[succIndex]
 					// Resolve the alias in the arguments so that we could use the previous iteration's result.
-					b.resolveArgumentAlias(br)
-					pred := br.vs[paramIndex]
-					if pred == phiValue {
+					b.resolveAliases(br)
+					if idx >= len(br) {
+						fmt.Printf("blk: %v, pred: %v, succ: %v, br: %v\n", blk.Name(), pred.Name(), succIndex, br)
+						panic("BUG: predecessor does not have enough arguments for the PHI")
+					}
+					pred := br[idx]
+					if pred == phi {
 						// This is self-referencing: PHI from the same PHI.
 						continue
 					}
@@ -150,7 +155,7 @@ func redundantPhiElimination(b *builder) {
 
 				if redundant {
 					redundantParams = append(redundantParams, redundantParam{
-						index: paramIndex, uniqueValue: nonSelfReferencingValue,
+						index: idx, uniqueValue: nonSelfReferencingValue,
 					})
 				}
 			}
@@ -164,8 +169,11 @@ func redundantPhiElimination(b *builder) {
 			for predIndex := range blk.Pred {
 				redundantParamsCur, predParamCur := 0, 0
 				predBlk := blk.Pred[predIndex]
-				branchInst := predBlk.Branch
-				view := branchInst.vs
+				succIndex := predBlk.findSucc(blk)
+				if succIndex < 0 {
+					panic("BUG: predecessor does not have the block as successor")
+				}
+				view := predBlk.SuccArguments[succIndex]
 				for argIndex, value := range view {
 					if len(redundantParams) == redundantParamsCur ||
 						redundantParams[redundantParamsCur].index != argIndex {
@@ -175,7 +183,7 @@ func redundantPhiElimination(b *builder) {
 						redundantParamsCur++
 					}
 				}
-				branchInst.vs = view[:predParamCur]
+				predBlk.SuccArguments[succIndex] = view[:predParamCur]
 			}
 
 			// Still need to have the definition of the value of the PHI (previously as the parameter).
@@ -187,17 +195,16 @@ func redundantPhiElimination(b *builder) {
 			}
 
 			// Finally, Remove the param from the blk.
-			paramsCur, redundantParamsCur := 0, 0
-			for paramIndex := 0; paramIndex < paramNum; paramIndex++ {
-				param := params[paramIndex]
-				if len(redundantParams) == redundantParamsCur || redundantParams[redundantParamsCur].index != paramIndex {
-					params[paramsCur] = param
-					paramsCur++
+			cur, j := 0, 0
+			for idx, param := range params {
+				if len(redundantParams) == cur || redundantParams[cur].index != idx {
+					params[j] = param
+					j++
 				} else {
-					redundantParamsCur++
+					cur++
 				}
 			}
-			blk.Params = blk.Params[:paramsCur]
+			blk.Params = blk.Params[:j]
 
 			// Clears the map for the next iteration.
 			redundantParams = redundantParams[:0]
@@ -236,6 +243,17 @@ func deadcode(b *builder) {
 	// relevant to dead code elimination, but we need in the backend.
 	var gid InstructionGroupID
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
+		aliveValue := make(map[ValueID]bool)
+		if blk.ControlValue.Valid() {
+			aliveValue[blk.ControlValue.ID()] = true
+		}
+		for _, args := range blk.SuccArguments {
+			for _, v := range args {
+				if v.Valid() {
+					aliveValue[v.ID()] = true
+				}
+			}
+		}
 		for _, cur := range blk.Instructions() {
 			cur.gid = gid
 			switch cur.sideEffect() {
@@ -246,6 +264,34 @@ func deadcode(b *builder) {
 				liveInstructions = append(liveInstructions, cur)
 				// The strict side effect should create different instruction groups.
 				gid++
+			default:
+				first, rest := cur.Returns()
+				live := false
+				if first.Valid() {
+					if aliveValue[first.ID()] {
+						live = true
+					}
+				}
+				for _, v := range rest {
+					if v.Valid() && aliveValue[v.ID()] {
+						live = true
+					}
+				}
+				if live {
+					liveInstructions = append(liveInstructions, cur)
+				}
+			}
+		}
+
+		// resolve aliases
+		if blk.ControlValue.Valid() {
+			blk.ControlValue = b.resolveAlias(blk.ControlValue)
+		}
+		for _, args := range blk.SuccArguments {
+			for argIndex, v := range args {
+				if v.Valid() {
+					args[argIndex] = b.resolveAlias(v)
+				}
 			}
 		}
 	}
@@ -297,8 +343,17 @@ func deadcode(b *builder) {
 
 	// Now that all the live instructions are flagged as live=true, we eliminate all dead instructions.
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		// TODO(wdvxdr1123): use inplace algorithm to avoid extra allocation.
 		j := 0
+		if blk.ControlValue.Valid() {
+			b.incRefCount(blk.ControlValue.ID(), nil)
+		}
+		for _, args := range blk.SuccArguments {
+			for _, v := range args {
+				if v.Valid() {
+					b.incRefCount(v.ID(), nil)
+				}
+			}
+		}
 		for i, cur := range blk.Instructions() {
 			if !cur.live {
 				// Remove the instruction from the list.
@@ -370,13 +425,5 @@ func nopElimination(b *builder) {
 				}
 			}
 		}
-	}
-}
-
-// sortSuccessors sorts the successors of each block in the natural program order.
-func sortSuccessors(b *builder) {
-	for i := 0; i < b.basicBlocksPool.Allocated(); i++ {
-		blk := b.basicBlocksPool.View(i)
-		sortBlocks(blk.Succ)
 	}
 }

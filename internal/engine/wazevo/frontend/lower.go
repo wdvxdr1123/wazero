@@ -686,7 +686,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 			zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return()
 			ifFillSizeZero := builder.AllocateInstruction().AsIcmp(fillSizeExt, zero, ssa.IntegerCmpCondEqual).
 				Insert(builder).Return()
-			builder.AllocateInstruction().AsBrnz(ifFillSizeZero, nil, followingBlk).Insert(builder)
+			curBlock := builder.CurrentBlock()
+			curBlock.Kind = ssa.BlockIf
+			curBlock.ControlValue = ifFillSizeZero
+			curBlock.AddEdgeTo(followingBlk)
 			c.insertJumpToBlock(nil, beforeLoop)
 
 			// buf[0:8] = value
@@ -708,9 +711,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			c.callMemmove(dstAddr, addr, count)
 
-			builder.AllocateInstruction().
-				AsBrnz(newLoopVarLessThanFillSize, []ssa.Value{newLoopVar}, loopBlk).
-				Insert(builder)
+			curBlock = builder.CurrentBlock()
+			curBlock.Kind = ssa.BlockIf
+			curBlock.ControlValue = newLoopVarLessThanFillSize
+			curBlock.AddEdgeTo(loopBlk, newLoopVar)
 
 			c.insertJumpToBlock(nil, followingBlk)
 			builder.SetCurrentBlock(followingBlk)
@@ -758,7 +762,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 			zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return()
 			ifFillSizeZero := builder.AllocateInstruction().AsIcmp(fillSize, zero, ssa.IntegerCmpCondEqual).
 				Insert(builder).Return()
-			builder.AllocateInstruction().AsBrnz(ifFillSizeZero, nil, followingBlk).Insert(builder)
+
+			curBlock := builder.CurrentBlock()
+			curBlock.Kind = ssa.BlockIf
+			curBlock.ControlValue = ifFillSizeZero
+			curBlock.AddEdgeTo(followingBlk)
 			c.insertJumpToBlock(nil, beforeLoop)
 
 			// buf[0] = value
@@ -787,10 +795,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			c.callMemmove(dstAddr, addr, count)
 
-			builder.AllocateInstruction().
-				AsBrnz(newLoopVarLessThanFillSize, []ssa.Value{newLoopVar}, loopBlk).
-				Insert(builder)
-
+			curBlock = builder.CurrentBlock()
+			curBlock.Kind = ssa.BlockIf
+			curBlock.ControlValue = newLoopVarLessThanFillSize
+			curBlock.AddEdgeTo(loopBlk, newLoopVar)
 			c.insertJumpToBlock(nil, followingBlk)
 			builder.SetCurrentBlock(followingBlk)
 
@@ -1345,10 +1353,8 @@ func (c *Compiler) lowerCurrentOpcode() {
 		args := make([]ssa.Value, 0, originalLen)
 		args = append(args, state.values[originalLen:]...)
 
-		// Insert the jump to the header of loop.
-		br := builder.AllocateInstruction()
-		br.AsJump(args, loopHeader)
-		builder.InsertInstruction(br)
+		// jump to the header of loop.
+		builder.CurrentBlock().AddEdgeTo(loopHeader, args...)
 
 		c.switchTo(originalLen, loopHeader)
 
@@ -1385,15 +1391,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 		args := make([]ssa.Value, 0, len(bt.Params))
 		args = append(args, state.values[len(state.values)-len(bt.Params):]...)
 
-		// Insert the conditional jump to the Else block.
-		brz := builder.AllocateInstruction()
-		brz.AsBrz(v, nil, elseBlk)
-		builder.InsertInstruction(brz)
-
-		// Then, insert the jump to the Then block.
-		br := builder.AllocateInstruction()
-		br.AsJump(nil, thenBlk)
-		builder.InsertInstruction(br)
+		curBlock := builder.CurrentBlock()
+		curBlock.ControlValue = v
+		curBlock.Kind = ssa.BlockIf
+		curBlock.AddEdgeTo(thenBlk)
+		curBlock.AddEdgeTo(elseBlk)
 
 		state.ctrlPush(controlFrame{
 			kind:                         controlFrameKindIfWithoutElse,
@@ -1520,9 +1522,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 
 		// Insert the conditional jump to the target block.
-		brnz := builder.AllocateInstruction()
-		brnz.AsBrnz(v, args, targetBlk)
-		builder.InsertInstruction(brnz)
+		curBlock := builder.CurrentBlock()
+		curBlock.Kind = ssa.BlockIf
+		curBlock.ControlValue = v
+		curBlock.AddEdgeTo(targetBlk, args...)
 
 		if sealTargetBlk {
 			builder.Seal(targetBlk)
@@ -3664,6 +3667,17 @@ func (c *Compiler) lowerCallIndirect(typeIndex, tableIndex uint32) {
 	c.reloadAfterCall()
 }
 
+func (c *Compiler) lowerTailCallReturn() {
+	builder := c.ssaBuilder
+	curBlock := builder.CurrentBlock()
+	if curBlock.Kind != ssa.BlockPlain {
+		// The current block is already terminated (e.g., by an exit), so no need to lower the return.
+		return
+	}
+	results := c.nPeekDup(c.results())
+	curBlock.AddEdgeTo(builder.ReturnBlock(), results...)
+}
+
 func (c *Compiler) lowerTailCallReturnCall(fnIndex uint32) {
 	isIndirect, sig, args, funcRefOrPtrValue := c.prepareCall(fnIndex)
 	builder := c.ssaBuilder
@@ -3691,7 +3705,7 @@ func (c *Compiler) lowerTailCallReturnCall(fnIndex uint32) {
 	}
 
 	c.reloadAfterCall()
-	c.lowerReturn(builder)
+	c.lowerTailCallReturn()
 }
 
 func (c *Compiler) lowerTailCallReturnCallIndirect(typeIndex, tableIndex uint32) {
@@ -3717,7 +3731,7 @@ func (c *Compiler) lowerTailCallReturnCallIndirect(typeIndex, tableIndex uint32)
 	}
 
 	c.reloadAfterCall()
-	c.lowerReturn(builder)
+	c.lowerTailCallReturn()
 }
 
 // memOpSetup inserts the bounds check and calculates the address of the memory operation (loads/stores).
@@ -4116,10 +4130,8 @@ func (c *Compiler) insertJumpToBlock(args []ssa.Value, targetBlk *ssa.BasicBlock
 		}
 	}
 
-	builder := c.ssaBuilder
-	jmp := builder.AllocateInstruction()
-	jmp.AsJump(args, targetBlk)
-	builder.InsertInstruction(jmp)
+	block := c.ssaBuilder.CurrentBlock()
+	block.AddEdgeTo(targetBlk, args...)
 }
 
 func (c *Compiler) insertIntegerExtend(signed bool, from, to byte) {
@@ -4171,32 +4183,26 @@ func (c *Compiler) lowerBrTable(labels []uint32, index ssa.Value) {
 		numArgs = len(f.blockType.Results)
 	}
 
-	trampolineBlockIDs := make([]ssa.Value, 0, len(labels))
-
 	// We need trampoline blocks since depending on the target block structure, we might end up inserting moves before jumps,
 	// which cannot be done with br_table. Instead, we can do such per-block moves in the trampoline blocks.
 	// At the linking phase (very end of the backend), we can remove the unnecessary jumps, and therefore no runtime overhead.
 	currentBlk := builder.CurrentBlock()
+	currentBlk.Kind = ssa.BlockJumpTable
 	for _, l := range labels {
 		// Args are always on the top of the stack. Note that we should not share the args slice
 		// among the jump instructions since the args are modified during passes (e.g. redundant phi elimination).
 		args := c.nPeekDup(numArgs)
 		targetBlk, _ := state.brTargetArgNumFor(l)
+
 		trampoline := builder.AllocateBasicBlock()
-		builder.SetCurrentBlock(trampoline)
-		c.insertJumpToBlock(args, targetBlk)
-		trampolineBlockIDs = append(trampolineBlockIDs, ssa.ValueFromBlockID(trampoline.ID()))
+		trampoline.Kind = ssa.BlockPlain
+		trampoline.AddEdgeTo(targetBlk, args...)
+		currentBlk.AddEdgeTo(trampoline)
+
+		builder.Seal(trampoline)
 	}
 	builder.SetCurrentBlock(currentBlk)
-
-	// If the target block has no arguments, we can just jump to the target block.
-	brTable := builder.AllocateInstruction()
-	brTable.AsBrTable(index, trampolineBlockIDs)
-	builder.InsertInstruction(brTable)
-
-	for _, trampolineID := range trampolineBlockIDs {
-		builder.Seal(builder.BasicBlock(trampolineID.BlockID()))
-	}
+	currentBlk.ControlValue = index
 }
 
 func (l *loweringState) brTargetArgNumFor(labelIndex uint32) (targetBlk *ssa.BasicBlock, argNum int) {

@@ -41,7 +41,7 @@ func constructGraphFromEdges(edges edgesCase) (b *builder) {
 	// Add edges.
 	for _, p := range pairs {
 		from, to := blocks[p[0]], blocks[p[1]]
-		to.addPred(from, &Instruction{})
+		to.addPred(from)
 	}
 	return
 }

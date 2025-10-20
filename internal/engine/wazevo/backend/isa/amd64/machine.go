@@ -307,31 +307,7 @@ func (m *machine) InsertReturn() {
 	m.insert(i)
 }
 
-// LowerSingleBranch implements backend.Machine.
-func (m *machine) LowerSingleBranch(b *ssa.Instruction) {
-	switch b.Opcode() {
-	case ssa.OpcodeJump:
-		_, _, targetBlkID := b.BranchData()
-		if b.IsFallthroughJump() {
-			return
-		}
-		jmp := m.allocateInstr()
-		target := ssaBlockLabel(m.c.SSABuilder().BasicBlock(targetBlkID))
-		if target == labelReturn {
-			jmp.asRet()
-		} else {
-			jmp.asJmp(newOperandLabel(target))
-		}
-		m.insert(jmp)
-	case ssa.OpcodeBrTable:
-		index, targetBlkIDs := b.BrTableData()
-		m.lowerBrTable(index, targetBlkIDs)
-	default:
-		panic("BUG: unexpected branch opcode" + b.Opcode().String())
-	}
-}
-
-func (m *machine) addJmpTableTarget(targets []ssa.Value) (index int) {
+func (m *machine) addJmpTableTarget(targets []*ssa.BasicBlock) (index int) {
 	if m.jmpTableTargetsNext == len(m.jmpTableTargets) {
 		m.jmpTableTargets = append(m.jmpTableTargets, make([]uint32, 0, len(targets)))
 	}
@@ -339,8 +315,7 @@ func (m *machine) addJmpTableTarget(targets []ssa.Value) (index int) {
 	index = m.jmpTableTargetsNext
 	m.jmpTableTargetsNext++
 	m.jmpTableTargets[index] = m.jmpTableTargets[index][:0]
-	for _, targetBlockID := range targets {
-		target := m.c.SSABuilder().BasicBlock(targetBlockID.BlockID())
+	for _, target := range targets {
 		m.jmpTableTargets[index] = append(m.jmpTableTargets[index], uint32(ssaBlockLabel(target)))
 	}
 	return
@@ -348,124 +323,151 @@ func (m *machine) addJmpTableTarget(targets []ssa.Value) (index int) {
 
 var condBranchMatches = [...]ssa.Opcode{ssa.OpcodeIcmp, ssa.OpcodeFcmp}
 
-func (m *machine) lowerBrTable(index ssa.Value, targets []ssa.Value) {
-	_v := m.getOperand_Reg(m.c.ValueDefinition(index))
-	v := m.copyToTmp(_v.reg())
-
-	targetCount := len(targets)
-
-	// First, we need to do the bounds check.
-	maxIndex := m.c.AllocateVReg(types.I32)
-	m.lowerIconst(maxIndex, uint64(targetCount-1), false)
-	cmp := m.allocateInstr().asCmpRmiR(true, newOperandReg(maxIndex), v, false)
-	m.insert(cmp)
-
-	// Then do the conditional move maxIndex to v if v > maxIndex.
-	cmov := m.allocateInstr().asCmove(condNB, newOperandReg(maxIndex), v, false)
-	m.insert(cmov)
-
-	// Now that v has the correct index. Load the address of the jump table into the addr.
-	addr := m.c.AllocateVReg(types.I64)
-	leaJmpTableAddr := m.allocateInstr()
-	m.insert(leaJmpTableAddr)
-
-	// Then add the target's offset into jmpTableAddr.
-	loadTargetOffsetFromJmpTable := m.allocateInstr().asAluRmiR(aluRmiROpcodeAdd,
-		// Shift by 3 because each entry is 8 bytes.
-		newOperandMem(m.newAmodeRegRegShift(0, addr, v, 3)), addr, true)
-	m.insert(loadTargetOffsetFromJmpTable)
-
-	// Now ready to jump.
-	jmp := m.allocateInstr().asJmp(newOperandReg(addr))
+func (m *machine) jumpTo(target *ssa.BasicBlock) {
+	jmp := m.allocateInstr()
+	if target.ReturnBlock() {
+		jmp.asRet()
+	} else {
+		jmp.asJmp(newOperandLabel(ssaBlockLabel(target)))
+	}
 	m.insert(jmp)
-
-	jmpTableBegin, jmpTableBeginLabel := m.allocateBrTarget()
-	m.insert(jmpTableBegin)
-	leaJmpTableAddr.asLEA(newOperandLabel(jmpTableBeginLabel), addr)
-
-	jmpTable := m.allocateInstr()
-	targetSliceIndex := m.addJmpTableTarget(targets)
-	jmpTable.asJmpTableSequence(targetSliceIndex, targetCount)
-	m.insert(jmpTable)
 }
 
-// LowerConditionalBranch implements backend.Machine.
-func (m *machine) LowerConditionalBranch(b *ssa.Instruction) {
-	cval, args, targetBlkID := b.BranchData()
-	if len(args) > 0 {
-		panic(fmt.Sprintf(
-			"conditional branch shouldn't have args; likely a bug in critical edge splitting: from %s to %s",
-			m.currentLabelPos.sb,
-			targetBlkID,
-		))
-	}
+func (m *machine) LowerBlockBranch(blk *ssa.BasicBlock) {
+	switch blk.Kind {
+	case ssa.BlockPlain:
+		if len(blk.Succ) == 0 {
+			return
+		}
+		m.jumpTo(blk.Succ[0])
 
-	target := ssaBlockLabel(m.c.SSABuilder().BasicBlock(targetBlkID))
-	cvalDef := m.c.ValueDefinition(cval)
-
-	switch m.c.MatchInstrOneOf(cvalDef, condBranchMatches[:]) {
-	case ssa.OpcodeIcmp:
-		cvalInstr := cvalDef.Instr
-		x, y, c := cvalInstr.IcmpData()
-
-		cc := condFromSSAIntCmpCond(c)
-		if b.Opcode() == ssa.OpcodeBrz {
-			cc = cc.invert()
+	case ssa.BlockIf, ssa.BlockIfNot:
+		cval := blk.ControlValue
+		targetBlk := blk.Succ[0]
+		args := blk.SuccArguments[0]
+		if len(args) > 0 {
+			panic(fmt.Sprintf(
+				"conditional branch shouldn't have args; likely a bug in critical edge splitting: from %s to %s",
+				m.currentLabelPos.sb,
+				targetBlk,
+			))
 		}
 
-		// First, perform the comparison and set the flag.
-		xd, yd := m.c.ValueDefinition(x), m.c.ValueDefinition(y)
-		if !m.tryLowerBandToFlag(xd, yd) {
-			m.lowerIcmpToFlag(xd, yd, x.Type() == types.I64)
-		}
+		cvalDef := m.c.ValueDefinition(cval)
+		target := ssaBlockLabel(targetBlk)
 
-		// Then perform the conditional branch.
-		m.insert(m.allocateInstr().asJmpIf(cc, newOperandLabel(target)))
-		cvalDef.Instr.MarkLowered()
-	case ssa.OpcodeFcmp:
-		cvalInstr := cvalDef.Instr
+		switch m.c.MatchInstrOneOf(cvalDef, condBranchMatches[:]) {
+		case ssa.OpcodeIcmp:
+			cvalInstr := cvalDef.Instr
+			x, y, c := cvalInstr.IcmpData()
 
-		f1, f2, and := m.lowerFcmpToFlags(cvalInstr)
-		isBrz := b.Opcode() == ssa.OpcodeBrz
-		if isBrz {
-			f1 = f1.invert()
-		}
-		if f2 == condInvalid {
-			m.insert(m.allocateInstr().asJmpIf(f1, newOperandLabel(target)))
-		} else {
+			cc := condFromSSAIntCmpCond(c)
+			if blk.Kind == ssa.BlockIfNot {
+				cc = cc.invert()
+			}
+
+			// First, perform the comparison and set the flag.
+			xd, yd := m.c.ValueDefinition(x), m.c.ValueDefinition(y)
+			if !m.tryLowerBandToFlag(xd, yd) {
+				m.lowerIcmpToFlag(xd, yd, x.Type() == types.I64)
+			}
+
+			// Then perform the conditional branch.
+			m.insert(m.allocateInstr().asJmpIf(cc, newOperandLabel(target)))
+			cvalDef.Instr.MarkLowered()
+
+		case ssa.OpcodeFcmp:
+			cvalInstr := cvalDef.Instr
+
+			f1, f2, and := m.lowerFcmpToFlags(cvalInstr)
+			isBrz := blk.Kind == ssa.BlockIfNot
 			if isBrz {
-				f2 = f2.invert()
-				and = !and
+				f1 = f1.invert()
 			}
-			jmp1, jmp2 := m.allocateInstr(), m.allocateInstr()
-			m.insert(jmp1)
-			m.insert(jmp2)
-			notTaken, notTakenLabel := m.allocateBrTarget()
-			m.insert(notTaken)
-			if and {
-				jmp1.asJmpIf(f1.invert(), newOperandLabel(notTakenLabel))
-				jmp2.asJmpIf(f2, newOperandLabel(target))
+			if f2 == condInvalid {
+				m.insert(m.allocateInstr().asJmpIf(f1, newOperandLabel(target)))
 			} else {
-				jmp1.asJmpIf(f1, newOperandLabel(target))
-				jmp2.asJmpIf(f2, newOperandLabel(target))
+				if isBrz {
+					f2 = f2.invert()
+					and = !and
+				}
+				jmp1, jmp2 := m.allocateInstr(), m.allocateInstr()
+				m.insert(jmp1)
+				m.insert(jmp2)
+				notTaken, notTakenLabel := m.allocateBrTarget()
+				m.insert(notTaken)
+				if and {
+					jmp1.asJmpIf(f1.invert(), newOperandLabel(notTakenLabel))
+					jmp2.asJmpIf(f2, newOperandLabel(target))
+				} else {
+					jmp1.asJmpIf(f1, newOperandLabel(target))
+					jmp2.asJmpIf(f2, newOperandLabel(target))
+				}
 			}
+			cvalDef.Instr.MarkLowered()
+
+		default:
+			v := m.getOperand_Reg(cvalDef)
+
+			var cc cond
+			if blk.Kind == ssa.BlockIfNot {
+				cc = condZ
+			} else {
+				cc = condNZ
+			}
+
+			// Perform test %v, %v to set the flag.
+			cmp := m.allocateInstr().asCmpRmiR(false, v, v.reg(), false)
+			m.insert(cmp)
+			m.insert(m.allocateInstr().asJmpIf(cc, newOperandLabel(target)))
 		}
+		// Emit the jump to the 'Else' block.
+		m.jumpTo(blk.Succ[1])
 
-		cvalDef.Instr.MarkLowered()
-	default:
-		v := m.getOperand_Reg(cvalDef)
+	case ssa.BlockJumpTable:
+		index := blk.ControlValue
+		_v := m.getOperand_Reg(m.c.ValueDefinition(index))
+		v := m.copyToTmp(_v.reg())
 
-		var cc cond
-		if b.Opcode() == ssa.OpcodeBrz {
-			cc = condZ
-		} else {
-			cc = condNZ
-		}
+		targetCount := len(blk.Succ)
 
-		// Perform test %v, %v to set the flag.
-		cmp := m.allocateInstr().asCmpRmiR(false, v, v.reg(), false)
+		// First, we need to do the bounds check.
+		maxIndex := m.c.AllocateVReg(types.I32)
+		m.lowerIconst(maxIndex, uint64(targetCount-1), false)
+		cmp := m.allocateInstr().asCmpRmiR(true, newOperandReg(maxIndex), v, false)
 		m.insert(cmp)
-		m.insert(m.allocateInstr().asJmpIf(cc, newOperandLabel(target)))
+
+		// Then do the conditional move maxIndex to v if v > maxIndex.
+		cmov := m.allocateInstr().asCmove(condNB, newOperandReg(maxIndex), v, false)
+		m.insert(cmov)
+
+		// Now that v has the correct index. Load the address of the jump table into the addr.
+		addr := m.c.AllocateVReg(types.I64)
+		leaJmpTableAddr := m.allocateInstr()
+		m.insert(leaJmpTableAddr)
+
+		// Then add the target's offset into jmpTableAddr.
+		loadTargetOffsetFromJmpTable := m.allocateInstr().asAluRmiR(aluRmiROpcodeAdd,
+			// Shift by 3 because each entry is 8 bytes.
+			newOperandMem(m.newAmodeRegRegShift(0, addr, v, 3)), addr, true)
+		m.insert(loadTargetOffsetFromJmpTable)
+
+		// Now ready to jump.
+		jmp := m.allocateInstr().asJmp(newOperandReg(addr))
+		m.insert(jmp)
+
+		jmpTableBegin, jmpTableBeginLabel := m.allocateBrTarget()
+		m.insert(jmpTableBegin)
+		leaJmpTableAddr.asLEA(newOperandLabel(jmpTableBeginLabel), addr)
+
+		jmpTable := m.allocateInstr()
+		targetSliceIndex := m.addJmpTableTarget(blk.Succ)
+		jmpTable.asJmpTableSequence(targetSliceIndex, targetCount)
+		m.insert(jmpTable)
+
+	case ssa.BlockReturn:
+	default:
+		panic("BUG: unsupported block kind: " + blk.Kind.String())
 	}
 }
 
@@ -477,8 +479,6 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 	}
 
 	switch op := instr.Opcode(); op {
-	case ssa.OpcodeBrz, ssa.OpcodeBrnz, ssa.OpcodeJump, ssa.OpcodeBrTable:
-		panic("BUG: branching instructions are handled by LowerBranches")
 	case ssa.OpcodeReturn:
 		panic("BUG: return must be handled by backend.Compiler")
 	case ssa.OpcodeIconst, ssa.OpcodeF32const, ssa.OpcodeF64const: // Constant instructions are inlined.

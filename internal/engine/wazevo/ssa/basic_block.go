@@ -20,12 +20,19 @@ import (
 // Value passed to that "parameter/param".
 type BasicBlock struct {
 	id    BasicBlockID
+	Kind  BasicBlockKind
 	instr []*Instruction
 	// Params are Values that represent parameters to a basicBlock.
 	// Each parameter can be considered as an output of PHI instruction in traditional SSA.
 	Params []Value
-	Pred   []PredInfo
-	Succ   []*BasicBlock
+
+	// ControlValue is the value that determines the control flow to this block.
+	ControlValue Value
+
+	Pred          []*BasicBlock
+	Succ          []*BasicBlock
+	SuccArguments [][]Value
+
 	// lastDefinitions maps Variable to its last definition in this block.
 	lastDefinitions map[Variable]Value
 	// unknownsValues are used in builder.findValue. The usage is well-described in the paper.
@@ -73,6 +80,33 @@ type (
 		value Value
 	}
 )
+
+type BasicBlockKind uint8
+
+const (
+	BlockPlain BasicBlockKind = iota
+	BlockIf
+	BlockIfNot
+	BlockJumpTable
+	BlockReturn
+)
+
+func (k BasicBlockKind) String() string {
+	switch k {
+	case BlockPlain:
+		return "Plain"
+	case BlockIf:
+		return "If"
+	case BlockIfNot:
+		return "IfNot"
+	case BlockJumpTable:
+		return "JumpTable"
+	case BlockReturn:
+		return "Return"
+	default:
+		panic("BUG: unknown BasicBlockKind")
+	}
+}
 
 // basicBlockVarLengthNil is the default nil value for basicBlock.loopNestingForestChildren.
 var basicBlockVarLengthNil = wazevoapi.NewNilVarLength[*BasicBlock]()
@@ -136,17 +170,6 @@ func (bb *BasicBlock) Sealed() bool {
 // insertInstruction implements BasicBlock.InsertInstruction.
 func (bb *BasicBlock) insertInstruction(b *builder, next *Instruction) {
 	bb.instr = append(bb.instr, next)
-
-	switch next.opcode {
-	case OpcodeJump, OpcodeBrz, OpcodeBrnz:
-		target := next.rValue.BlockID()
-		b.basicBlock(target).addPred(bb, next)
-	case OpcodeBrTable:
-		for _, _target := range next.rValues {
-			target := _target.BlockID()
-			b.basicBlock(target).addPred(bb, next)
-		}
-	}
 }
 
 // Instructions returns the list of instructions in this block.
@@ -172,10 +195,13 @@ func (bb *BasicBlock) Tail() *Instruction {
 
 // reset resets the basicBlock to its initial state so that it can be reused for another function.
 func resetBasicBlock(bb *BasicBlock) {
-	bb.Params = bb.Params[:0]
+	bb.Kind = BlockPlain
 	bb.instr = bb.instr[:0]
+	bb.Params = bb.Params[:0]
+	bb.ControlValue = ValueInvalid
 	bb.Pred = bb.Pred[:0]
 	bb.Succ = bb.Succ[:0]
+	bb.SuccArguments = bb.SuccArguments[:0]
 	bb.invalid, bb.sealed = false, false
 	bb.unknownValues = bb.unknownValues[:0]
 	bb.lastDefinitions = wazevoapi.ResetMap(bb.lastDefinitions)
@@ -188,26 +214,76 @@ func resetBasicBlock(bb *BasicBlock) {
 }
 
 // addPred adds a predecessor to this block specified by the branch instruction.
-func (bb *BasicBlock) addPred(pred *BasicBlock, branch *Instruction) {
+func (bb *BasicBlock) addPred(pred *BasicBlock) {
 	if bb.sealed {
 		panic("BUG: trying to add predecessor to a sealed block: " + bb.Name())
 	}
 
 	for i := range bb.Pred {
 		existingPred := bb.Pred[i]
-		if existingPred.Block == pred && existingPred.Branch != branch {
+		if existingPred == pred {
 			// If the target is already added, then this must come from the same BrTable,
 			// otherwise such redundant branch should be eliminated by the frontend. (which should be simpler).
 			panic(fmt.Sprintf("BUG: redundant non BrTable jumps in %s whose targes are the same", bb.Name()))
 		}
 	}
 
-	bb.Pred = append(bb.Pred, PredInfo{
-		Block:  pred,
-		Branch: branch,
-	})
-
+	bb.Pred = append(bb.Pred, pred)
 	pred.Succ = append(pred.Succ, bb)
+}
+
+func (bb *BasicBlock) AddEdgeTo(succ *BasicBlock, args ...Value) {
+	i := bb.findSucc(succ)
+	if i != -1 && bb.Kind != BlockJumpTable {
+		panic("BUG: redundant edge added")
+	}
+
+	// TODO: not validate each time for performance?
+	switch bb.Kind {
+	case BlockPlain:
+		if len(bb.Succ) > 0 {
+			panic("too many successors for BlockPlain")
+		}
+	case BlockIf, BlockIfNot:
+		if len(bb.Succ) > 1 {
+			panic("too many successors for BlockIf/BlockIfNot")
+		}
+	case BlockJumpTable:
+		// no limit
+	case BlockReturn:
+		panic("cannot add successor to BlockReturn")
+	default:
+		panic("unknown block kind")
+	}
+
+	bb.Succ = append(bb.Succ, succ)
+	bb.SuccArguments = append(bb.SuccArguments, args)
+	succ.Pred = append(succ.Pred, bb)
+}
+
+func (bb *BasicBlock) findSucc(succ *BasicBlock) int {
+	for i, s := range bb.Succ {
+		if s == succ {
+			return i
+		}
+	}
+	return -1
+}
+
+func (bb *BasicBlock) addSuccArgument(succ *BasicBlock, value Value) {
+	i := bb.findSucc(succ)
+	if i == -1 {
+		panic("BUG: successor not found when adding successor argument")
+	}
+	bb.SuccArguments[i] = append(bb.SuccArguments[i], value)
+}
+
+func (bb *BasicBlock) succArguments(succ *BasicBlock) []Value {
+	i := bb.findSucc(succ)
+	if i == -1 {
+		panic("BUG: successor not found when getting successor argument")
+	}
+	return bb.SuccArguments[i]
 }
 
 // formatHeader returns the string representation of the header of the basicBlock.
@@ -220,16 +296,60 @@ func (bb *BasicBlock) formatHeader(b Builder) string {
 	if len(bb.Pred) > 0 {
 		preds := make([]string, 0, len(bb.Pred))
 		for _, pred := range bb.Pred {
-			if pred.Block.invalid {
+			if pred.invalid {
 				continue
 			}
-			preds = append(preds, fmt.Sprintf("blk%d", pred.Block.id))
+			preds = append(preds, fmt.Sprintf("blk%d", pred.id))
 
 		}
 		return fmt.Sprintf("blk%d: (%s) <-- (%s)",
 			bb.id, strings.Join(ps, ","), strings.Join(preds, ","))
 	} else {
 		return fmt.Sprintf("blk%d: (%s)", bb.id, strings.Join(ps, ", "))
+	}
+}
+
+func (bb *BasicBlock) formatEnd(b Builder) string {
+	var str strings.Builder
+	str.WriteString(bb.Kind.String())
+	if bb.ControlValue != ValueInvalid {
+		str.WriteString(" ")
+		str.WriteString(bb.ControlValue.Format(b))
+	}
+	switch bb.Kind {
+	case BlockPlain:
+		if len(bb.Succ) != 0 {
+			str.WriteString(" --> ")
+			bb.formatSuccs(b, &str, 0)
+		}
+	case BlockIf, BlockIfNot:
+		str.WriteString(" --> ")
+		bb.formatSuccs(b, &str, 0)
+		str.WriteString(" Else --> ")
+		bb.formatSuccs(b, &str, 1)
+	case BlockJumpTable:
+		for i := range bb.Succ {
+			str.WriteString(fmt.Sprintf("\n\t%d --> ", i))
+			bb.formatSuccs(b, &str, i)
+		}
+	case BlockReturn:
+	default:
+		panic("BUG: unknown BasicBlockKind")
+	}
+	return str.String()
+}
+
+func (bb *BasicBlock) formatSuccs(b Builder, sb *strings.Builder, i int) {
+	sb.WriteString(bb.Succ[i].Name())
+	if len(bb.SuccArguments[i]) > 0 {
+		sb.WriteString("(")
+		for j, arg := range bb.SuccArguments[i] {
+			if j > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(arg.Format(b))
+		}
+		sb.WriteString(")")
 	}
 }
 
@@ -240,13 +360,17 @@ func (bb *BasicBlock) validate(b *builder) {
 	}
 	if len(bb.Pred) > 0 {
 		for _, pred := range bb.Pred {
-			if pred.Branch.opcode != OpcodeBrTable {
-				blockID := int(pred.Branch.rValue.BlockID())
-				target := b.basicBlocksPool.View(blockID)
-				if target != bb {
-					panic(fmt.Sprintf("BUG: '%s' is not branch to %s, but to %s",
-						pred.Branch.Format(b), bb.Name(), target.Name()))
+			found := false
+			var args []Value
+			for i, succ := range pred.Succ {
+				if succ == bb {
+					found = true
+					args = pred.SuccArguments[i]
+					break
 				}
+			}
+			if !found {
+				panic("BUG: predecessor " + pred.Name() + " does not have " + bb.Name() + " as successor")
 			}
 
 			var exp int
@@ -256,11 +380,11 @@ func (bb *BasicBlock) validate(b *builder) {
 				exp = len(bb.Params)
 			}
 
-			if len(pred.Branch.vs) != exp {
+			if len(args) != exp {
 				panic(fmt.Sprintf(
-					"BUG: len(argument at %s) != len(params at %s): %d != %d: %s",
-					pred.Block.Name(), bb.Name(),
-					len(pred.Branch.vs), len(bb.Params), pred.Branch.Format(b),
+					"BUG: len(argument at %s) != len(params at %s): %d != %d",
+					pred.Name(), bb.Name(),
+					len(args), len(bb.Params),
 				))
 			}
 

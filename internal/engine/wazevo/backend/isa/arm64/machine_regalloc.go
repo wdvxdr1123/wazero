@@ -131,7 +131,7 @@ func (f *regAllocFn) Succ(pos *labelPosition, i int) *labelPosition {
 
 // Pred implements regalloc.Block.
 func (f *regAllocFn) Pred(pos *labelPosition, i int) *labelPosition {
-	predSB := pos.sb.Pred[i].Block
+	predSB := pos.sb.Pred[i]
 	return f.m.getOrAllocateSSABlockLabelPosition(predSB)
 }
 

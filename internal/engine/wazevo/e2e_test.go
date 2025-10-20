@@ -897,7 +897,6 @@ func TestE2E(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			for i := 0; i < 1; i++ {
 				var name string

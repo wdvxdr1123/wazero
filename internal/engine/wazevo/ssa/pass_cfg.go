@@ -109,7 +109,7 @@ func calculateDominators(reversePostOrderedBlks []*BasicBlock, doms []*BasicBloc
 		for _, blk := range reversePostOrderedBlks {
 			var u *BasicBlock
 			for i := range blk.Pred {
-				pred := blk.Pred[i].Block
+				pred := blk.Pred[i]
 				// Skip if this pred is not reachable yet. Note that this is not described in the paper,
 				// but it is necessary to handle nested loops etc.
 				if doms[pred.id] == nil {
@@ -155,7 +155,7 @@ func intersect(doms []*BasicBlock, blk1 *BasicBlock, blk2 *BasicBlock) *BasicBlo
 func subPassLoopDetection(b *builder) {
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
 		for i := range blk.Pred {
-			pred := blk.Pred[i].Block
+			pred := blk.Pred[i]
 			if pred.invalid {
 				continue
 			}

@@ -143,7 +143,7 @@ func NewBuilder() Builder {
 		varLengthBasicBlockPool: wazevoapi.NewVarLengthPool[*BasicBlock](),
 		valueAnnotations:        make(map[ValueID]string),
 		signatures:              make(map[types.SignatureID]*types.Signature),
-		returnBlk:               &BasicBlock{id: basicBlockIDReturnBlock},
+		returnBlk:               &BasicBlock{id: basicBlockIDReturnBlock, Kind: BlockReturn},
 	}
 }
 
@@ -453,7 +453,7 @@ func (b *builder) findValueInLinearPath(variable Variable, blk *BasicBlock) Valu
 	if len(blk.Pred) == 1 {
 		// If this block is sealed and have only one predecessor,
 		// we can use the value in that block without ambiguity on definition.
-		return b.findValueInLinearPath(variable, blk.Pred[0].Block)
+		return b.findValueInLinearPath(variable, blk.Pred[0])
 	}
 	return ValueInvalid
 }
@@ -494,7 +494,7 @@ func (b *builder) findValue(typ *types.Type, variable Variable, blk *BasicBlock)
 	if len(blk.Pred) == 1 {
 		// If this block is sealed and have only one predecessor,
 		// we can use the value in that block without ambiguity on definition.
-		return b.findValue(typ, variable, blk.Pred[0].Block)
+		return b.findValue(typ, variable, blk.Pred[0])
 	} else if len(blk.Pred) == 0 {
 		panic("BUG: value is not defined for " + variable.String())
 	}
@@ -509,7 +509,7 @@ func (b *builder) findValue(typ *types.Type, variable Variable, blk *BasicBlock)
 	// Check all the predecessors if they have the same definition.
 	uniqueValue := ValueInvalid
 	for i := range blk.Pred {
-		predValue := b.findValue(typ, variable, blk.Pred[i].Block)
+		predValue := b.findValue(typ, variable, blk.Pred[i])
 		if uniqueValue == ValueInvalid {
 			uniqueValue = predValue
 		} else if uniqueValue != predValue {
@@ -531,8 +531,8 @@ func (b *builder) findValue(typ *types.Type, variable Variable, blk *BasicBlock)
 		// in predecessors so that they would pass the definition of `variable` as the argument to
 		// the newly added PHI.
 		for _, pred := range blk.Pred {
-			value := b.findValue(typ, variable, pred.Block)
-			pred.Branch.addArgumentBranchInst(b, value)
+			value := b.findValue(typ, variable, pred)
+			pred.addSuccArgument(blk, value)
 		}
 		return tmpValue
 	}
@@ -547,11 +547,11 @@ func (b *builder) Seal(blk *BasicBlock) {
 		typ := variable.getType()
 		blk.Params = append(blk.Params, phiValue)
 		for _, pred := range blk.Pred {
-			predValue := b.findValue(typ, variable, pred.Block)
+			predValue := b.findValue(typ, variable, pred)
 			if !predValue.Valid() {
 				panic("BUG: value is not defined anywhere in the predecessors in the CFG")
 			}
-			pred.Branch.addArgumentBranchInst(b, predValue)
+			pred.addSuccArgument(blk, predValue)
 		}
 	}
 }
@@ -586,6 +586,9 @@ func (b *builder) Format() string {
 			str.WriteString(cur.Format(b))
 			str.WriteByte('\n')
 		}
+
+		str.WriteString(bb.formatEnd(b))
+		str.WriteByte('\n')
 	}
 	return str.String()
 }
@@ -691,10 +694,7 @@ func (b *builder) resolveArgumentAlias(instr *Instruction) {
 		instr.v3 = b.resolveAlias(instr.v3)
 	}
 
-	view := instr.vs
-	for i, v := range view {
-		view[i] = b.resolveAlias(v)
-	}
+	instr.vs = b.resolveAliases(instr.vs)
 }
 
 // resolveAlias resolves the alias of the given value.
@@ -709,6 +709,13 @@ func (b *builder) resolveAlias(v Value) Value {
 		} else {
 			break
 		}
+	}
+	return v
+}
+
+func (b *builder) resolveAliases(v []Value) []Value {
+	for i, val := range v {
+		v[i] = b.resolveAlias(val)
 	}
 	return v
 }

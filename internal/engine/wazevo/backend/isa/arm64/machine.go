@@ -615,7 +615,7 @@ func (m *machine) frameSize() int64 {
 	return s
 }
 
-func (m *machine) addJmpTableTarget(targets []ssa.Value) (index int) {
+func (m *machine) addJmpTableTarget(targets []*ssa.BasicBlock) (index int) {
 	if m.jmpTableTargetsNext == len(m.jmpTableTargets) {
 		m.jmpTableTargets = append(m.jmpTableTargets, make([]uint32, 0, len(targets)))
 	}
@@ -623,8 +623,7 @@ func (m *machine) addJmpTableTarget(targets []ssa.Value) (index int) {
 	index = m.jmpTableTargetsNext
 	m.jmpTableTargetsNext++
 	m.jmpTableTargets[index] = m.jmpTableTargets[index][:0]
-	for _, targetBlockID := range targets {
-		target := m.compiler.SSABuilder().BasicBlock(targetBlockID.BlockID())
+	for _, target := range targets {
 		m.jmpTableTargets[index] = append(m.jmpTableTargets[index], uint32(target.ID()))
 	}
 	return
