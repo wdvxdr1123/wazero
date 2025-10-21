@@ -6,9 +6,9 @@ import (
 
 // SSAValueDefinition represents a definition of an SSA value.
 type SSAValueDefinition struct {
-	V ssa.Value
+	V ssa.Var
 	// Instr is not nil if this is a definition from an instruction.
-	Instr *ssa.Instruction
+	Instr *ssa.Value
 	// RefCount is the number of references to the result.
 	RefCount uint32
 }

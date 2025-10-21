@@ -38,10 +38,21 @@ func constructGraphFromEdges(edges edgesCase) (b *builder) {
 		return xf < yf
 	})
 
+	addEdge := func(from, to *BasicBlock) {
+		switch len(from.Succ) {
+		case 0:
+		case 1:
+			from.Kind = BlockIf
+		case 2:
+			from.Kind = BlockJumpTable
+		}
+		from.AddEdgeTo(to)
+	}
+
 	// Add edges.
 	for _, p := range pairs {
 		from, to := blocks[p[0]], blocks[p[1]]
-		to.addPred(from)
+		addEdge(from, to)
 	}
 	return
 }

@@ -21,10 +21,10 @@ import (
 func NewAllocator[I Instr, B Block[I], F Function[I, B]](allocatableRegs *RegisterInfo) Allocator[I, B, F] {
 	a := Allocator[I, B, F]{
 		regInfo:            allocatableRegs,
-		phiDefInstListPool: wazevoapi.NewPool[phiDefInstList[I]](resetPhiDefInstList[I]),
-		blockStates:        wazevoapi.NewIDedPool[blockState[I, B, F]](resetBlockState[I, B, F]),
+		phiDefInstListPool: wazevoapi.NewPool(resetPhiDefInstList[I]),
+		blockStates:        wazevoapi.NewIDedPool(resetBlockState[I, B, F]),
 	}
-	a.state.vrStates = wazevoapi.NewIDedPool[vrState[I, B, F]](resetVrState[I, B, F])
+	a.state.vrStates = wazevoapi.NewIDedPool(resetVrState[I, B, F])
 	a.state.reset()
 	for _, regs := range allocatableRegs.AllocatableRegisters {
 		for _, r := range regs {

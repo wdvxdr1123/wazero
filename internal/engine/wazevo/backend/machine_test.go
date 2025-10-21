@@ -14,12 +14,12 @@ type mockMachine struct {
 	argResultInts, argResultFloats []regalloc.RealReg
 	startBlock                     func(block *ssa.BasicBlock)
 	lowerBlockBranch               func(b *ssa.BasicBlock)
-	lowerInstr                     func(instruction *ssa.Instruction)
+	lowerInstr                     func(instruction *ssa.Value)
 	endBlock                       func()
 	endLoweringFunction            func()
 	reset                          func()
 	insertMove                     func(dst, src regalloc.VReg)
-	insertLoadConstant             func(instr *ssa.Instruction, vr regalloc.VReg)
+	insertLoadConstant             func(instr *ssa.Value, vr regalloc.VReg)
 	format                         func() string
 	linkAdjacentBlocks             func(prev, next *ssa.BasicBlock)
 }
@@ -34,9 +34,9 @@ func (m mockMachine) ArgsResultsRegs() (argResultInts, argResultFloats []regallo
 
 func (m mockMachine) RegAlloc() { panic("implement me") }
 
-func (m mockMachine) LowerParams(params []ssa.Value) { panic("implement me") }
+func (m mockMachine) LowerParams(params []ssa.Var) { panic("implement me") }
 
-func (m mockMachine) LowerReturns(returns []ssa.Value) { panic("implement me") }
+func (m mockMachine) LowerReturns(returns []ssa.Var) { panic("implement me") }
 
 func (m mockMachine) CompileEntryPreamble(signature *types.Signature) []byte {
 	panic("TODO")
@@ -83,7 +83,7 @@ func (m mockMachine) LowerBlockBranch(b *ssa.BasicBlock) {
 }
 
 // LowerInstr implements Machine.LowerInstr.
-func (m mockMachine) LowerInstr(instruction *ssa.Instruction) {
+func (m mockMachine) LowerInstr(instruction *ssa.Value) {
 	m.lowerInstr(instruction)
 }
 
@@ -111,7 +111,7 @@ func (m mockMachine) InsertMove(dst, src regalloc.VReg, typ *types.Type) {
 }
 
 // InsertLoadConstantBlockArg implements Machine.InsertLoadConstantBlockArg.
-func (m mockMachine) InsertLoadConstantBlockArg(instr *ssa.Instruction, vr regalloc.VReg) {
+func (m mockMachine) InsertLoadConstantBlockArg(instr *ssa.Value, vr regalloc.VReg) {
 	m.insertLoadConstant(instr, vr)
 }
 

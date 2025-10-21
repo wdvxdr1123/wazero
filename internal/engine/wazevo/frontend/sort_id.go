@@ -6,8 +6,8 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
 )
 
-func sortSSAValueIDs(IDs []ssa.ValueID) {
-	slices.SortFunc(IDs, func(i, j ssa.ValueID) int {
+func sortSSAValueIDs(IDs []ssa.VarID) {
+	slices.SortFunc(IDs, func(i, j ssa.VarID) int {
 		return int(i) - int(j)
 	})
 }

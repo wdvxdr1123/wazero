@@ -115,7 +115,7 @@ func (c *compiler) lowerFunctionArguments(entry *ssa.BasicBlock) {
 			c.tmpVals = append(c.tmpVals, p)
 		} else {
 			// If the argument is not used, we can just pass an invalid value.
-			c.tmpVals = append(c.tmpVals, ssa.ValueInvalid)
+			c.tmpVals = append(c.tmpVals, ssa.InvalidVar)
 		}
 	}
 	mach.LowerParams(c.tmpVals)
@@ -123,7 +123,7 @@ func (c *compiler) lowerFunctionArguments(entry *ssa.BasicBlock) {
 }
 
 // lowerBlockArguments lowers how to pass arguments to the given successor block.
-func (c *compiler) lowerBlockArguments(args []ssa.Value, succ *ssa.BasicBlock) {
+func (c *compiler) lowerBlockArguments(args []ssa.Var, succ *ssa.BasicBlock) {
 	if len(args) != len(succ.Params) {
 		panic("BUG: mismatched number of arguments")
 	}
@@ -139,7 +139,7 @@ func (c *compiler) lowerBlockArguments(args []ssa.Value, succ *ssa.BasicBlock) {
 		srcInstr := c.ssaBuilder.InstructionOfValue(src)
 		if srcInstr != nil && srcInstr.Constant() {
 			c.constEdges = append(c.constEdges, struct {
-				cInst *ssa.Instruction
+				cInst *ssa.Value
 				dst   regalloc.VReg
 			}{cInst: srcInstr, dst: dstReg})
 		} else {

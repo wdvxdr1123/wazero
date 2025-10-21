@@ -24,8 +24,8 @@ func newSetupWithMockContext() (*mockCompiler, ssa.Builder, *machine) {
 type mockCompiler struct {
 	currentGID  ssa.InstructionGroupID
 	vRegCounter int
-	vRegMap     map[ssa.Value]regalloc.VReg
-	definitions map[ssa.Value]backend.SSAValueDefinition
+	vRegMap     map[ssa.Var]regalloc.VReg
+	definitions map[ssa.Var]backend.SSAValueDefinition
 	sigs        map[types.SignatureID]*types.Signature
 	typeOf      map[regalloc.VRegID]*types.Type
 	relocs      []backend.RelocationInfo
@@ -76,8 +76,8 @@ func (m *mockCompiler) Init()                                {}
 
 func newMockCompilationContext() *mockCompiler { //nolint
 	return &mockCompiler{
-		vRegMap:     make(map[ssa.Value]regalloc.VReg),
-		definitions: make(map[ssa.Value]backend.SSAValueDefinition),
+		vRegMap:     make(map[ssa.Var]regalloc.VReg),
+		definitions: make(map[ssa.Var]backend.SSAValueDefinition),
 		typeOf:      map[regalloc.VRegID]*types.Type{},
 	}
 }
@@ -97,7 +97,7 @@ func (m *mockCompiler) AllocateVReg(typ *types.Type) regalloc.VReg {
 }
 
 // ValueDefinition implements backend.Compiler.
-func (m *mockCompiler) ValueDefinition(value ssa.Value) backend.SSAValueDefinition {
+func (m *mockCompiler) ValueDefinition(value ssa.Var) backend.SSAValueDefinition {
 	definition, exists := m.definitions[value]
 	if !exists {
 		return backend.SSAValueDefinition{V: value}
@@ -106,7 +106,7 @@ func (m *mockCompiler) ValueDefinition(value ssa.Value) backend.SSAValueDefiniti
 }
 
 // VRegOf implements backend.Compiler.
-func (m *mockCompiler) VRegOf(value ssa.Value) regalloc.VReg {
+func (m *mockCompiler) VRegOf(value ssa.Var) regalloc.VReg {
 	vReg, exists := m.vRegMap[value]
 	if !exists {
 		panic("Value does not exist")

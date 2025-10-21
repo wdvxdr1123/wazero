@@ -140,7 +140,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 }
 
 func TestBuilder_LayoutBlocks(t *testing.T) {
-	insertJump := func(b *builder, src, dst *BasicBlock, vs ...Value) {
+	insertJump := func(b *builder, src, dst *BasicBlock, vs ...Var) {
 		b.SetCurrentBlock(src)
 		if src.Kind == BlockPlain && len(src.Succ) != 0 {
 			panic("BUG: multiple jumps in a plain block")
@@ -150,7 +150,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 		dst.Pred = append(dst.Pred, src)
 	}
 
-	insertIf := func(b *builder, src, dst *BasicBlock, condVal Value, vs ...Value) {
+	insertIf := func(b *builder, src, dst *BasicBlock, condVal Var, vs ...Var) {
 		b.SetCurrentBlock(src)
 		vinst := b.AllocateInstruction().AsIconst32(0)
 		b.InsertInstruction(vinst)
@@ -411,7 +411,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				}
 				b.SetCurrentBlock(b1)
 				{
-					args := []Value{retval}
+					args := []Var{retval}
 					b.AllocateInstruction().AsReturn(args).Insert(b)
 				}
 				b.SetCurrentBlock(b2)

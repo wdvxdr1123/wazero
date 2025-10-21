@@ -70,10 +70,10 @@ type Compiler interface {
 	AllocateVReg(typ *types.Type) regalloc.VReg
 
 	// ValueDefinition returns the definition of the given value.
-	ValueDefinition(ssa.Value) SSAValueDefinition
+	ValueDefinition(ssa.Var) SSAValueDefinition
 
 	// VRegOf returns the virtual register of the given ssa.Value.
-	VRegOf(value ssa.Value) regalloc.VReg
+	VRegOf(value ssa.Var) regalloc.VReg
 
 	// TypeOf returns the *types.Type of the given virtual register.
 	TypeOf(regalloc.VReg) *types.Type
@@ -135,13 +135,13 @@ type compiler struct {
 	varEdges     [][2]regalloc.VReg
 	varEdgeTypes []*types.Type
 	constEdges   []struct {
-		cInst *ssa.Instruction
+		cInst *ssa.Value
 		dst   regalloc.VReg
 	}
 	vRegSet         []bool
 	vRegIDs         []regalloc.VRegID
 	tempRegs        []regalloc.VReg
-	tmpVals         []ssa.Value
+	tmpVals         []ssa.Var
 	ssaTypeOfVRegID [] /* VRegID to */ *types.Type
 	buf             []byte
 	relocations     []RelocationInfo
@@ -162,8 +162,17 @@ type SourceOffsetInfo struct {
 // Compile implements Compiler.Compile.
 func (c *compiler) Compile(ctx context.Context) ([]byte, []RelocationInfo, error) {
 	c.Lower()
+	x := fmt.Sprintf("[[[after lowering for %s ]]]%s\n", wazevoapi.GetCurrentFunctionName(ctx), c.Format())
+	defer func() {
+		e := recover()
+		if e != nil {
+			fmt.Println(x)
+			// fmt.Printf("[[[after regalloc for %s]]]%s\n", wazevoapi.GetCurrentFunctionName(ctx), c.Format())
+			panic(e)
+		}
+	}()
 	if wazevoapi.PrintSSAToBackendIRLowering && wazevoapi.PrintEnabledIndex(ctx) {
-		fmt.Printf("[[[after lowering for %s ]]]%s\n", wazevoapi.GetCurrentFunctionName(ctx), c.Format())
+
 	}
 	if wazevoapi.DeterministicCompilationVerifierEnabled {
 		wazevoapi.VerifyOrSetDeterministicCompilationContextValue(ctx, "After lowering to ISA specific IR", c.Format())
@@ -279,7 +288,7 @@ func (c *compiler) Init() {
 }
 
 // ValueDefinition implements Compiler.ValueDefinition.
-func (c *compiler) ValueDefinition(value ssa.Value) SSAValueDefinition {
+func (c *compiler) ValueDefinition(value ssa.Var) SSAValueDefinition {
 	return SSAValueDefinition{
 		V:        value,
 		Instr:    c.ssaBuilder.InstructionOfValue(value),
@@ -288,7 +297,7 @@ func (c *compiler) ValueDefinition(value ssa.Value) SSAValueDefinition {
 }
 
 // VRegOf implements Compiler.VRegOf.
-func (c *compiler) VRegOf(value ssa.Value) regalloc.VReg {
+func (c *compiler) VRegOf(value ssa.Var) regalloc.VReg {
 	return c.ssaValueToVRegs[value.ID()]
 }
 

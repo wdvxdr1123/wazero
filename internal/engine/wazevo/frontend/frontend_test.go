@@ -3187,8 +3187,8 @@ func TestCompiler_getKnownSafeBound(t *testing.T) {
 func TestCompiler_clearSafeBounds(t *testing.T) {
 	c := &Compiler{}
 	c.knownSafeBounds = []knownSafeBound{{bound: 1}, {}, {bound: 2}, {}, {}, {bound: 3}}
-	c.knownSafeBoundsSet = []ssa.ValueID{0, 2, 5}
+	c.knownSafeBoundsSet = []ssa.VarID{0, 2, 5}
 	c.clearSafeBounds()
 	require.Equal(t, 0, len(c.knownSafeBoundsSet))
-	require.Equal(t, []knownSafeBound{{absoluteAddr: ssa.ValueInvalid}, {}, {absoluteAddr: ssa.ValueInvalid}, {}, {}, {absoluteAddr: ssa.ValueInvalid}}, c.knownSafeBounds)
+	require.Equal(t, []knownSafeBound{{absoluteAddr: ssa.InvalidVar}, {}, {absoluteAddr: ssa.InvalidVar}, {}, {}, {absoluteAddr: ssa.InvalidVar}}, c.knownSafeBounds)
 }

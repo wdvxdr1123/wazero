@@ -121,7 +121,7 @@ func redundantPhiElimination(b *builder) {
 			for idx, phi := range params {
 				redundant := true
 
-				nonSelfReferencingValue := ValueInvalid
+				nonSelfReferencingValue := InvalidVar
 				for _, pred := range blk.Pred {
 					succIndex := pred.findSucc(blk)
 					br := pred.SuccArguments[succIndex]
@@ -233,7 +233,7 @@ func deadcode(b *builder) {
 		b.valuesInfo = append(b.valuesInfo, make([]ValueInfo, l)...)
 		view := b.valuesInfo[len(b.valuesInfo)-l:]
 		for i := range view {
-			view[i].alias = ValueInvalid
+			view[i].alias = InvalidVar
 		}
 	}
 
@@ -243,7 +243,7 @@ func deadcode(b *builder) {
 	// relevant to dead code elimination, but we need in the backend.
 	var gid InstructionGroupID
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
-		aliveValue := make(map[ValueID]bool)
+		aliveValue := make(map[VarID]bool)
 		if blk.ControlValue.Valid() {
 			aliveValue[blk.ControlValue.ID()] = true
 		}
@@ -311,29 +311,10 @@ func deadcode(b *builder) {
 		// Before we walk, we need to resolve the alias first.
 		b.resolveArgumentAlias(live)
 
-		v1, v2, v3, vs := live.Args()
-		if v1.Valid() {
-			producingInst := b.InstructionOfValue(v1)
-			if producingInst != nil {
-				liveInstructions = append(liveInstructions, producingInst)
+		for _, v := range append(live.Args, live.ArgSlice...) {
+			if !v.Valid() {
+				continue
 			}
-		}
-
-		if v2.Valid() {
-			producingInst := b.InstructionOfValue(v2)
-			if producingInst != nil {
-				liveInstructions = append(liveInstructions, producingInst)
-			}
-		}
-
-		if v3.Valid() {
-			producingInst := b.InstructionOfValue(v3)
-			if producingInst != nil {
-				liveInstructions = append(liveInstructions, producingInst)
-			}
-		}
-
-		for _, v := range vs {
 			producingInst := b.InstructionOfValue(v)
 			if producingInst != nil {
 				liveInstructions = append(liveInstructions, producingInst)
@@ -366,17 +347,10 @@ func deadcode(b *builder) {
 
 			// If the value alive, we can be sure that arguments are used definitely.
 			// Hence, we can increment the value reference counts.
-			v1, v2, v3, vs := cur.Args()
-			if v1.Valid() {
-				b.incRefCount(v1.ID(), cur)
-			}
-			if v2.Valid() {
-				b.incRefCount(v2.ID(), cur)
-			}
-			if v3.Valid() {
-				b.incRefCount(v3.ID(), cur)
-			}
-			for _, v := range vs {
+			for _, v := range append(cur.Args, cur.ArgSlice...) {
+				if !v.Valid() {
+					continue
+				}
 				b.incRefCount(v.ID(), cur)
 			}
 		}
@@ -390,7 +364,7 @@ func deadcode(b *builder) {
 	b.instStack = liveInstructions // we reuse the stack for the next iteration.
 }
 
-func (b *builder) incRefCount(id ValueID, from *Instruction) {
+func (b *builder) incRefCount(id VarID, from *Value) {
 	if wazevoapi.SSALoggingEnabled {
 		fmt.Printf("v%d referenced from %v\n", id, from.Format(b))
 	}
@@ -405,7 +379,7 @@ func nopElimination(b *builder) {
 			switch cur.Opcode() {
 			// TODO: add more logics here.
 			case OpcodeIshl, OpcodeSshr, OpcodeUshr:
-				x, amount := cur.Arg2()
+				x, amount := cur.Args[0], cur.Args[1]
 				definingInst := b.InstructionOfValue(amount)
 				if definingInst == nil {
 					// If there's no defining instruction, that means the amount is coming from the parameter.

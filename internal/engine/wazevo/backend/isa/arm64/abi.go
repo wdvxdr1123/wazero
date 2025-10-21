@@ -63,7 +63,7 @@ func (m *machine) ArgsResultsRegs() (argResultInts, argResultFloats []regalloc.R
 }
 
 // LowerParams implements backend.FunctionABI.
-func (m *machine) LowerParams(args []ssa.Value) {
+func (m *machine) LowerParams(args []ssa.Var) {
 	a := m.currentABI
 
 	for i, ssaArg := range args {
@@ -120,7 +120,7 @@ func (m *machine) LowerParams(args []ssa.Value) {
 }
 
 // LowerReturns lowers the given returns.
-func (m *machine) LowerReturns(rets []ssa.Value) {
+func (m *machine) LowerReturns(rets []ssa.Var) {
 	a := m.currentABI
 
 	l := len(rets) - 1
@@ -260,7 +260,7 @@ func (m *machine) resolveAddressModeForOffset(offset int64, dstBits byte, rn reg
 	return amode
 }
 
-func (m *machine) lowerCall(si *ssa.Instruction) {
+func (m *machine) lowerCall(si *ssa.Value) {
 	isDirectCall := si.Opcode() == ssa.OpcodeCall
 	indirectCalleePtr, directCallee, calleeABI, stackSlotSize := m.prepareCall(si, isDirectCall)
 
@@ -278,11 +278,11 @@ func (m *machine) lowerCall(si *ssa.Instruction) {
 	m.insertReturns(si, calleeABI, stackSlotSize)
 }
 
-func (m *machine) prepareCall(si *ssa.Instruction, isDirectCall bool) (ssa.Value, ssa.FuncRef, *backend.FunctionABI, int64) {
-	var indirectCalleePtr ssa.Value
+func (m *machine) prepareCall(si *ssa.Value, isDirectCall bool) (ssa.Var, ssa.FuncRef, *backend.FunctionABI, int64) {
+	var indirectCalleePtr ssa.Var
 	var directCallee ssa.FuncRef
 	var sigID types.SignatureID
-	var args []ssa.Value
+	var args []ssa.Var
 	if isDirectCall {
 		directCallee, sigID, args = si.CallData()
 	} else {
@@ -303,7 +303,7 @@ func (m *machine) prepareCall(si *ssa.Instruction, isDirectCall bool) (ssa.Value
 	return indirectCalleePtr, directCallee, calleeABI, stackSlotSize
 }
 
-func (m *machine) insertReturns(si *ssa.Instruction, calleeABI *backend.FunctionABI, stackSlotSize int64) {
+func (m *machine) insertReturns(si *ssa.Value, calleeABI *backend.FunctionABI, stackSlotSize int64) {
 	var index int
 	r1, rs := si.Returns()
 	if r1.Valid() {
@@ -317,7 +317,7 @@ func (m *machine) insertReturns(si *ssa.Instruction, calleeABI *backend.Function
 	}
 }
 
-func (m *machine) lowerTailCall(si *ssa.Instruction) {
+func (m *machine) lowerTailCall(si *ssa.Value) {
 	isDirectCall := si.Opcode() == ssa.OpcodeTailCallReturnCall
 	indirectCalleePtr, directCallee, calleeABI, stackSlotSize := m.prepareCall(si, isDirectCall)
 

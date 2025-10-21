@@ -13,7 +13,7 @@ var swizzleMask = [16]byte{
 	0x70, 0x70, 0x70, 0x70, 0x70, 0x70, 0x70, 0x70,
 }
 
-func (m *machine) lowerSwizzle(x, y ssa.Value, ret ssa.Value) {
+func (m *machine) lowerSwizzle(x, y ssa.Var, ret ssa.Var) {
 	masklabel := m.getOrAllocateConstLabel(&m.constSwizzleMaskConstIndex, swizzleMask[:])
 
 	// Load mask to maskReg.
@@ -34,7 +34,7 @@ func (m *machine) lowerSwizzle(x, y ssa.Value, ret ssa.Value) {
 	m.copyTo(tmpDst, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerInsertLane(x, y ssa.Value, index byte, ret ssa.Value, lane types.VecLane) {
+func (m *machine) lowerInsertLane(x, y ssa.Var, index byte, ret ssa.Var, lane types.VecLane) {
 	// Copy x to tmp.
 	tmpDst := m.c.AllocateVReg(types.V128)
 	m.insert(m.allocateInstr().asXmmUnaryRmR(sseOpcodeMovdqu, m.getOperand_Mem_Reg(m.c.ValueDefinition(x)), tmpDst))
@@ -66,7 +66,7 @@ func (m *machine) lowerInsertLane(x, y ssa.Value, index byte, ret ssa.Value, lan
 	m.copyTo(tmpDst, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerExtractLane(x ssa.Value, index byte, signed bool, ret ssa.Value, lane types.VecLane) {
+func (m *machine) lowerExtractLane(x ssa.Var, index byte, signed bool, ret ssa.Var, lane types.VecLane) {
 	// Pextr variants are used to extract a lane from a vector register.
 	xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 
@@ -116,7 +116,7 @@ var sqmulRoundSat = [16]byte{
 	0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80,
 }
 
-func (m *machine) lowerSqmulRoundSat(x, y, ret ssa.Value) {
+func (m *machine) lowerSqmulRoundSat(x, y, ret ssa.Var) {
 	// See https://github.com/WebAssembly/simd/pull/365 for the following logic.
 	maskLabel := m.getOrAllocateConstLabel(&m.constSqmulRoundSatIndex, sqmulRoundSat[:])
 
@@ -134,7 +134,7 @@ func (m *machine) lowerSqmulRoundSat(x, y, ret ssa.Value) {
 	m.copyTo(tmpX, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerVUshr(x, y, ret ssa.Value, lane types.VecLane) {
+func (m *machine) lowerVUshr(x, y, ret ssa.Var, lane types.VecLane) {
 	switch lane {
 	case types.VecLaneI8x16:
 		m.lowerVUshri8x16(x, y, ret)
@@ -158,7 +158,7 @@ var i8x16LogicalSHRMaskTable = [8 * 16]byte{ // (the number of possible shift am
 	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, // for 7 shift
 }
 
-func (m *machine) lowerVUshri8x16(x, y, ret ssa.Value) {
+func (m *machine) lowerVUshri8x16(x, y, ret ssa.Var) {
 	tmpGpReg := m.c.AllocateVReg(types.I32)
 	// Load the modulo 8 mask to tmpReg.
 	m.lowerIconst(tmpGpReg, 0x7, false)
@@ -189,7 +189,7 @@ func (m *machine) lowerVUshri8x16(x, y, ret ssa.Value) {
 	m.copyTo(xx, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerVSshr(x, y, ret ssa.Value, lane types.VecLane) {
+func (m *machine) lowerVSshr(x, y, ret ssa.Var, lane types.VecLane) {
 	switch lane {
 	case types.VecLaneI8x16:
 		m.lowerVSshri8x16(x, y, ret)
@@ -202,7 +202,7 @@ func (m *machine) lowerVSshr(x, y, ret ssa.Value, lane types.VecLane) {
 	}
 }
 
-func (m *machine) lowerVSshri8x16(x, y, ret ssa.Value) {
+func (m *machine) lowerVSshri8x16(x, y, ret ssa.Var) {
 	shiftAmtReg := m.c.AllocateVReg(types.I32)
 	// Load the modulo 8 mask to tmpReg.
 	m.lowerIconst(shiftAmtReg, 0x7, false)
@@ -244,7 +244,7 @@ func (m *machine) lowerVSshri8x16(x, y, ret ssa.Value) {
 	m.copyTo(xx, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerVSshri64x2(x, y, ret ssa.Value) {
+func (m *machine) lowerVSshri64x2(x, y, ret ssa.Var) {
 	// Load the shift amount to RCX.
 	shiftAmt := m.getOperand_Mem_Reg(m.c.ValueDefinition(y))
 	m.insert(m.allocateInstr().asMovzxRmR(extModeBQ, shiftAmt, rcxVReg))
@@ -265,7 +265,7 @@ func (m *machine) lowerVSshri64x2(x, y, ret ssa.Value) {
 	m.copyTo(xxReg, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerShr(x, y, ret ssa.Value, lane types.VecLane, signed bool) {
+func (m *machine) lowerShr(x, y, ret ssa.Var, lane types.VecLane, signed bool) {
 	var modulo uint64
 	var shiftOp sseOpcode
 	switch lane {
@@ -312,7 +312,7 @@ func (m *machine) lowerShr(x, y, ret ssa.Value, lane types.VecLane, signed bool)
 	m.copyTo(xx, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerVIshl(x, y, ret ssa.Value, lane types.VecLane) {
+func (m *machine) lowerVIshl(x, y, ret ssa.Var, lane types.VecLane) {
 	var modulo uint64
 	var shiftOp sseOpcode
 	var isI8x16 bool
@@ -382,7 +382,7 @@ var i8x16SHLMaskTable = [8 * 16]byte{ // (the number of possible shift amount 0,
 	0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, // for 7 shift
 }
 
-func (m *machine) lowerVRound(x, ret ssa.Value, imm byte, _64 bool) {
+func (m *machine) lowerVRound(x, ret ssa.Var, imm byte, _64 bool) {
 	xx := m.getOperand_Mem_Reg(m.c.ValueDefinition(x))
 	var round sseOpcode
 	if _64 {
@@ -400,7 +400,7 @@ var (
 	extAddPairwiseI16x8uMask2 = [16]byte{0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00}
 )
 
-func (m *machine) lowerExtIaddPairwise(x, ret ssa.Value, srcLane types.VecLane, signed bool) {
+func (m *machine) lowerExtIaddPairwise(x, ret ssa.Var, srcLane types.VecLane, signed bool) {
 	_xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 	xx := m.copyToTmp(_xx.reg())
 	switch srcLane {
@@ -460,7 +460,7 @@ func (m *machine) lowerExtIaddPairwise(x, ret ssa.Value, srcLane types.VecLane, 
 	}
 }
 
-func (m *machine) lowerWidenLow(x, ret ssa.Value, lane types.VecLane, signed bool) {
+func (m *machine) lowerWidenLow(x, ret ssa.Var, lane types.VecLane, signed bool) {
 	var sseOp sseOpcode
 	switch lane {
 	case types.VecLaneI8x16:
@@ -489,7 +489,7 @@ func (m *machine) lowerWidenLow(x, ret ssa.Value, lane types.VecLane, signed boo
 	m.insert(m.allocateInstr().asXmmUnaryRmR(sseOp, xx, m.c.VRegOf(ret)))
 }
 
-func (m *machine) lowerWidenHigh(x, ret ssa.Value, lane types.VecLane, signed bool) {
+func (m *machine) lowerWidenHigh(x, ret ssa.Var, lane types.VecLane, signed bool) {
 	tmp := m.c.AllocateVReg(types.V128)
 	xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 	m.copyTo(xx.reg(), tmp)
@@ -522,7 +522,7 @@ func (m *machine) lowerWidenHigh(x, ret ssa.Value, lane types.VecLane, signed bo
 	m.insert(m.allocateInstr().asXmmUnaryRmR(sseOp, newOperandReg(tmp), m.c.VRegOf(ret)))
 }
 
-func (m *machine) lowerLoadSplat(ptr ssa.Value, offset uint32, ret ssa.Value, lane types.VecLane) {
+func (m *machine) lowerLoadSplat(ptr ssa.Var, offset uint32, ret ssa.Var, lane types.VecLane) {
 	tmpDst, tmpGp := m.c.AllocateVReg(types.V128), m.c.AllocateVReg(types.I64)
 	am := newOperandMem(m.lowerToAddressMode(ptr, offset))
 
@@ -558,7 +558,7 @@ var f64x2CvtFromIMask = [16]byte{
 	0x00, 0x00, 0x30, 0x43, 0x00, 0x00, 0x30, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 }
 
-func (m *machine) lowerVFcvtFromInt(x, ret ssa.Value, lane types.VecLane, signed bool) {
+func (m *machine) lowerVFcvtFromInt(x, ret ssa.Var, lane types.VecLane, signed bool) {
 	switch lane {
 	case types.VecLaneF32x4:
 		if signed {
@@ -655,7 +655,7 @@ var (
 	}
 )
 
-func (m *machine) lowerVFcvtToIntSat(x, ret ssa.Value, lane types.VecLane, signed bool) {
+func (m *machine) lowerVFcvtToIntSat(x, ret ssa.Var, lane types.VecLane, signed bool) {
 	_xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 	xx := m.copyToTmp(_xx.reg())
 
@@ -784,7 +784,7 @@ func (m *machine) lowerVFcvtToIntSat(x, ret ssa.Value, lane types.VecLane, signe
 	m.copyTo(xx, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerNarrow(x, y, ret ssa.Value, lane types.VecLane, signed bool) {
+func (m *machine) lowerNarrow(x, y, ret ssa.Var, lane types.VecLane, signed bool) {
 	_xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 	xx := m.copyToTmp(_xx.reg())
 	yy := m.getOperand_Mem_Reg(m.c.ValueDefinition(y))
@@ -810,7 +810,7 @@ func (m *machine) lowerNarrow(x, y, ret ssa.Value, lane types.VecLane, signed bo
 	m.copyTo(xx, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerWideningPairwiseDotProductS(x, y, ret ssa.Value) {
+func (m *machine) lowerWideningPairwiseDotProductS(x, y, ret ssa.Var) {
 	_xx := m.getOperand_Reg(m.c.ValueDefinition(x))
 	xx := m.copyToTmp(_xx.reg())
 	yy := m.getOperand_Mem_Reg(m.c.ValueDefinition(y))
@@ -818,7 +818,7 @@ func (m *machine) lowerWideningPairwiseDotProductS(x, y, ret ssa.Value) {
 	m.copyTo(xx, m.c.VRegOf(ret))
 }
 
-func (m *machine) lowerVIabs(instr *ssa.Instruction) {
+func (m *machine) lowerVIabs(instr *ssa.Value) {
 	x, lane := instr.ArgWithLane()
 	rd := m.c.VRegOf(instr.Return())
 
@@ -859,8 +859,8 @@ func (m *machine) lowerVIabs(instr *ssa.Instruction) {
 	}
 }
 
-func (m *machine) lowerVIpopcnt(instr *ssa.Instruction) {
-	x := instr.Arg()
+func (m *machine) lowerVIpopcnt(instr *ssa.Value) {
+	x := instr.Args[0]
 	rn := m.getOperand_Reg(m.c.ValueDefinition(x))
 	rd := m.c.VRegOf(instr.Return())
 
@@ -915,7 +915,7 @@ func (m *machine) lowerVIpopcnt(instr *ssa.Instruction) {
 	m.copyTo(tmp5, rd)
 }
 
-func (m *machine) lowerVImul(instr *ssa.Instruction) {
+func (m *machine) lowerVImul(instr *ssa.Value) {
 	x, y, lane := instr.Arg2WithLane()
 	rd := m.c.VRegOf(instr.Return())
 	if lane == types.VecLaneI64x2 {

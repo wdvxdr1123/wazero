@@ -222,7 +222,7 @@ func (m *machine) getOperand_ER_SR_NR(def backend.SSAValueDefinition, mode extMo
 		modeBits, modeSigned := mode.bits(), mode.signed()
 		if mode == extModeNone || innerExtToBits == modeBits {
 			eop := extendOpFrom(signed, innerExtFromBits)
-			extArg := m.getOperand_NR(m.compiler.ValueDefinition(extInstr.Arg()), extModeNone)
+			extArg := m.getOperand_NR(m.compiler.ValueDefinition(extInstr.Args[0]), extModeNone)
 			op = operandER(extArg.nr(), eop, innerExtToBits)
 			extInstr.MarkLowered()
 			return
@@ -236,7 +236,7 @@ func (m *machine) getOperand_ER_SR_NR(def backend.SSAValueDefinition, mode extMo
 		case (!signed && !modeSigned) || (signed && modeSigned):
 			// Two sign/zero extensions are equivalent to one sign/zero extension for the larger size.
 			eop := extendOpFrom(modeSigned, innerExtFromBits)
-			op = operandER(m.compiler.VRegOf(extInstr.Arg()), eop, modeBits)
+			op = operandER(m.compiler.VRegOf(extInstr.Args[0]), eop, modeBits)
 			extInstr.MarkLowered()
 		case (signed && !modeSigned) || (!signed && modeSigned):
 			// We need to {sign, zero}-extend the result of the {zero,sign} extension.
@@ -259,7 +259,7 @@ func (m *machine) getOperand_SR_NR(def backend.SSAValueDefinition, mode extMode)
 
 	if m.compiler.MatchInstr(def, ssa.OpcodeIshl) {
 		// Check if the shift amount is constant instruction.
-		targetVal, amountVal := def.Instr.Arg2()
+		targetVal, amountVal := def.Instr.Args[0], def.Instr.Args[1]
 		targetVReg := m.getOperand_NR(m.compiler.ValueDefinition(targetVal), extModeNone).nr()
 		amountDef := m.compiler.ValueDefinition(amountVal)
 		if amountDef.IsFromInstr() && amountDef.Instr.Constant() {

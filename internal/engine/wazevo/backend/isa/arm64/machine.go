@@ -46,7 +46,7 @@ type (
 		amodePool wazevoapi.Pool[addressMode]
 
 		// addendsWorkQueue is used during address lowering, defined here for reuse.
-		addendsWorkQueue wazevoapi.Queue[ssa.Value]
+		addendsWorkQueue wazevoapi.Queue[ssa.Var]
 		addends32        wazevoapi.Queue[addend32]
 		// addends64 is used during address lowering, defined here for reuse.
 		addends64              wazevoapi.Queue[regalloc.VReg]

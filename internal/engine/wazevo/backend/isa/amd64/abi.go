@@ -54,7 +54,7 @@ func (m *machine) ArgsResultsRegs() (argResultInts, argResultFloats []regalloc.R
 }
 
 // LowerParams implements backend.Machine.
-func (m *machine) LowerParams(args []ssa.Value) {
+func (m *machine) LowerParams(args []ssa.Var) {
 	a := m.currentABI
 
 	for i, ssaArg := range args {
@@ -113,7 +113,7 @@ func (m *machine) LowerParams(args []ssa.Value) {
 }
 
 // LowerReturns implements backend.Machine.
-func (m *machine) LowerReturns(rets []ssa.Value) {
+func (m *machine) LowerReturns(rets []ssa.Var) {
 	// Load the XMM registers first as it might need a temporary register to inline
 	// constant return.
 	a := m.currentABI
@@ -132,7 +132,7 @@ func (m *machine) LowerReturns(rets []ssa.Value) {
 	}
 }
 
-func (m *machine) LowerReturn(ret ssa.Value, r *backend.ABIArg) {
+func (m *machine) LowerReturn(ret ssa.Var, r *backend.ABIArg) {
 	reg := m.c.VRegOf(ret)
 	if def := m.c.ValueDefinition(ret); def.IsFromInstr() {
 		// Constant instructions are inlined.

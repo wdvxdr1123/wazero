@@ -49,7 +49,7 @@ type (
 		//
 		// Note: this can lower multiple instructions (which produce the inputs) at once whenever it's possible
 		// for optimization.
-		LowerInstr(*ssa.Instruction)
+		LowerInstr(*ssa.Value)
 
 		// Reset resets the machine state for the next compilation.
 		Reset()
@@ -61,7 +61,7 @@ type (
 		InsertReturn()
 
 		// InsertLoadConstantBlockArg inserts the instruction(s) to load the constant value into the given regalloc.VReg.
-		InsertLoadConstantBlockArg(instr *ssa.Instruction, vr regalloc.VReg)
+		InsertLoadConstantBlockArg(instr *ssa.Value, vr regalloc.VReg)
 
 		// Format returns the string representation of the currently compiled machine code.
 		// This is only for testing purpose.
@@ -102,10 +102,10 @@ type (
 		CompileEntryPreamble(signature *types.Signature) []byte
 
 		// LowerParams lowers the given parameters.
-		LowerParams(params []ssa.Value)
+		LowerParams(params []ssa.Var)
 
 		// LowerReturns lowers the given returns.
-		LowerReturns(returns []ssa.Value)
+		LowerReturns(returns []ssa.Var)
 
 		// ArgsResultsRegs returns the registers used for arguments and return values.
 		ArgsResultsRegs() (argResultInts, argResultFloats []regalloc.RealReg)

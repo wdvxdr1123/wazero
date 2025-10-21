@@ -95,7 +95,7 @@ func (m *machine) LowerBlockBranch(blk *ssa.BasicBlock) {
 	}
 }
 
-func (m *machine) tryLowerBandToFlag(x, y ssa.Value) (ok bool) {
+func (m *machine) tryLowerBandToFlag(x, y ssa.Var) (ok bool) {
 	xx := m.compiler.ValueDefinition(x)
 	yy := m.compiler.ValueDefinition(y)
 	if xx.IsFromInstr() && xx.Instr.Constant() && xx.Instr.ConstantVal() == 0 {
@@ -121,7 +121,7 @@ func (m *machine) tryLowerBandToFlag(x, y ssa.Value) (ok bool) {
 }
 
 // LowerInstr implements backend.Machine.
-func (m *machine) LowerInstr(instr *ssa.Instruction) {
+func (m *machine) LowerInstr(instr *ssa.Value) {
 	if l := instr.SourceOffset(); l.Valid() {
 		info := m.allocateInstr().asEmitSourceOffsetInfo(l)
 		m.insert(info)
@@ -201,12 +201,12 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		m.lowerRotr(instr)
 	case ssa.OpcodeSExtend, ssa.OpcodeUExtend:
 		from, to, signed := instr.ExtendData()
-		m.lowerExtend(instr.Arg(), instr.Return(), from, to, signed)
+		m.lowerExtend(instr.Args[0], instr.Return(), from, to, signed)
 	case ssa.OpcodeFcmp:
 		x, y, c := instr.FcmpData()
 		m.lowerFcmp(x, y, instr.Return(), c)
 	case ssa.OpcodeImul:
-		x, y := instr.Arg2()
+		x, y := instr.Args[0], instr.Args[1]
 		result := instr.Return()
 		m.lowerImul(x, y, result)
 	case ssa.OpcodeUndefined:
@@ -225,19 +225,19 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 			m.lowerSelect(c, x, y, instr.Return())
 		}
 	case ssa.OpcodeClz:
-		x := instr.Arg()
+		x := instr.Args[0]
 		result := instr.Return()
 		m.lowerClz(x, result)
 	case ssa.OpcodeCtz:
-		x := instr.Arg()
+		x := instr.Args[0]
 		result := instr.Return()
 		m.lowerCtz(x, result)
 	case ssa.OpcodePopcnt:
-		x := instr.Arg()
+		x := instr.Args[0]
 		result := instr.Return()
 		m.lowerPopcnt(x, result)
 	case ssa.OpcodeFcvtToSint, ssa.OpcodeFcvtToSintSat:
-		x, ctx := instr.Arg2()
+		x, ctx := instr.Args[0], instr.Args[1]
 		result := instr.Return()
 		rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 		rd := m.compiler.VRegOf(result)
@@ -245,7 +245,7 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		m.lowerFpuToInt(rd, rn, ctxVReg, true, x.Type() == types.F64,
 			result.Type().Bits() == 64, op == ssa.OpcodeFcvtToSintSat)
 	case ssa.OpcodeFcvtToUint, ssa.OpcodeFcvtToUintSat:
-		x, ctx := instr.Arg2()
+		x, ctx := instr.Args[0], instr.Args[1]
 		result := instr.Return()
 		rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 		rd := m.compiler.VRegOf(result)
@@ -253,33 +253,33 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		m.lowerFpuToInt(rd, rn, ctxVReg, false, x.Type() == types.F64,
 			result.Type().Bits() == 64, op == ssa.OpcodeFcvtToUintSat)
 	case ssa.OpcodeFcvtFromSint:
-		x := instr.Arg()
+		x := instr.Args[0]
 		result := instr.Return()
 		rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 		rd := m.compiler.VRegOf(result)
 		m.lowerIntToFpu(rd, rn, true, x.Type() == types.I64, result.Type().Bits() == 64)
 	case ssa.OpcodeFcvtFromUint:
-		x := instr.Arg()
+		x := instr.Args[0]
 		result := instr.Return()
 		rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 		rd := m.compiler.VRegOf(result)
 		m.lowerIntToFpu(rd, rn, false, x.Type() == types.I64, result.Type().Bits() == 64)
 	case ssa.OpcodeFdemote:
-		v := instr.Arg()
+		v := instr.Args[0]
 		rn := m.getOperand_NR(m.compiler.ValueDefinition(v), extModeNone)
 		rd := m.compiler.VRegOf(instr.Return())
 		cnt := m.allocateInstr()
 		cnt.asFpuRR(fpuUniOpCvt64To32, rd, rn, false)
 		m.insert(cnt)
 	case ssa.OpcodeFpromote:
-		v := instr.Arg()
+		v := instr.Args[0]
 		rn := m.getOperand_NR(m.compiler.ValueDefinition(v), extModeNone)
 		rd := m.compiler.VRegOf(instr.Return())
 		cnt := m.allocateInstr()
 		cnt.asFpuRR(fpuUniOpCvt32To64, rd, rn, true)
 		m.insert(cnt)
 	case ssa.OpcodeIreduce:
-		rn := m.getOperand_NR(m.compiler.ValueDefinition(instr.Arg()), extModeNone)
+		rn := m.getOperand_NR(m.compiler.ValueDefinition(instr.Args[0]), extModeNone)
 		retVal := instr.Return()
 		rd := m.compiler.VRegOf(retVal)
 
@@ -290,23 +290,23 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		mov.asMove32(rd, rn.reg())
 		m.insert(mov)
 	case ssa.OpcodeFneg:
-		m.lowerFpuUniOp(fpuUniOpNeg, instr.Arg(), instr.Return())
+		m.lowerFpuUniOp(fpuUniOpNeg, instr.Args[0], instr.Return())
 	case ssa.OpcodeSqrt:
-		m.lowerFpuUniOp(fpuUniOpSqrt, instr.Arg(), instr.Return())
+		m.lowerFpuUniOp(fpuUniOpSqrt, instr.Args[0], instr.Return())
 	case ssa.OpcodeCeil:
-		m.lowerFpuUniOp(fpuUniOpRoundPlus, instr.Arg(), instr.Return())
+		m.lowerFpuUniOp(fpuUniOpRoundPlus, instr.Args[0], instr.Return())
 	case ssa.OpcodeFloor:
-		m.lowerFpuUniOp(fpuUniOpRoundMinus, instr.Arg(), instr.Return())
+		m.lowerFpuUniOp(fpuUniOpRoundMinus, instr.Args[0], instr.Return())
 	case ssa.OpcodeTrunc:
-		m.lowerFpuUniOp(fpuUniOpRoundZero, instr.Arg(), instr.Return())
+		m.lowerFpuUniOp(fpuUniOpRoundZero, instr.Args[0], instr.Return())
 	case ssa.OpcodeNearest:
-		m.lowerFpuUniOp(fpuUniOpRoundNearest, instr.Arg(), instr.Return())
+		m.lowerFpuUniOp(fpuUniOpRoundNearest, instr.Args[0], instr.Return())
 	case ssa.OpcodeFabs:
-		m.lowerFpuUniOp(fpuUniOpAbs, instr.Arg(), instr.Return())
+		m.lowerFpuUniOp(fpuUniOpAbs, instr.Args[0], instr.Return())
 	case ssa.OpcodeBitcast:
 		m.lowerBitcast(instr)
 	case ssa.OpcodeFcopysign:
-		x, y := instr.Arg2()
+		x, y := instr.Args[0], instr.Args[1]
 		m.lowerFcopysign(x, y, instr.Return())
 	case ssa.OpcodeSdiv, ssa.OpcodeUdiv:
 		x, y, ctx := instr.Arg3()
@@ -329,23 +329,23 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		v.asLoadFpuConst128(result, lo, hi)
 		m.insert(v)
 	case ssa.OpcodeVbnot:
-		x := instr.Arg()
+		x := instr.Args[0]
 		ins := m.allocateInstr()
 		rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 		rd := m.compiler.VRegOf(instr.Return())
 		ins.asVecMisc(vecOpNot, rd, rn, vecArrangement16B)
 		m.insert(ins)
 	case ssa.OpcodeVbxor:
-		x, y := instr.Arg2()
+		x, y := instr.Args[0], instr.Args[1]
 		m.lowerVecRRR(vecOpEOR, x, y, instr.Return(), vecArrangement16B)
 	case ssa.OpcodeVbor:
-		x, y := instr.Arg2()
+		x, y := instr.Args[0], instr.Args[1]
 		m.lowerVecRRR(vecOpOrr, x, y, instr.Return(), vecArrangement16B)
 	case ssa.OpcodeVband:
-		x, y := instr.Arg2()
+		x, y := instr.Args[0], instr.Args[1]
 		m.lowerVecRRR(vecOpAnd, x, y, instr.Return(), vecArrangement16B)
 	case ssa.OpcodeVbandnot:
-		x, y := instr.Arg2()
+		x, y := instr.Args[0], instr.Args[1]
 		m.lowerVecRRR(vecOpBic, x, y, instr.Return(), vecArrangement16B)
 	case ssa.OpcodeVbitselect:
 		c, x, y := instr.SelectData()
@@ -726,7 +726,7 @@ func (m *machine) LowerInstr(instr *ssa.Instruction) {
 		m.insert(dup)
 
 	case ssa.OpcodeWideningPairwiseDotProductS:
-		x, y := instr.Arg2()
+		x, y := instr.Args[0], instr.Args[1]
 		xx, yy := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone),
 			m.getOperand_NR(m.compiler.ValueDefinition(y), extModeNone)
 		tmp, tmp2 := operandNR(m.compiler.AllocateVReg(types.V128)), operandNR(m.compiler.AllocateVReg(types.V128))
@@ -1096,7 +1096,7 @@ func (m *machine) lowerVhighBits(rm operand, rd regalloc.VReg, arr vecArrangemen
 	}
 }
 
-func (m *machine) lowerVecMisc(op vecOp, instr *ssa.Instruction) {
+func (m *machine) lowerVecMisc(op vecOp, instr *ssa.Value) {
 	x, lane := instr.ArgWithLane()
 	arr := ssaLaneToArrangement(lane)
 	ins := m.allocateInstr()
@@ -1106,7 +1106,7 @@ func (m *machine) lowerVecMisc(op vecOp, instr *ssa.Instruction) {
 	m.insert(ins)
 }
 
-func (m *machine) lowerVecRRR(op vecOp, x, y, ret ssa.Value, arr vecArrangement) {
+func (m *machine) lowerVecRRR(op vecOp, x, y, ret ssa.Var, arr vecArrangement) {
 	ins := m.allocateInstr()
 	rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 	rm := m.getOperand_NR(m.compiler.ValueDefinition(y), extModeNone)
@@ -1165,7 +1165,7 @@ func (m *machine) lowerVIMul(rd regalloc.VReg, rn, rm operand, arr vecArrangemen
 	}
 }
 
-func (m *machine) lowerVMinMaxPseudo(instr *ssa.Instruction, max bool) {
+func (m *machine) lowerVMinMaxPseudo(instr *ssa.Value, max bool) {
 	x, y, lane := instr.Arg2WithLane()
 	arr := ssaLaneToArrangement(lane)
 
@@ -1260,7 +1260,7 @@ func (m *machine) exitIfNot(execCtxVReg regalloc.VReg, c cond, cond64bit bool, c
 	cbr.asCondBr(c, l, cond64bit)
 }
 
-func (m *machine) lowerFcopysign(x, y, ret ssa.Value) {
+func (m *machine) lowerFcopysign(x, y, ret ssa.Var) {
 	rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 	rm := m.getOperand_NR(m.compiler.ValueDefinition(y), extModeNone)
 	var tmpI, tmpF regalloc.VReg
@@ -1309,7 +1309,7 @@ func (m *machine) lowerFcopysignImpl(rd regalloc.VReg, rn, rm operand, tmpI, tmp
 	m.insert(movDst)
 }
 
-func (m *machine) lowerBitcast(instr *ssa.Instruction) {
+func (m *machine) lowerBitcast(instr *ssa.Value) {
 	v, dstType := instr.BitcastData()
 	srcType := v.Type()
 	rn := m.getOperand_NR(m.compiler.ValueDefinition(v), extModeNone)
@@ -1342,7 +1342,7 @@ func (m *machine) lowerBitcast(instr *ssa.Instruction) {
 	}
 }
 
-func (m *machine) lowerFpuUniOp(op fpuUniOp, in, out ssa.Value) {
+func (m *machine) lowerFpuUniOp(op fpuUniOp, in, out ssa.Var) {
 	rn := m.getOperand_NR(m.compiler.ValueDefinition(in), extModeNone)
 	rd := m.compiler.VRegOf(out)
 
@@ -1408,7 +1408,7 @@ func (m *machine) lowerIntToFpu(rd regalloc.VReg, rn operand, signed, src64bit, 
 	m.insert(cvt)
 }
 
-func (m *machine) lowerFpuBinOp(si *ssa.Instruction) {
+func (m *machine) lowerFpuBinOp(si *ssa.Value) {
 	instr := m.allocateInstr()
 	var op fpuBinOp
 	switch si.Opcode() {
@@ -1425,7 +1425,7 @@ func (m *machine) lowerFpuBinOp(si *ssa.Instruction) {
 	case ssa.OpcodeFmin:
 		op = fpuBinOpMin
 	}
-	x, y := si.Arg2()
+	x, y := si.Args[0], si.Args[1]
 	xDef, yDef := m.compiler.ValueDefinition(x), m.compiler.ValueDefinition(y)
 	rn := m.getOperand_NR(xDef, extModeNone)
 	rm := m.getOperand_NR(yDef, extModeNone)
@@ -1434,8 +1434,8 @@ func (m *machine) lowerFpuBinOp(si *ssa.Instruction) {
 	m.insert(instr)
 }
 
-func (m *machine) lowerSubOrAdd(si *ssa.Instruction, add bool) {
-	x, y := si.Arg2()
+func (m *machine) lowerSubOrAdd(si *ssa.Value, add bool) {
+	x, y := si.Args[0], si.Args[1]
 	if !x.Type().IsInt() {
 		panic("BUG?")
 	}
@@ -1477,7 +1477,7 @@ func (m *machine) InsertMove(dst, src regalloc.VReg, typ *types.Type) {
 	m.insert(instr)
 }
 
-func (m *machine) lowerIcmp(si *ssa.Instruction) {
+func (m *machine) lowerIcmp(si *ssa.Value) {
 	x, y, c := si.IcmpData()
 	flag := condFlagFromSSAIntegerCmpCond(c)
 
@@ -1508,7 +1508,7 @@ func (m *machine) lowerIcmp(si *ssa.Instruction) {
 	m.insert(cset)
 }
 
-func (m *machine) lowerVIcmp(si *ssa.Instruction) {
+func (m *machine) lowerVIcmp(si *ssa.Value) {
 	x, y, c, lane := si.VIcmpData()
 	flag := condFlagFromSSAIntegerCmpCond(c)
 	arr := ssaLaneToArrangement(lane)
@@ -1564,7 +1564,7 @@ func (m *machine) lowerVIcmp(si *ssa.Instruction) {
 	}
 }
 
-func (m *machine) lowerVFcmp(si *ssa.Instruction) {
+func (m *machine) lowerVFcmp(si *ssa.Value) {
 	x, y, c, lane := si.VFcmpData()
 	flag := condFlagFromSSAFloatCmpCond(c)
 	arr := ssaLaneToArrangement(lane)
@@ -1634,8 +1634,8 @@ func (m *machine) lowerVfpuFromInt(rd regalloc.VReg, rn operand, arr vecArrangem
 	m.insert(cvt)
 }
 
-func (m *machine) lowerShifts(si *ssa.Instruction, ext extMode, aluOp aluOp) {
-	x, amount := si.Arg2()
+func (m *machine) lowerShifts(si *ssa.Value, ext extMode, aluOp aluOp) {
+	x, amount := si.Args[0], si.Args[1]
 	rn := m.getOperand_NR(m.compiler.ValueDefinition(x), ext)
 	rm := m.getOperand_ShiftImm_NR(m.compiler.ValueDefinition(amount), ext, x.Type().Bits())
 	rd := m.compiler.VRegOf(si.Return())
@@ -1645,8 +1645,8 @@ func (m *machine) lowerShifts(si *ssa.Instruction, ext extMode, aluOp aluOp) {
 	m.insert(alu)
 }
 
-func (m *machine) lowerBitwiseAluOp(si *ssa.Instruction, op aluOp, ignoreResult bool) {
-	x, y := si.Arg2()
+func (m *machine) lowerBitwiseAluOp(si *ssa.Value, op aluOp, ignoreResult bool) {
+	x, y := si.Args[0], si.Args[1]
 
 	xDef, yDef := m.compiler.ValueDefinition(x), m.compiler.ValueDefinition(y)
 	rn := m.getOperand_NR(xDef, extModeNone)
@@ -1675,8 +1675,8 @@ func (m *machine) lowerBitwiseAluOp(si *ssa.Instruction, op aluOp, ignoreResult 
 	m.insert(alu)
 }
 
-func (m *machine) lowerRotl(si *ssa.Instruction) {
-	x, y := si.Arg2()
+func (m *machine) lowerRotl(si *ssa.Value) {
+	x, y := si.Args[0], si.Args[1]
 	r := si.Return()
 	_64 := r.Type().Bits() == 64
 
@@ -1704,8 +1704,8 @@ func (m *machine) lowerRotlImpl(rd regalloc.VReg, rn, rm operand, tmp regalloc.V
 	m.insert(alu)
 }
 
-func (m *machine) lowerRotr(si *ssa.Instruction) {
-	x, y := si.Arg2()
+func (m *machine) lowerRotr(si *ssa.Value) {
+	x, y := si.Args[0], si.Args[1]
 
 	xDef, yDef := m.compiler.ValueDefinition(x), m.compiler.ValueDefinition(y)
 	rn := m.getOperand_NR(xDef, extModeNone)
@@ -1717,7 +1717,7 @@ func (m *machine) lowerRotr(si *ssa.Instruction) {
 	m.insert(alu)
 }
 
-func (m *machine) lowerExtend(arg, ret ssa.Value, from, to byte, signed bool) {
+func (m *machine) lowerExtend(arg, ret ssa.Var, from, to byte, signed bool) {
 	rd := m.compiler.VRegOf(ret)
 	def := m.compiler.ValueDefinition(arg)
 
@@ -1750,7 +1750,7 @@ func (m *machine) lowerExtend(arg, ret ssa.Value, from, to byte, signed bool) {
 	m.insert(ext)
 }
 
-func (m *machine) lowerFcmp(x, y, result ssa.Value, c ssa.FloatCmpCond) {
+func (m *machine) lowerFcmp(x, y, result ssa.Var, c ssa.FloatCmpCond) {
 	rn, rm := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone), m.getOperand_NR(m.compiler.ValueDefinition(y), extModeNone)
 
 	fc := m.allocateInstr()
@@ -1762,7 +1762,7 @@ func (m *machine) lowerFcmp(x, y, result ssa.Value, c ssa.FloatCmpCond) {
 	m.insert(cset)
 }
 
-func (m *machine) lowerImul(x, y, result ssa.Value) {
+func (m *machine) lowerImul(x, y, result ssa.Var) {
 	rd := m.compiler.VRegOf(result)
 	rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 	rm := m.getOperand_NR(m.compiler.ValueDefinition(y), extModeNone)
@@ -1774,7 +1774,7 @@ func (m *machine) lowerImul(x, y, result ssa.Value) {
 	m.insert(mul)
 }
 
-func (m *machine) lowerClz(x, result ssa.Value) {
+func (m *machine) lowerClz(x, result ssa.Var) {
 	rd := m.compiler.VRegOf(result)
 	rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 	clz := m.allocateInstr()
@@ -1782,7 +1782,7 @@ func (m *machine) lowerClz(x, result ssa.Value) {
 	m.insert(clz)
 }
 
-func (m *machine) lowerCtz(x, result ssa.Value) {
+func (m *machine) lowerCtz(x, result ssa.Var) {
 	rd := m.compiler.VRegOf(result)
 	rn := m.getOperand_NR(m.compiler.ValueDefinition(x), extModeNone)
 	rbit := m.allocateInstr()
@@ -1801,7 +1801,7 @@ func (m *machine) lowerCtz(x, result ssa.Value) {
 	m.insert(clz)
 }
 
-func (m *machine) lowerPopcnt(x, result ssa.Value) {
+func (m *machine) lowerPopcnt(x, result ssa.Var) {
 	// arm64 doesn't have an instruction for population count on scalar register,
 	// so we use the vector instruction `cnt`.
 	// This is exactly what the official Go implements bits.OneCount.
@@ -1894,7 +1894,7 @@ func (m *machine) lowerExitWithCode(execCtxVReg regalloc.VReg, code wazevoapi.Ex
 	m.insert(exitSeq)
 }
 
-func (m *machine) lowerIcmpToFlag(x, y ssa.Value, signed bool) {
+func (m *machine) lowerIcmpToFlag(x, y ssa.Var, signed bool) {
 	if x.Type() != y.Type() {
 		panic(
 			fmt.Sprintf("TODO(maybe): support icmp with different types: v%d=%s != v%d=%s",
@@ -1921,7 +1921,7 @@ func (m *machine) lowerIcmpToFlag(x, y ssa.Value, signed bool) {
 	m.insert(alu)
 }
 
-func (m *machine) lowerFcmpToFlag(x, y ssa.Value) {
+func (m *machine) lowerFcmpToFlag(x, y ssa.Var) {
 	if x.Type() != y.Type() {
 		panic("TODO(maybe): support icmp with different types")
 	}
@@ -1933,7 +1933,7 @@ func (m *machine) lowerFcmpToFlag(x, y ssa.Value) {
 	m.insert(cmp)
 }
 
-func (m *machine) lowerExitIfTrueWithCode(execCtxVReg regalloc.VReg, cond ssa.Value, code wazevoapi.ExitCode) {
+func (m *machine) lowerExitIfTrueWithCode(execCtxVReg regalloc.VReg, cond ssa.Var, code wazevoapi.ExitCode) {
 	condDef := m.compiler.ValueDefinition(cond)
 	if !m.compiler.MatchInstr(condDef, ssa.OpcodeIcmp) {
 		panic("TODO: OpcodeExitIfTrueWithCode must come after Icmp at the moment: " + condDef.Instr.Opcode().String())
@@ -1961,7 +1961,7 @@ func (m *machine) lowerExitIfTrueWithCode(execCtxVReg regalloc.VReg, cond ssa.Va
 	cbr.asCondBr(condFlagFromSSAIntegerCmpCond(c).invert().asCond(), l, false /* ignored */)
 }
 
-func (m *machine) lowerSelect(c, x, y, result ssa.Value) {
+func (m *machine) lowerSelect(c, x, y, result ssa.Var) {
 	cvalDef := m.compiler.ValueDefinition(c)
 
 	var cc condFlag
@@ -2047,7 +2047,7 @@ func (m *machine) lowerSelectVec(rc, rn, rm operand, rd regalloc.VReg) {
 	m.insert(mov2)
 }
 
-func (m *machine) lowerAtomicRmw(si *ssa.Instruction) {
+func (m *machine) lowerAtomicRmw(si *ssa.Value) {
 	ssaOp, size := si.AtomicRmwData()
 
 	var op atomicRmwOp
@@ -2072,7 +2072,7 @@ func (m *machine) lowerAtomicRmw(si *ssa.Instruction) {
 		panic(fmt.Sprintf("unknown ssa atomic rmw op: %s", ssaOp))
 	}
 
-	addr, val := si.Arg2()
+	addr, val := si.Args[0], si.Args[1]
 	addrDef, valDef := m.compiler.ValueDefinition(addr), m.compiler.ValueDefinition(val)
 	rn := m.getOperand_NR(addrDef, extModeNone)
 	rt := m.compiler.VRegOf(si.Return())
@@ -2107,7 +2107,7 @@ func (m *machine) lowerAtomicRmwImpl(op atomicRmwOp, rn, rs, rt, tmp regalloc.VR
 	m.insert(rmw)
 }
 
-func (m *machine) lowerAtomicCas(si *ssa.Instruction) {
+func (m *machine) lowerAtomicCas(si *ssa.Value) {
 	addr, exp, repl := si.Arg3()
 	size := si.AtomicTargetSize()
 
@@ -2146,8 +2146,8 @@ func (m *machine) lowerAtomicCasImpl(rn, rs, rt regalloc.VReg, size uint64) {
 	m.insert(cas)
 }
 
-func (m *machine) lowerAtomicLoad(si *ssa.Instruction) {
-	addr := si.Arg()
+func (m *machine) lowerAtomicLoad(si *ssa.Value) {
+	addr := si.Args[0]
 	size := si.AtomicTargetSize()
 
 	addrDef := m.compiler.ValueDefinition(addr)
@@ -2163,8 +2163,8 @@ func (m *machine) lowerAtomicLoadImpl(rn, rt regalloc.VReg, size uint64) {
 	m.insert(ld)
 }
 
-func (m *machine) lowerAtomicStore(si *ssa.Instruction) {
-	addr, val := si.Arg2()
+func (m *machine) lowerAtomicStore(si *ssa.Value) {
+	addr, val := si.Args[0], si.Args[1]
 	size := si.AtomicTargetSize()
 
 	addrDef := m.compiler.ValueDefinition(addr)

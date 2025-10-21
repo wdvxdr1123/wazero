@@ -19,7 +19,7 @@ type (
 	// loweringState is used to keep the state of lowering.
 	loweringState struct {
 		// values holds the values on the Wasm stack.
-		values           []ssa.Value
+		values           []ssa.Var
 		controlFrames    []controlFrame
 		unreachable      bool
 		unreachableDepth int
@@ -37,7 +37,7 @@ type (
 		followingBlock *ssa.BasicBlock
 		blockType *wasm.FunctionType
 		// clonedArgs hold the arguments to Else block.
-		clonedArgs []ssa.Value
+		clonedArgs []ssa.Var
 	}
 
 	controlFrameKind byte
@@ -100,23 +100,23 @@ func (l *loweringState) reset() {
 	l.unreachableDepth = 0
 }
 
-func (l *loweringState) peek() (ret ssa.Value) {
+func (l *loweringState) peek() (ret ssa.Var) {
 	tail := len(l.values) - 1
 	return l.values[tail]
 }
 
-func (l *loweringState) pop() (ret ssa.Value) {
+func (l *loweringState) pop() (ret ssa.Var) {
 	tail := len(l.values) - 1
 	ret = l.values[tail]
 	l.values = l.values[:tail]
 	return
 }
 
-func (l *loweringState) push(ret ssa.Value) {
+func (l *loweringState) push(ret ssa.Var) {
 	l.values = append(l.values, ret)
 }
 
-func (c *Compiler) nPeekDup(n int) []ssa.Value {
+func (c *Compiler) nPeekDup(n int) []ssa.Var {
 	if n == 0 {
 		return nil
 	}
@@ -124,7 +124,7 @@ func (c *Compiler) nPeekDup(n int) []ssa.Value {
 	l := c.state()
 	tail := len(l.values)
 
-	args := make([]ssa.Value, 0, n)
+	args := make([]ssa.Var, 0, n)
 	args = append(args, l.values[tail-n:tail]...)
 	return args
 }
@@ -581,7 +581,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 					types.I64,
 				).Insert(builder).Return()
 
-			args := []ssa.Value{c.execCtxPtrValue, tableIndexVal, num, r}
+			args := []ssa.Var{c.execCtxPtrValue, tableIndexVal, num, r}
 			callGrowRet := builder.
 				AllocateInstruction().
 				AsCallIndirect(tableGrowPtr, &c.tableGrowSig, args).
@@ -696,7 +696,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			builder.SetCurrentBlock(beforeLoop)
 			builder.AllocateInstruction().AsStore(ssa.OpcodeStore, value, addr, 0).Insert(builder)
 			eight := builder.AllocateInstruction().AsIconst64(8).Insert(builder).Return()
-			c.insertJumpToBlock([]ssa.Value{eight}, loopBlk)
+			c.insertJumpToBlock([]ssa.Var{eight}, loopBlk)
 
 			builder.SetCurrentBlock(loopBlk)
 			dstAddr := builder.AllocateInstruction().AsIadd(addr, loopVar).Insert(builder).Return()
@@ -773,7 +773,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			builder.SetCurrentBlock(beforeLoop)
 			builder.AllocateInstruction().AsStore(ssa.OpcodeIstore8, value, addr, 0).Insert(builder)
 			one := builder.AllocateInstruction().AsIconst64(1).Insert(builder).Return()
-			c.insertJumpToBlock([]ssa.Value{one}, loopBlk)
+			c.insertJumpToBlock([]ssa.Var{one}, loopBlk)
 
 			builder.SetCurrentBlock(loopBlk)
 			dstAddr := builder.AllocateInstruction().AsIadd(addr, loopVar).Insert(builder).Return()
@@ -1138,7 +1138,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 
-		var memSizeInBytes ssa.Value
+		var memSizeInBytes ssa.Var
 		if c.offset.LocalMemoryBegin < 0 {
 			memInstPtr := builder.AllocateInstruction().
 				AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64).
@@ -1180,7 +1180,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				types.I64,
 			).Insert(builder).Return()
 
-		args := []ssa.Value{c.execCtxPtrValue, pages}
+		args := []ssa.Var{c.execCtxPtrValue, pages}
 		callGrowRet := builder.
 			AllocateInstruction().
 			AsCallIndirect(memoryGrowPtr, &c.memoryGrowSig, args).
@@ -1350,7 +1350,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			blockType:                    bt,
 		})
 
-		args := make([]ssa.Value, 0, originalLen)
+		args := make([]ssa.Var, 0, originalLen)
 		args = append(args, state.values[originalLen:]...)
 
 		// jump to the header of loop.
@@ -1365,7 +1365,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 					types.I64,
 				).Insert(builder).Return()
 
-			args := []ssa.Value{c.execCtxPtrValue}
+			args := []ssa.Var{c.execCtxPtrValue}
 			builder.AllocateInstruction().
 				AsCallIndirect(checkModuleExitCodePtr, &c.checkModuleExitCodeSig, args).
 				Insert(builder)
@@ -1388,7 +1388,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		// multiple definitions (one in Then and another in Else blocks).
 		c.addBlockParamsFromWasmTypes(bt.Results, followingBlk)
 
-		args := make([]ssa.Value, 0, len(bt.Params))
+		args := make([]ssa.Var, 0, len(bt.Params))
 		args = append(args, state.values[len(state.values)-len(bt.Params):]...)
 
 		curBlock := builder.CurrentBlock()
@@ -3129,7 +3129,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 					types.I64,
 				).Insert(builder).Return()
 
-			args := []ssa.Value{c.execCtxPtrValue, timeout, exp, addr}
+			args := []ssa.Var{c.execCtxPtrValue, timeout, exp, addr}
 			memoryWaitRet := builder.AllocateInstruction().
 				AsCallIndirect(memoryWaitPtr, sig, args).
 				Insert(builder).Return()
@@ -3150,7 +3150,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 					wazevoapi.ExecutionContextOffsetMemoryNotifyTrampolineAddress.U32(),
 					types.I64,
 				).Insert(builder).Return()
-			args := []ssa.Value{c.execCtxPtrValue, count, addr}
+			args := []ssa.Var{c.execCtxPtrValue, count, addr}
 			memoryNotifyRet := builder.AllocateInstruction().
 				AsCallIndirect(memoryNotifyPtr, &c.memoryNotifySig, args).
 				Insert(builder).Return()
@@ -3354,7 +3354,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				types.I64,
 			).Insert(builder).Return()
 
-		args := []ssa.Value{c.execCtxPtrValue, funcIndexVal}
+		args := []ssa.Var{c.execCtxPtrValue, funcIndexVal}
 		refFuncRet := builder.
 			AllocateInstruction().
 			AsCallIndirect(refFuncPtr, &c.refFuncSig, args).
@@ -3439,7 +3439,7 @@ func (c *Compiler) lowerReturn(builder ssa.Builder) {
 	builder.InsertInstruction(instr)
 }
 
-func (c *Compiler) lowerExtMul(v1, v2 ssa.Value, from, to types.VecLane, signed, low bool) ssa.Value {
+func (c *Compiler) lowerExtMul(v1, v2 ssa.Var, from, to types.VecLane, signed, low bool) ssa.Var {
 	// TODO: The sequence `Widen; Widen; VIMul` can be substituted for a single instruction on some ISAs.
 	builder := c.ssaBuilder
 
@@ -3454,7 +3454,7 @@ const (
 	tableInstanceLenOffset         = tableInstanceBaseAddressOffset + 8
 )
 
-func (c *Compiler) lowerAccessTableWithBoundsCheck(tableIndex uint32, elementOffsetInTable ssa.Value) (elementAddress ssa.Value) {
+func (c *Compiler) lowerAccessTableWithBoundsCheck(tableIndex uint32, elementOffsetInTable ssa.Var) (elementAddress ssa.Var) {
 	builder := c.ssaBuilder
 
 	// Load the table.
@@ -3499,7 +3499,7 @@ func (c *Compiler) lowerAccessTableWithBoundsCheck(tableIndex uint32, elementOff
 	return calcElementAddressInTable.Return()
 }
 
-func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Signature, args []ssa.Value, funcRefOrPtrValue ssa.Value) {
+func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Signature, args []ssa.Var, funcRefOrPtrValue ssa.Var) {
 	builder := c.ssaBuilder
 	state := c.state()
 	var typIndex wasm.Index
@@ -3527,14 +3527,14 @@ func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Sign
 	tail := len(state.values) - argN
 	vs := state.values[tail:]
 	state.values = state.values[:tail]
-	args = make([]ssa.Value, 0, 2+len(vs))
+	args = make([]ssa.Var, 0, 2+len(vs))
 	args = append(args, c.execCtxPtrValue)
 
 	sig = c.signatures[typ]
 	if fnIndex >= c.m.ImportFunctionCount {
 		args = append(args, c.moduleCtxPtrValue) // This case the callee module is itself.
 		args = append(args, vs...)
-		return false, sig, args, ssa.ValueFromFuncRef(FunctionIndexToFuncRef(fnIndex))
+		return false, sig, args, ssa.VarFromFuncRef(FunctionIndexToFuncRef(fnIndex))
 	} else {
 		// This case we have to read the address of the imported function from the module context.
 		moduleCtx := c.moduleCtxPtrValue
@@ -3558,7 +3558,7 @@ func (c *Compiler) lowerCall(fnIndex uint32) {
 
 	call := builder.AllocateInstruction()
 	if isIndirect {
-		call.AsCallIndirect(ssa.Value(funcRefOrPtrValue), sig, args)
+		call.AsCallIndirect(ssa.Var(funcRefOrPtrValue), sig, args)
 	} else {
 		call.AsCall(funcRefOrPtrValue.FuncRef(), sig, args)
 	}
@@ -3575,7 +3575,7 @@ func (c *Compiler) lowerCall(fnIndex uint32) {
 	c.reloadAfterCall()
 }
 
-func (c *Compiler) prepareCallIndirect(typeIndex, tableIndex uint32) (ssa.Value, *wasm.FunctionType, []ssa.Value) {
+func (c *Compiler) prepareCallIndirect(typeIndex, tableIndex uint32) (ssa.Var, *wasm.FunctionType, []ssa.Var) {
 	builder := c.ssaBuilder
 	state := c.state()
 
@@ -3636,7 +3636,7 @@ func (c *Compiler) prepareCallIndirect(typeIndex, tableIndex uint32) (ssa.Value,
 	tail := len(state.values) - len(typ.Params)
 	vs := state.values[tail:]
 	state.values = state.values[:tail]
-	args := make([]ssa.Value, 0, 2+len(vs))
+	args := make([]ssa.Var, 0, 2+len(vs))
 	args = append(args, c.execCtxPtrValue, moduleContextOpaquePtr)
 	args = append(args, vs...)
 
@@ -3685,7 +3685,7 @@ func (c *Compiler) lowerTailCallReturnCall(fnIndex uint32) {
 
 	call := builder.AllocateInstruction()
 	if isIndirect {
-		call.AsTailCallReturnCallIndirect(ssa.Value(funcRefOrPtrValue), sig, args)
+		call.AsTailCallReturnCallIndirect(ssa.Var(funcRefOrPtrValue), sig, args)
 	} else {
 		call.AsTailCallReturnCall(funcRefOrPtrValue.FuncRef(), sig, args)
 	}
@@ -3735,8 +3735,8 @@ func (c *Compiler) lowerTailCallReturnCallIndirect(typeIndex, tableIndex uint32)
 }
 
 // memOpSetup inserts the bounds check and calculates the address of the memory operation (loads/stores).
-func (c *Compiler) memOpSetup(baseAddr ssa.Value, constOffset, operationSizeInBytes uint64) (address ssa.Value) {
-	address = ssa.ValueInvalid
+func (c *Compiler) memOpSetup(baseAddr ssa.Var, constOffset, operationSizeInBytes uint64) (address ssa.Var) {
+	address = ssa.InvalidVar
 	builder := c.ssaBuilder
 
 	baseAddrID := baseAddr.ID()
@@ -3788,7 +3788,7 @@ func (c *Compiler) memOpSetup(baseAddr ssa.Value, constOffset, operationSizeInBy
 	builder.InsertInstruction(exitIfNZ)
 
 	// Load the value from memBase + extBaseAddr.
-	if address == ssa.ValueInvalid { // Reuse the value if the memBase is already calculated at this point.
+	if address == ssa.InvalidVar { // Reuse the value if the memBase is already calculated at this point.
 		memBase := c.getMemoryBaseValue(false)
 		address = builder.AllocateInstruction().
 			AsIadd(memBase, extBaseAddr).Insert(builder).Return()
@@ -3801,11 +3801,11 @@ func (c *Compiler) memOpSetup(baseAddr ssa.Value, constOffset, operationSizeInBy
 
 // atomicMemOpSetup inserts the bounds check and calculates the address of the memory operation (loads/stores), including
 // the constant offset and performs an alignment check on the final address.
-func (c *Compiler) atomicMemOpSetup(baseAddr ssa.Value, constOffset, operationSizeInBytes uint64) (address ssa.Value) {
+func (c *Compiler) atomicMemOpSetup(baseAddr ssa.Var, constOffset, operationSizeInBytes uint64) (address ssa.Var) {
 	builder := c.ssaBuilder
 
 	addrWithoutOffset := c.memOpSetup(baseAddr, constOffset, operationSizeInBytes)
-	var addr ssa.Value
+	var addr ssa.Var
 	if constOffset == 0 {
 		addr = addrWithoutOffset
 	} else {
@@ -3818,7 +3818,7 @@ func (c *Compiler) atomicMemOpSetup(baseAddr ssa.Value, constOffset, operationSi
 	return addr
 }
 
-func (c *Compiler) memAlignmentCheck(addr ssa.Value, operationSizeInBytes uint64) {
+func (c *Compiler) memAlignmentCheck(addr ssa.Var, operationSizeInBytes uint64) {
 	if operationSizeInBytes == 1 {
 		return // No alignment restrictions when accessing a byte
 	}
@@ -3841,8 +3841,8 @@ func (c *Compiler) memAlignmentCheck(addr ssa.Value, operationSizeInBytes uint64
 	builder.AllocateInstruction().AsExitIfTrueWithCode(c.execCtxPtrValue, cmp, wazevoapi.ExitCodeUnalignedAtomic).Insert(builder)
 }
 
-func (c *Compiler) callMemmove(dst, src, size ssa.Value) {
-	args := []ssa.Value{dst, src, size}
+func (c *Compiler) callMemmove(dst, src, size ssa.Var) {
+	args := []ssa.Var{dst, src, size}
 	if size.Type() != types.I64 {
 		panic("TODO: memmove size must be i64")
 	}
@@ -3882,7 +3882,7 @@ func (c *Compiler) reloadMemoryBaseLen() {
 	c.resetAbsoluteAddressInSafeBounds()
 }
 
-func (c *Compiler) setWasmGlobalValue(index wasm.Index, v ssa.Value) {
+func (c *Compiler) setWasmGlobalValue(index wasm.Index, v ssa.Var) {
 	variable := c.globalVariables[index]
 	opaqueOffset := c.offset.GlobalInstanceOffset(index)
 
@@ -3906,7 +3906,7 @@ func (c *Compiler) setWasmGlobalValue(index wasm.Index, v ssa.Value) {
 	builder.DefineVariableInCurrentBB(variable, v)
 }
 
-func (c *Compiler) getWasmGlobalValue(index wasm.Index, forceLoad bool) ssa.Value {
+func (c *Compiler) getWasmGlobalValue(index wasm.Index, forceLoad bool) ssa.Var {
 	variable := c.globalVariables[index]
 	typ := c.globalVariablesTypes[index]
 	opaqueOffset := c.offset.GlobalInstanceOffset(index)
@@ -3918,7 +3918,7 @@ func (c *Compiler) getWasmGlobalValue(index wasm.Index, forceLoad bool) ssa.Valu
 		}
 	}
 
-	var load *ssa.Instruction
+	var load *ssa.Value
 	if index < c.m.ImportGlobalCount {
 		loadGlobalInstPtr := builder.AllocateInstruction()
 		loadGlobalInstPtr.AsLoad(c.moduleCtxPtrValue, uint32(opaqueOffset), types.I64)
@@ -3940,7 +3940,7 @@ const (
 	memoryInstanceBufSizeOffset = memoryInstanceBufOffset + 8
 )
 
-func (c *Compiler) getMemoryBaseValue(forceReload bool) ssa.Value {
+func (c *Compiler) getMemoryBaseValue(forceReload bool) ssa.Var {
 	builder := c.ssaBuilder
 	variable := c.memoryBaseVariable
 	if !forceReload {
@@ -3949,7 +3949,7 @@ func (c *Compiler) getMemoryBaseValue(forceReload bool) ssa.Value {
 		}
 	}
 
-	var ret ssa.Value
+	var ret ssa.Var
 	if c.offset.LocalMemoryBegin < 0 {
 		loadMemInstPtr := builder.AllocateInstruction()
 		loadMemInstPtr.AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64)
@@ -3971,7 +3971,7 @@ func (c *Compiler) getMemoryBaseValue(forceReload bool) ssa.Value {
 	return ret
 }
 
-func (c *Compiler) getMemoryLenValue(forceReload bool) ssa.Value {
+func (c *Compiler) getMemoryLenValue(forceReload bool) ssa.Var {
 	variable := c.memoryLenVariable
 	builder := c.ssaBuilder
 	if !forceReload && !c.memoryShared {
@@ -3980,7 +3980,7 @@ func (c *Compiler) getMemoryLenValue(forceReload bool) ssa.Value {
 		}
 	}
 
-	var ret ssa.Value
+	var ret ssa.Var
 	if c.offset.LocalMemoryBegin < 0 {
 		loadMemInstPtr := builder.AllocateInstruction()
 		loadMemInstPtr.AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64)
@@ -4123,7 +4123,7 @@ func (c *Compiler) readMemArg() (align, offset uint32) {
 }
 
 // insertJumpToBlock inserts a jump instruction to the given block in the current block.
-func (c *Compiler) insertJumpToBlock(args []ssa.Value, targetBlk *ssa.BasicBlock) {
+func (c *Compiler) insertJumpToBlock(args []ssa.Var, targetBlk *ssa.BasicBlock) {
 	if targetBlk.ReturnBlock() {
 		if c.needListener {
 			c.callListenerAfter()
@@ -4171,7 +4171,7 @@ func (c *Compiler) results() int {
 	return len(c.wasmFunctionTyp.Results)
 }
 
-func (c *Compiler) lowerBrTable(labels []uint32, index ssa.Value) {
+func (c *Compiler) lowerBrTable(labels []uint32, index ssa.Var) {
 	state := c.state()
 	builder := c.ssaBuilder
 
@@ -4230,7 +4230,7 @@ func (c *Compiler) callListenerBefore() {
 
 	entry := builder.EntryBlock()
 
-	args := []ssa.Value{c.execCtxPtrValue, builder.AllocateInstruction().AsIconst32(c.wasmLocalFunctionIndex).Insert(builder).Return()}
+	args := []ssa.Var{c.execCtxPtrValue, builder.AllocateInstruction().AsIconst32(c.wasmLocalFunctionIndex).Insert(builder).Return()}
 	for i := 2; i < len(entry.Params); i++ {
 		args = append(args, entry.Params[i])
 	}
@@ -4258,7 +4258,7 @@ func (c *Compiler) callListenerAfter() {
 		Return()
 
 	afterSig := c.listenerSignatures[c.wasmFunctionTyp][1]
-	args := []ssa.Value{
+	args := []ssa.Var{
 		c.execCtxPtrValue,
 		builder.AllocateInstruction().AsIconst32(c.wasmLocalFunctionIndex).Insert(builder).Return(),
 	}
@@ -4289,7 +4289,7 @@ func (c *Compiler) dropDataOrElementInstance(index uint32, firstItemOffset wazev
 	builder.AllocateInstruction().AsStore(ssa.OpcodeStore, zero, instPtr, elementOrDataInstanceLenOffset+8).Insert(builder)
 }
 
-func (c *Compiler) dataOrElementInstanceAddr(index uint32, firstItemOffset wazevoapi.Offset) ssa.Value {
+func (c *Compiler) dataOrElementInstanceAddr(index uint32, firstItemOffset wazevoapi.Offset) ssa.Var {
 	builder := c.ssaBuilder
 
 	_1stItemPtr := builder.
@@ -4305,7 +4305,7 @@ func (c *Compiler) dataOrElementInstanceAddr(index uint32, firstItemOffset wazev
 	return instPtr
 }
 
-func (c *Compiler) boundsCheckInDataOrElementInstance(instPtr, offsetInInstance, copySize ssa.Value, exitCode wazevoapi.ExitCode) {
+func (c *Compiler) boundsCheckInDataOrElementInstance(instPtr, offsetInInstance, copySize ssa.Var, exitCode wazevoapi.ExitCode) {
 	builder := c.ssaBuilder
 	dataInstLen := builder.AllocateInstruction().
 		AsLoad(instPtr, elementOrDataInstanceLenOffset, types.I64).
@@ -4320,7 +4320,7 @@ func (c *Compiler) boundsCheckInDataOrElementInstance(instPtr, offsetInInstance,
 		Insert(builder)
 }
 
-func (c *Compiler) boundsCheckInTable(tableIndex uint32, offset, size ssa.Value) (tableInstancePtr ssa.Value) {
+func (c *Compiler) boundsCheckInTable(tableIndex uint32, offset, size ssa.Var) (tableInstancePtr ssa.Var) {
 	builder := c.ssaBuilder
 	dstCeil := builder.AllocateInstruction().AsIadd(offset, size).Insert(builder).Return()
 
@@ -4344,7 +4344,7 @@ func (c *Compiler) boundsCheckInTable(tableIndex uint32, offset, size ssa.Value)
 	return
 }
 
-func (c *Compiler) loadTableBaseAddr(tableInstancePtr ssa.Value) ssa.Value {
+func (c *Compiler) loadTableBaseAddr(tableInstancePtr ssa.Var) ssa.Var {
 	builder := c.ssaBuilder
 	loadTableBaseAddress := builder.
 		AllocateInstruction().
@@ -4353,7 +4353,7 @@ func (c *Compiler) loadTableBaseAddr(tableInstancePtr ssa.Value) ssa.Value {
 	return loadTableBaseAddress.Return()
 }
 
-func (c *Compiler) boundsCheckInMemory(memLen, offset, size ssa.Value) {
+func (c *Compiler) boundsCheckInMemory(memLen, offset, size ssa.Var) {
 	builder := c.ssaBuilder
 	ceil := builder.AllocateInstruction().AsIadd(offset, size).Insert(builder).Return()
 	cmp := builder.AllocateInstruction().

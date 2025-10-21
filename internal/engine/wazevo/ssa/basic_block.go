@@ -21,20 +21,20 @@ import (
 type BasicBlock struct {
 	id    BasicBlockID
 	Kind  BasicBlockKind
-	instr []*Instruction
+	instr []*Value
 	// Params are Values that represent parameters to a basicBlock.
 	// Each parameter can be considered as an output of PHI instruction in traditional SSA.
-	Params []Value
+	Params []Var
 
 	// ControlValue is the value that determines the control flow to this block.
-	ControlValue Value
+	ControlValue Var
 
 	Pred          []*BasicBlock
 	Succ          []*BasicBlock
-	SuccArguments [][]Value
+	SuccArguments [][]Var
 
 	// lastDefinitions maps Variable to its last definition in this block.
-	lastDefinitions map[Variable]Value
+	lastDefinitions map[Variable]Var
 	// unknownsValues are used in builder.findValue. The usage is well-described in the paper.
 	unknownValues []unknownValue
 	// invalid is true if this block is made invalid during optimizations.
@@ -77,7 +77,7 @@ type (
 		// variable is the variable that this unknownValue represents.
 		variable Variable
 		// value is the value that this unknownValue represents.
-		value Value
+		value Var
 	}
 )
 
@@ -136,13 +136,6 @@ func (bb *BasicBlock) ID() BasicBlockID {
 	return bb.id
 }
 
-// PredInfo is the information of a predecessor of a basicBlock.
-// predecessor is determined by a pair of block and the branch instruction used to jump to the successor.
-type PredInfo struct {
-	Block  *BasicBlock
-	Branch *Instruction
-}
-
 func (bb *BasicBlock) EntryBlock() bool {
 	return bb.id == 0
 }
@@ -151,7 +144,7 @@ func (bb *BasicBlock) ReturnBlock() bool {
 	return bb.id == basicBlockIDReturnBlock
 }
 
-func (bb *BasicBlock) AddParam(b Builder, typ *types.Type) Value {
+func (bb *BasicBlock) AddParam(b Builder, typ *types.Type) Var {
 	paramValue := b.allocateValue(typ)
 	bb.Params = append(bb.Params, paramValue)
 	return paramValue
@@ -168,17 +161,17 @@ func (bb *BasicBlock) Sealed() bool {
 }
 
 // insertInstruction implements BasicBlock.InsertInstruction.
-func (bb *BasicBlock) insertInstruction(b *builder, next *Instruction) {
+func (bb *BasicBlock) insertInstruction(next *Value) {
 	bb.instr = append(bb.instr, next)
 }
 
 // Instructions returns the list of instructions in this block.
-func (bb *BasicBlock) Instructions() []*Instruction {
+func (bb *BasicBlock) Instructions() []*Value {
 	return bb.instr
 }
 
 // Head returns the head instruction of this block.
-func (bb *BasicBlock) Head() *Instruction {
+func (bb *BasicBlock) Head() *Value {
 	if len(bb.instr) == 0 {
 		return nil
 	}
@@ -186,7 +179,7 @@ func (bb *BasicBlock) Head() *Instruction {
 }
 
 // Tail returns the tail instruction of this block.
-func (bb *BasicBlock) Tail() *Instruction {
+func (bb *BasicBlock) Tail() *Value {
 	if len(bb.instr) == 0 {
 		return nil
 	}
@@ -198,7 +191,7 @@ func resetBasicBlock(bb *BasicBlock) {
 	bb.Kind = BlockPlain
 	bb.instr = bb.instr[:0]
 	bb.Params = bb.Params[:0]
-	bb.ControlValue = ValueInvalid
+	bb.ControlValue = InvalidVar
 	bb.Pred = bb.Pred[:0]
 	bb.Succ = bb.Succ[:0]
 	bb.SuccArguments = bb.SuccArguments[:0]
@@ -213,26 +206,7 @@ func resetBasicBlock(bb *BasicBlock) {
 	bb.child = nil
 }
 
-// addPred adds a predecessor to this block specified by the branch instruction.
-func (bb *BasicBlock) addPred(pred *BasicBlock) {
-	if bb.sealed {
-		panic("BUG: trying to add predecessor to a sealed block: " + bb.Name())
-	}
-
-	for i := range bb.Pred {
-		existingPred := bb.Pred[i]
-		if existingPred == pred {
-			// If the target is already added, then this must come from the same BrTable,
-			// otherwise such redundant branch should be eliminated by the frontend. (which should be simpler).
-			panic(fmt.Sprintf("BUG: redundant non BrTable jumps in %s whose targes are the same", bb.Name()))
-		}
-	}
-
-	bb.Pred = append(bb.Pred, pred)
-	pred.Succ = append(pred.Succ, bb)
-}
-
-func (bb *BasicBlock) AddEdgeTo(succ *BasicBlock, args ...Value) {
+func (bb *BasicBlock) AddEdgeTo(succ *BasicBlock, args ...Var) {
 	i := bb.findSucc(succ)
 	if i != -1 && bb.Kind != BlockJumpTable {
 		panic("BUG: redundant edge added")
@@ -270,7 +244,7 @@ func (bb *BasicBlock) findSucc(succ *BasicBlock) int {
 	return -1
 }
 
-func (bb *BasicBlock) addSuccArgument(succ *BasicBlock, value Value) {
+func (bb *BasicBlock) addSuccArgument(succ *BasicBlock, value Var) {
 	i := bb.findSucc(succ)
 	if i == -1 {
 		panic("BUG: successor not found when adding successor argument")
@@ -278,7 +252,7 @@ func (bb *BasicBlock) addSuccArgument(succ *BasicBlock, value Value) {
 	bb.SuccArguments[i] = append(bb.SuccArguments[i], value)
 }
 
-func (bb *BasicBlock) succArguments(succ *BasicBlock) []Value {
+func (bb *BasicBlock) succArguments(succ *BasicBlock) []Var {
 	i := bb.findSucc(succ)
 	if i == -1 {
 		panic("BUG: successor not found when getting successor argument")
@@ -312,7 +286,7 @@ func (bb *BasicBlock) formatHeader(b Builder) string {
 func (bb *BasicBlock) formatEnd(b Builder) string {
 	var str strings.Builder
 	str.WriteString(bb.Kind.String())
-	if bb.ControlValue != ValueInvalid {
+	if bb.ControlValue != InvalidVar {
 		str.WriteString(" ")
 		str.WriteString(bb.ControlValue.Format(b))
 	}
@@ -361,7 +335,7 @@ func (bb *BasicBlock) validate(b *builder) {
 	if len(bb.Pred) > 0 {
 		for _, pred := range bb.Pred {
 			found := false
-			var args []Value
+			var args []Var
 			for i, succ := range pred.Succ {
 				if succ == bb {
 					found = true

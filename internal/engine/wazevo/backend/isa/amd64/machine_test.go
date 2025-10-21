@@ -344,7 +344,7 @@ L2:
 
 			ctx.vRegMap[p] = raxVReg
 			ctx.definitions[p] = backend.SSAValueDefinition{V: p}
-			instr := &ssa.Instruction{}
+			instr := &ssa.Value{}
 			instr.AsClz(p)
 			ctx.vRegMap[instr.Return()] = rcxVReg
 			m.lowerClz(instr)
@@ -418,7 +418,7 @@ L2:
 
 			ctx.vRegMap[p] = raxVReg
 			ctx.definitions[p] = backend.SSAValueDefinition{V: p}
-			instr := &ssa.Instruction{}
+			instr := &ssa.Value{}
 			instr.AsCtz(p)
 			ctx.vRegMap[instr.Return()] = rcxVReg
 			m.lowerCtz(instr)

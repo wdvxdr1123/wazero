@@ -213,7 +213,7 @@ func extLoadSignSize(op ssa.Opcode) (size byte, signed bool) {
 	return
 }
 
-func (m *machine) lowerExtLoad(op ssa.Opcode, ptr ssa.Value, offset uint32, ret regalloc.VReg) {
+func (m *machine) lowerExtLoad(op ssa.Opcode, ptr ssa.Var, offset uint32, ret regalloc.VReg) {
 	size, signed := extLoadSignSize(op)
 	amode := m.lowerToAddressMode(ptr, offset, size)
 	load := m.allocateInstr()
@@ -225,7 +225,7 @@ func (m *machine) lowerExtLoad(op ssa.Opcode, ptr ssa.Value, offset uint32, ret 
 	m.insert(load)
 }
 
-func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ *types.Type, ret ssa.Value) {
+func (m *machine) lowerLoad(ptr ssa.Var, offset uint32, typ *types.Type, ret ssa.Var) {
 	amode := m.lowerToAddressMode(ptr, offset, typ.Bits())
 
 	dst := m.compiler.VRegOf(ret)
@@ -243,7 +243,7 @@ func (m *machine) lowerLoad(ptr ssa.Value, offset uint32, typ *types.Type, ret s
 	m.insert(load)
 }
 
-func (m *machine) lowerLoadSplat(ptr ssa.Value, offset uint32, lane types.VecLane, ret ssa.Value) {
+func (m *machine) lowerLoadSplat(ptr ssa.Var, offset uint32, lane types.VecLane, ret ssa.Var) {
 	// vecLoad1R has offset address mode (base+imm) only for post index, so we simply add the offset to the base.
 	base := m.getOperand_NR(m.compiler.ValueDefinition(ptr), extModeNone).nr()
 	offsetReg := m.compiler.AllocateVReg(types.I64)
@@ -257,7 +257,7 @@ func (m *machine) lowerLoadSplat(ptr ssa.Value, offset uint32, lane types.VecLan
 	m.insert(ld1r)
 }
 
-func (m *machine) lowerStore(si *ssa.Instruction) {
+func (m *machine) lowerStore(si *ssa.Value) {
 	// TODO: merge consecutive stores into a single pair store instruction.
 	value, ptr, offset, storeSizeInBits := si.StoreData()
 	amode := m.lowerToAddressMode(ptr, offset, storeSizeInBits)
@@ -269,7 +269,7 @@ func (m *machine) lowerStore(si *ssa.Instruction) {
 }
 
 // lowerToAddressMode converts a pointer to an addressMode that can be used as an operand for load/store instructions.
-func (m *machine) lowerToAddressMode(ptr ssa.Value, offsetBase uint32, size byte) (amode *addressMode) {
+func (m *machine) lowerToAddressMode(ptr ssa.Var, offsetBase uint32, size byte) (amode *addressMode) {
 	// TODO: currently the instruction selection logic doesn't support addressModeKindRegScaledExtended and
 	// addressModeKindRegScaled since collectAddends doesn't take ssa.OpcodeIshl into account. This should be fixed
 	// to support more efficient address resolution.
@@ -357,7 +357,7 @@ func (m *machine) lowerToAddressModeFromAddends(a32s *wazevoapi.Queue[addend32],
 
 var addendsMatchOpcodes = [4]ssa.Opcode{ssa.OpcodeUExtend, ssa.OpcodeSExtend, ssa.OpcodeIadd, ssa.OpcodeIconst}
 
-func (m *machine) collectAddends(ptr ssa.Value) (addends32 *wazevoapi.Queue[addend32], addends64 *wazevoapi.Queue[regalloc.VReg], offset int64) {
+func (m *machine) collectAddends(ptr ssa.Var) (addends32 *wazevoapi.Queue[addend32], addends64 *wazevoapi.Queue[regalloc.VReg], offset int64) {
 	m.addendsWorkQueue.Reset()
 	m.addends32.Reset()
 	m.addends64.Reset()
@@ -370,7 +370,7 @@ func (m *machine) collectAddends(ptr ssa.Value) (addends32 *wazevoapi.Queue[adde
 		switch op := m.compiler.MatchInstrOneOf(def, addendsMatchOpcodes[:]); op {
 		case ssa.OpcodeIadd:
 			// If the addend is an add, we recursively collect its operands.
-			x, y := def.Instr.Arg2()
+			x, y := def.Instr.Args[0], def.Instr.Args[1]
 			m.addendsWorkQueue.Enqueue(x)
 			m.addendsWorkQueue.Enqueue(y)
 			def.Instr.MarkLowered()
@@ -385,7 +385,7 @@ func (m *machine) collectAddends(ptr ssa.Value) (addends32 *wazevoapi.Queue[adde
 			}
 			def.Instr.MarkLowered()
 		case ssa.OpcodeUExtend, ssa.OpcodeSExtend:
-			input := def.Instr.Arg()
+			input := def.Instr.Args[0]
 			if input.Type().Bits() != 32 {
 				panic("illegal size: " + input.Type().String())
 			}

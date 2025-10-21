@@ -22,7 +22,7 @@ func (a addend) String() string {
 }
 
 // lowerToAddressMode converts a pointer to an addressMode that can be used as an operand for load/store instructions.
-func (m *machine) lowerToAddressMode(ptr ssa.Value, offsetBase uint32) (am *amode) {
+func (m *machine) lowerToAddressMode(ptr ssa.Var, offsetBase uint32) (am *amode) {
 	def := m.c.ValueDefinition(ptr)
 
 	if offsetBase&0x80000000 != 0 {
@@ -44,7 +44,7 @@ func (m *machine) lowerToAddressMode(ptr ssa.Value, offsetBase uint32) (am *amod
 
 	if op := m.c.MatchInstrOneOf(def, addendsMatchOpcodes[:]); op == ssa.OpcodeIadd {
 		add := def.Instr
-		x, y := add.Arg2()
+		x, y := add.Args[0], add.Args[1]
 		xDef, yDef := m.c.ValueDefinition(x), m.c.ValueDefinition(y)
 		ax := m.lowerAddend(xDef)
 		ay := m.lowerAddend(yDef)
@@ -147,7 +147,7 @@ func (m *machine) lowerAddend(x backend.SSAValueDefinition) addend {
 // lowerAddendFromInstr takes an instruction returns a Vreg and an offset that can be used in an address mode.
 // The Vreg is regalloc.VRegInvalid if the addend cannot be lowered to a register.
 // The offset is 0 if the addend can be lowered to a register.
-func (m *machine) lowerAddendFromInstr(instr *ssa.Instruction) addend {
+func (m *machine) lowerAddendFromInstr(instr *ssa.Value) addend {
 	instr.MarkLowered()
 	switch op := instr.Opcode(); op {
 	case ssa.OpcodeIconst:
@@ -158,7 +158,7 @@ func (m *machine) lowerAddendFromInstr(instr *ssa.Instruction) addend {
 			return addend{regalloc.VRegInvalid, int64(u64), 0}
 		}
 	case ssa.OpcodeUExtend, ssa.OpcodeSExtend:
-		input := instr.Arg()
+		input := instr.Args[0]
 		inputDef := m.c.ValueDefinition(input)
 		if input.Type().Bits() != 32 {
 			panic("BUG: invalid input type " + input.Type().String())
@@ -175,7 +175,7 @@ func (m *machine) lowerAddendFromInstr(instr *ssa.Instruction) addend {
 		}
 	case ssa.OpcodeIshl:
 		// If the addend is a shift, we can only handle it if the shift amount is a constant.
-		x, amount := instr.Arg2()
+		x, amount := instr.Args[0], instr.Args[1]
 		amountDef := m.c.ValueDefinition(amount)
 		if amountDef.IsFromInstr() && amountDef.Instr.Constant() && amountDef.Instr.ConstantVal() <= 3 {
 			r := m.getOperand_Reg(m.c.ValueDefinition(x))

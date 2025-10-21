@@ -371,7 +371,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 						ext.AsUExtend(v, c.from, c.to)
 					}
 					builder.InsertInstruction(ext)
-					extArg := ext.Arg()
+					extArg := ext.Args[0]
 					ctx.vRegMap[extArg] = regalloc.VReg(10)
 					ctx.definitions[v] = backend.SSAValueDefinition{V: extArg}
 					def = backend.SSAValueDefinition{Instr: ext, V: ext.Return()}
@@ -579,7 +579,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 							ext.AsUExtend(v, c.from, c.to)
 						}
 						builder.InsertInstruction(ext)
-						extArg := ext.Arg()
+						extArg := ext.Args[0]
 						ctx.vRegMap[extArg] = argVReg
 						ctx.vRegMap[ext.Return()] = resultVReg
 						if c.extArgConst {

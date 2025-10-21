@@ -13,11 +13,11 @@ import (
 func TestCompiler_lowerBlockArguments(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		setup func(builder ssa.Builder) (c *compiler, args []ssa.Value, succ *ssa.BasicBlock, verify func(t *testing.T))
+		setup func(builder ssa.Builder) (c *compiler, args []ssa.Var, succ *ssa.BasicBlock, verify func(t *testing.T))
 	}{
 		{
 			name: "all consts",
-			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, *ssa.BasicBlock, func(t *testing.T)) {
+			setup: func(builder ssa.Builder) (*compiler, []ssa.Var, *ssa.BasicBlock, func(t *testing.T)) {
 				entryBlk := builder.AllocateBasicBlock()
 				builder.SetCurrentBlock(entryBlk)
 				i1 := builder.AllocateInstruction()
@@ -41,13 +41,13 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 				succ.AddParam(builder, types.F64)
 
 				var insertedConstInstructions []struct {
-					instr  *ssa.Instruction
+					instr  *ssa.Value
 					target regalloc.VReg
 				}
 				m := &mockMachine{
-					insertLoadConstant: func(instr *ssa.Instruction, vr regalloc.VReg) {
+					insertLoadConstant: func(instr *ssa.Value, vr regalloc.VReg) {
 						insertedConstInstructions = append(insertedConstInstructions, struct {
-							instr  *ssa.Instruction
+							instr  *ssa.Value
 							target regalloc.VReg
 						}{instr: instr, target: vr})
 					},
@@ -59,7 +59,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 
 				c := newCompiler(context.Background(), m, builder)
 				c.ssaValueToVRegs = []regalloc.VReg{0, 1, 2, 3, 4, 5, 6, 7}
-				return c, []ssa.Value{i1.Return(), i2.Return(), f1.Return(), f2.Return()}, succ, func(t *testing.T) {
+				return c, []ssa.Var{i1.Return(), i2.Return(), f1.Return(), f2.Return()}, succ, func(t *testing.T) {
 					require.Equal(t, 4, len(insertedConstInstructions))
 					require.Equal(t, i1, insertedConstInstructions[0].instr)
 					require.Equal(t, regalloc.VReg(4), insertedConstInstructions[0].target)
@@ -74,7 +74,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 		},
 		{
 			name: "overlap",
-			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, *ssa.BasicBlock, func(t *testing.T)) {
+			setup: func(builder ssa.Builder) (*compiler, []ssa.Var, *ssa.BasicBlock, func(t *testing.T)) {
 				blk := builder.AllocateBasicBlock()
 				v1 := blk.AddParam(builder, types.I32)
 				v2 := blk.AddParam(builder, types.I32)
@@ -87,7 +87,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 				c := newCompiler(context.Background(), m, builder)
 				c.ssaValueToVRegs = []regalloc.VReg{0, 1, 2, 3}
 				c.nextVRegID = 100 // Temporary reg should start with 100.
-				return c, []ssa.Value{v2, v1, v3 /* Swaps v1, v2 and pass v3 as-is. */}, blk, func(t *testing.T) {
+				return c, []ssa.Var{v2, v1, v3 /* Swaps v1, v2 and pass v3 as-is. */}, blk, func(t *testing.T) {
 					require.Equal(t, 6, len(insertMoves)) // Three values are overlapped.
 					mov1, mov2, mov3, mov4, mov5, mov6 := insertMoves[0], insertMoves[1], insertMoves[2], insertMoves[3], insertMoves[4], insertMoves[5]
 					// Save the values to the temporary registers.
@@ -109,7 +109,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 		},
 		{
 			name: "no overlap",
-			setup: func(builder ssa.Builder) (*compiler, []ssa.Value, *ssa.BasicBlock, func(t *testing.T)) {
+			setup: func(builder ssa.Builder) (*compiler, []ssa.Var, *ssa.BasicBlock, func(t *testing.T)) {
 				blk := builder.AllocateBasicBlock()
 				builder.SetCurrentBlock(blk)
 				i32 := blk.AddParam(builder, types.I32)
@@ -123,7 +123,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 				}}
 				c := newCompiler(context.Background(), m, builder)
 				c.ssaValueToVRegs = []regalloc.VReg{0, 1}
-				return c, []ssa.Value{add.Return()}, blk, func(t *testing.T) {
+				return c, []ssa.Var{add.Return()}, blk, func(t *testing.T) {
 					require.Equal(t, 1, len(insertMoves))
 					require.Equal(t, regalloc.VRegID(1), insertMoves[0].src.ID())
 					require.Equal(t, regalloc.VRegID(0), insertMoves[0].dst.ID())

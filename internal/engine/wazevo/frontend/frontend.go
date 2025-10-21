@@ -56,12 +56,12 @@ type Compiler struct {
 	loweringState loweringState
 
 	knownSafeBounds    [] /* ssa.ValueID to */ knownSafeBound
-	knownSafeBoundsSet []ssa.ValueID
+	knownSafeBoundsSet []ssa.VarID
 
 	knownSafeBoundsAtTheEndOfBlocks   [] /* ssa.BlockID to */ knownSafeBoundsAtTheEndOfBlock
 	varLengthKnownSafeBoundWithIDPool wazevoapi.VarLengthPool[knownSafeBoundWithID]
 
-	execCtxPtrValue, moduleCtxPtrValue ssa.Value
+	execCtxPtrValue, moduleCtxPtrValue ssa.Var
 
 	// Following are reused for the known safe bounds analysis.
 
@@ -75,12 +75,12 @@ type (
 		// bound is a constant upper bound for the value.
 		bound uint64
 		// absoluteAddr is the absolute address of the value.
-		absoluteAddr ssa.Value
+		absoluteAddr ssa.Var
 	}
 	// knownSafeBoundWithID is a knownSafeBound with the ID of the value.
 	knownSafeBoundWithID struct {
 		knownSafeBound
-		id ssa.ValueID
+		id ssa.VarID
 	}
 	knownSafeBoundsAtTheEndOfBlock = wazevoapi.VarLength[knownSafeBoundWithID]
 )
@@ -420,7 +420,7 @@ func SignatureForListener(wasmSig *wasm.FunctionType) (*types.Signature, *types.
 }
 
 // isBoundSafe returns true if the given value is known to be safe to access up to the given bound.
-func (c *Compiler) getKnownSafeBound(v ssa.ValueID) *knownSafeBound {
+func (c *Compiler) getKnownSafeBound(v ssa.VarID) *knownSafeBound {
 	if int(v) >= len(c.knownSafeBounds) {
 		return nil
 	}
@@ -428,7 +428,7 @@ func (c *Compiler) getKnownSafeBound(v ssa.ValueID) *knownSafeBound {
 }
 
 // recordKnownSafeBound records the given safe bound for the given value.
-func (c *Compiler) recordKnownSafeBound(v ssa.ValueID, safeBound uint64, absoluteAddr ssa.Value) {
+func (c *Compiler) recordKnownSafeBound(v ssa.VarID, safeBound uint64, absoluteAddr ssa.Var) {
 	if int(v) >= len(c.knownSafeBounds) {
 		c.knownSafeBounds = append(c.knownSafeBounds, make([]knownSafeBound, v+1)...)
 	}
@@ -449,7 +449,7 @@ func (c *Compiler) clearSafeBounds() {
 	for _, v := range c.knownSafeBoundsSet {
 		ptr := &c.knownSafeBounds[v]
 		ptr.bound = 0
-		ptr.absoluteAddr = ssa.ValueInvalid
+		ptr.absoluteAddr = ssa.InvalidVar
 	}
 	c.knownSafeBoundsSet = c.knownSafeBoundsSet[:0]
 }
@@ -458,7 +458,7 @@ func (c *Compiler) clearSafeBounds() {
 func (c *Compiler) resetAbsoluteAddressInSafeBounds() {
 	for _, v := range c.knownSafeBoundsSet {
 		ptr := &c.knownSafeBounds[v]
-		ptr.absoluteAddr = ssa.ValueInvalid
+		ptr.absoluteAddr = ssa.InvalidVar
 	}
 }
 
@@ -500,7 +500,7 @@ func (c *Compiler) initializeCurrentBlockKnownBounds() {
 		for _, kb := range c.getKnownSafeBoundsAtTheEndOfBlocks(pred).View() {
 			// Unless the block is sealed, we cannot assume the absolute address is valid:
 			// later we might add another predecessor that has no visibility of that value.
-			addr := ssa.ValueInvalid
+			addr := ssa.InvalidVar
 			if currentBlk.Sealed() {
 				addr = kb.absoluteAddr
 			}
@@ -518,7 +518,7 @@ func (c *Compiler) initializeCurrentBlockKnownBounds() {
 
 	outer:
 		for {
-			smallestID := ssa.ValueID(math.MaxUint32)
+			smallestID := ssa.VarID(math.MaxUint32)
 			for i, ptr := range c.pointers {
 				if ptr >= len(c.bounds[i]) {
 					break outer
@@ -546,7 +546,7 @@ func (c *Compiler) initializeCurrentBlockKnownBounds() {
 
 			if same { // All elements are the same.
 				// Absolute address cannot be used in the intersection since the value might be only defined in one of the predecessors.
-				c.recordKnownSafeBound(smallestID, minBound, ssa.ValueInvalid)
+				c.recordKnownSafeBound(smallestID, minBound, ssa.InvalidVar)
 			}
 		}
 	}
