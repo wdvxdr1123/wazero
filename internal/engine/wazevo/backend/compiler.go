@@ -162,17 +162,8 @@ type SourceOffsetInfo struct {
 // Compile implements Compiler.Compile.
 func (c *compiler) Compile(ctx context.Context) ([]byte, []RelocationInfo, error) {
 	c.Lower()
-	x := fmt.Sprintf("[[[after lowering for %s ]]]%s\n", wazevoapi.GetCurrentFunctionName(ctx), c.Format())
-	defer func() {
-		e := recover()
-		if e != nil {
-			fmt.Println(x)
-			// fmt.Printf("[[[after regalloc for %s]]]%s\n", wazevoapi.GetCurrentFunctionName(ctx), c.Format())
-			panic(e)
-		}
-	}()
 	if wazevoapi.PrintSSAToBackendIRLowering && wazevoapi.PrintEnabledIndex(ctx) {
-
+		fmt.Printf("[[[after lowering for %s ]]]%s\n", wazevoapi.GetCurrentFunctionName(ctx), c.Format())
 	}
 	if wazevoapi.DeterministicCompilationVerifierEnabled {
 		wazevoapi.VerifyOrSetDeterministicCompilationContextValue(ctx, "After lowering to ISA specific IR", c.Format())
