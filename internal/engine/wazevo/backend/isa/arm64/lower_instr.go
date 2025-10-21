@@ -16,7 +16,10 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi"
 )
 
-func (m *machine) jumpTo(target *ssa.BasicBlock) {
+func (m *machine) jumpTo(target, next *ssa.BasicBlock) {
+	if target == next {
+		return
+	}
 	b := m.allocateInstr()
 	if target.ReturnBlock() {
 		b.asRet()
@@ -26,13 +29,13 @@ func (m *machine) jumpTo(target *ssa.BasicBlock) {
 	m.insert(b)
 }
 
-func (m *machine) LowerBlockBranch(blk *ssa.BasicBlock) {
+func (m *machine) LowerBlockBranch(blk, next *ssa.BasicBlock) {
 	switch blk.Kind {
 	case ssa.BlockPlain:
 		if len(blk.Succ) == 0 {
 			return
 		}
-		m.jumpTo(blk.Succ[0])
+		m.jumpTo(blk.Succ[0], next)
 
 	case ssa.BlockIf, ssa.BlockIfNot:
 		cval := blk.ControlValue
@@ -60,7 +63,7 @@ func (m *machine) LowerBlockBranch(blk *ssa.BasicBlock) {
 		cbr.asCondBr(c, target, false)
 		m.insert(cbr)
 		// Emit the jump to the 'Else' block.
-		m.jumpTo(blk.Succ[1])
+		m.jumpTo(blk.Succ[1], next)
 
 	case ssa.BlockJumpTable:
 		index := blk.ControlValue

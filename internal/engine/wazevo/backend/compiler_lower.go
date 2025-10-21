@@ -1,6 +1,8 @@
 package backend
 
 import (
+	"fmt"
+
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
 )
@@ -16,8 +18,11 @@ func (c *compiler) Lower() {
 // lowerBlocks lowers each block in the ssa.Builder.
 func (c *compiler) lowerBlocks() {
 	builder := c.ssaBuilder
-	for blk := builder.BlockIteratorReversePostOrderBegin(); blk != nil; blk = builder.BlockIteratorReversePostOrderNext() {
-		c.lowerBlock(blk)
+	blk := builder.BlockIteratorReversePostOrderBegin()
+	for blk != nil {
+		next := builder.BlockIteratorReversePostOrderNext()
+		c.lowerBlock(blk, next)
+		blk = next
 	}
 
 	// After lowering all blocks, we need to link adjacent blocks to layout one single instruction list.
@@ -30,7 +35,7 @@ func (c *compiler) lowerBlocks() {
 	}
 }
 
-func (c *compiler) lowerBlock(blk *ssa.BasicBlock) {
+func (c *compiler) lowerBlock(blk, next *ssa.BasicBlock) {
 	mach := c.mach
 	mach.StartBlock(blk)
 
@@ -40,7 +45,7 @@ func (c *compiler) lowerBlock(blk *ssa.BasicBlock) {
 	cur := len(insts) - 1
 
 	if blk.Kind != ssa.BlockReturn {
-		c.lowerBranches(blk)
+		c.lowerBranches(blk, next)
 	}
 
 	// Now start lowering the non-branching instructions.
@@ -77,7 +82,7 @@ func (c *compiler) lowerBlock(blk *ssa.BasicBlock) {
 // At least br0 is not nil, but br1 can be nil if there's no branching before br0.
 //
 // See ssa.Instruction IsBranching, and the comment on ssa.BasicBlock.
-func (c *compiler) lowerBranches(b *ssa.BasicBlock) {
+func (c *compiler) lowerBranches(b, next *ssa.BasicBlock) {
 	switch b.Kind {
 	case ssa.BlockPlain:
 		if len(b.Succ) == 0 {
@@ -101,7 +106,8 @@ func (c *compiler) lowerBranches(b *ssa.BasicBlock) {
 		}
 	}
 
-	c.mach.LowerBlockBranch(b)
+	fmt.Println("lower branch ", b, next)
+	c.mach.LowerBlockBranch(b, next)
 	c.mach.FlushPendingInstructions()
 }
 

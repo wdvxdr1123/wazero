@@ -13,7 +13,7 @@ import (
 type mockMachine struct {
 	argResultInts, argResultFloats []regalloc.RealReg
 	startBlock                     func(block *ssa.BasicBlock)
-	lowerBlockBranch               func(b *ssa.BasicBlock)
+	lowerBlockBranch               func(b, next *ssa.BasicBlock)
 	lowerInstr                     func(instruction *ssa.Value)
 	endBlock                       func()
 	endLoweringFunction            func()
@@ -78,8 +78,8 @@ func (m mockMachine) StartBlock(block *ssa.BasicBlock) {
 }
 
 // LowerBlockBranch implements Machine.LowerBlockBranch.
-func (m mockMachine) LowerBlockBranch(b *ssa.BasicBlock) {
-	m.lowerBlockBranch(b)
+func (m mockMachine) LowerBlockBranch(b, next *ssa.BasicBlock) {
+	m.lowerBlockBranch(b, next)
 }
 
 // LowerInstr implements Machine.LowerInstr.
