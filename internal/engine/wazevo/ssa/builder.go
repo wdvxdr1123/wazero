@@ -377,25 +377,22 @@ func (b *builder) InsertInstruction(instr *Value) {
 		panic("TODO: " + instr.Format(b))
 	}
 
-	t1, ts := resultTypesFn(b, instr)
-	if t1.Invalid() {
+	t := resultTypesFn(b, instr)
+	if t.Invalid() {
 		return
 	}
 
-	r1 := b.allocateValue(t1)
-	instr.rValue = r1.setInstructionID(instr.id)
-
-	tsl := len(ts)
-	if tsl == 0 {
-		return
+	if t.IsTuple() {
+		rValues := make([]Var, 0, t.Len())
+		for i := 0; i < t.Len(); i++ {
+			rn := b.allocateValue(t.At(i))
+			rValues = append(rValues, rn.setInstructionID(instr.id))
+		}
+		instr.Returns = rValues
+	} else {
+		rn := b.allocateValue(t)
+		instr.Returns = []Var{rn.setInstructionID(instr.id)}
 	}
-
-	rValues := make([]Var, 0, tsl)
-	for i := 0; i < tsl; i++ {
-		rn := b.allocateValue(ts[i])
-		rValues = append(rValues, rn.setInstructionID(instr.id))
-	}
-	instr.rValues = rValues
 }
 
 // DefineVariable implements Builder.DefineVariable.

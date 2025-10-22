@@ -118,6 +118,6 @@ func RegTypeOf(p *types.Type) RegType {
 	case types.F32, types.F64, types.V128:
 		return RegTypeFloat
 	default:
-		panic("invalid type")
+		panic(fmt.Sprint("invalid type ", p.Kind))
 	}
 }

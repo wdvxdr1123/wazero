@@ -73,6 +73,13 @@ func (t Type) IsTuple() bool {
 	return t.Kind == KindTuple
 }
 
+func (t Type) Len() int {
+	if !t.IsTuple() {
+		panic("Len() is only valid for tuple types")
+	}
+	return len(t.elements)
+}
+
 func (t Type) At(i int) *Type {
 	if !t.IsTuple() {
 		panic("At() is only valid for tuple types")

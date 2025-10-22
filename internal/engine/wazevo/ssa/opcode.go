@@ -458,46 +458,30 @@ const (
 
 // returnTypesFn provides the info to determine the type of instruction.
 // t1 is the type of the first result, ts are the types of the remaining results.
-type returnTypesFn func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type)
+type returnTypesFn func(b *builder, instr *Value) *types.Type
 
 var (
-	returnTypesFnNoReturns    returnTypesFn = func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type) { return types.Invalid, nil }
-	returnTypesFnSingle                     = func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type) { return instr.Type, nil }
-	returnTypesFnI32                        = func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type) { return types.I32, nil }
-	returnTypesFnF32                        = func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type) { return types.F32, nil }
-	returnTypesFnF64                        = func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type) { return types.F64, nil }
-	returnTypesFnV128                       = func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type) { return types.V128, nil }
-	returnTypesFnCallIndirect               = func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type) {
+	returnTypesFnNoReturns    returnTypesFn = func(b *builder, instr *Value) *types.Type { return types.Invalid }
+	returnTypesFnSingle                     = func(b *builder, instr *Value) *types.Type { return instr.Type }
+	returnTypesFnI32                        = func(b *builder, instr *Value) *types.Type { return types.I32 }
+	returnTypesFnF32                        = func(b *builder, instr *Value) *types.Type { return types.F32 }
+	returnTypesFnF64                        = func(b *builder, instr *Value) *types.Type { return types.F64 }
+	returnTypesFnV128                       = func(b *builder, instr *Value) *types.Type { return types.V128 }
+	returnTypesFnCallIndirect               = func(b *builder, instr *Value) *types.Type {
 		sigID := types.SignatureID(instr.u1)
 		sig, ok := b.signatures[sigID]
 		if !ok {
 			panic("BUG")
 		}
-		switch len(sig.Results) {
-		case 0:
-			t1 = types.Invalid
-		case 1:
-			t1 = sig.Results[0]
-		default:
-			t1, ts = sig.Results[0], sig.Results[1:]
-		}
-		return
+		return types.NewTuple(sig.Results...)
 	}
-	returnTypesFnCall = func(b *builder, instr *Value) (t1 *types.Type, ts []*types.Type) {
+	returnTypesFnCall = func(b *builder, instr *Value) *types.Type {
 		sigID := types.SignatureID(instr.u2)
 		sig, ok := b.signatures[sigID]
 		if !ok {
 			panic("BUG")
 		}
-		switch len(sig.Results) {
-		case 0:
-			t1 = types.Invalid
-		case 1:
-			t1 = sig.Results[0]
-		default:
-			t1, ts = sig.Results[0], sig.Results[1:]
-		}
-		return
+		return types.NewTuple(sig.Results...)
 	}
 )
 

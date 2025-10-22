@@ -1,8 +1,6 @@
 package backend
 
 import (
-	"fmt"
-
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc"
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa"
 )
@@ -106,7 +104,6 @@ func (c *compiler) lowerBranches(b, next *ssa.BasicBlock) {
 		}
 	}
 
-	fmt.Println("lower branch ", b, next)
 	c.mach.LowerBlockBranch(b, next)
 	c.mach.FlushPendingInstructions()
 }

@@ -1956,13 +1956,10 @@ func (m *machine) prepareCall(si *ssa.Value, isDirectCall bool) (ssa.Var, ssa.Fu
 
 func (m *machine) insertReturns(si *ssa.Value, calleeABI *backend.FunctionABI, stackSlotSize int64) {
 	var index int
-	r1, rs := si.Returns()
-	if r1.Valid() {
-		m.callerGenFunctionReturnVReg(calleeABI, 0, m.c.VRegOf(r1), stackSlotSize)
-		index++
-	}
-
-	for _, r := range rs {
+	for _, r := range si.Returns {
+		if !r.Valid() {
+			continue
+		}
 		m.callerGenFunctionReturnVReg(calleeABI, index, m.c.VRegOf(r), stackSlotSize)
 		index++
 	}

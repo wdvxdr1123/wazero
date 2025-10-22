@@ -265,14 +265,8 @@ func deadcode(b *builder) {
 				// The strict side effect should create different instruction groups.
 				gid++
 			default:
-				first, rest := cur.Returns()
 				live := false
-				if first.Valid() {
-					if aliveValue[first.ID()] {
-						live = true
-					}
-				}
-				for _, v := range rest {
+				for _, v := range cur.Returns {
 					if v.Valid() && aliveValue[v.ID()] {
 						live = true
 					}

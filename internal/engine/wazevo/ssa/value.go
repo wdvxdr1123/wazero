@@ -25,12 +25,9 @@ type Value struct {
 	Type     *types.Type
 	u1, u2   uint64
 
-	// rValue is the (first) return value of this instruction.
+	// Returns is the (first) return value of this instruction.
 	// For branching instructions except for OpcodeBrTable, they hold BlockID to jump cast to Value.
-	rValue Var
-	// rValues are the rest of the return values of this instruction.
-	// For OpcodeBrTable, it holds the list of BlockID to jump cast to Value.
-	rValues        []Var
+	Returns        []Var
 	gid            InstructionGroupID
 	sourceOffset   SourceOffset
 	live           bool
@@ -83,7 +80,7 @@ func resetValue(i *Value) {
 	*i = Value{}
 	i.Args = i.argStorage[:0]
 	i.ArgSlice = i.ArgSlice[:0]
-	i.rValue = InvalidVar
+	i.Returns = i.Returns[:0]
 	i.Type = types.Invalid
 	i.sourceOffset = sourceOffsetUnknown
 	for idx := range i.argStorage {
@@ -105,16 +102,13 @@ func resetValue(i *Value) {
 // See passDeadCodeElimination.
 type InstructionGroupID uint32
 
-// Returns Value(s) produced by this instruction if any.
-// The `first` is the first return value, and `rest` is the rest of the values.
-func (i *Value) Returns() (first Var, rest []Var) {
-	return i.rValue, i.rValues
-}
-
 // Return returns a Value(s) produced by this instruction if any.
 // If there's multiple return values, only the first one is returned.
 func (i *Value) Return() (first Var) {
-	return i.rValue
+	if len(i.Returns) == 0 {
+		return InvalidVar
+	}
+	return i.Returns[0]
 }
 
 // ArgWithLane returns the first argument to this instruction, and the lane type.
@@ -1625,12 +1619,10 @@ func (i *Value) Format(b Builder) string {
 	instr := i.opcode.String() + instSuffix
 
 	var rvs []string
-	r1, rs := i.Returns()
-	if r1.Valid() {
-		rvs = append(rvs, r1.formatWithType(b))
-	}
-
-	for _, v := range rs {
+	for _, v := range i.Returns {
+		if !v.Valid() {
+			continue
+		}
 		rvs = append(rvs, v.formatWithType(b))
 	}
 

@@ -95,7 +95,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
-				_, rs := c.Returns()
+				rs := c.Returns
 				ctx.vRegMap[rs[1]] = regalloc.VReg(50)
 				def = backend.SSAValueDefinition{Instr: c, V: rs[1]}
 				return

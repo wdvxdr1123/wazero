@@ -3564,11 +3564,10 @@ func (c *Compiler) lowerCall(fnIndex uint32) {
 	}
 	builder.InsertInstruction(call)
 
-	first, rest := call.Returns()
-	if first.Valid() {
-		state.push(first)
-	}
-	for _, v := range rest {
+	for _, v := range call.Returns {
+		if !v.Valid() {
+			continue
+		}
 		state.push(v)
 	}
 
@@ -3656,11 +3655,10 @@ func (c *Compiler) lowerCallIndirect(typeIndex, tableIndex uint32) {
 	call.AsCallIndirect(executablePtr, c.signatures[typ], args)
 	builder.InsertInstruction(call)
 
-	first, rest := call.Returns()
-	if first.Valid() {
-		state.push(first)
-	}
-	for _, v := range rest {
+	for _, v := range call.Returns {
+		if !v.Valid() {
+			continue
+		}
 		state.push(v)
 	}
 
@@ -3696,11 +3694,10 @@ func (c *Compiler) lowerTailCallReturnCall(fnIndex uint32) {
 	// a regular call, so we include return handling and let the backend delete it
 	// when redundant.
 	// For details, see internal/engine/RATIONALE.md
-	first, rest := call.Returns()
-	if first.Valid() {
-		state.push(first)
-	}
-	for _, v := range rest {
+	for _, v := range call.Returns {
+		if !v.Valid() {
+			continue
+		}
 		state.push(v)
 	}
 
@@ -3722,11 +3719,10 @@ func (c *Compiler) lowerTailCallReturnCallIndirect(typeIndex, tableIndex uint32)
 	// a regular call, so we include return handling and let the backend delete it
 	// when redundant.
 	// For details, see internal/engine/RATIONALE.md
-	first, rest := call.Returns()
-	if first.Valid() {
-		state.push(first)
-	}
-	for _, v := range rest {
+	for _, v := range call.Returns {
+		if !v.Valid() {
+			continue
+		}
 		state.push(v)
 	}
 
