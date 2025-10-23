@@ -305,21 +305,21 @@ func TestMachine_collectAddends(t *testing.T) {
 		inst := b.AllocateInstruction()
 		inst.AsIconst32(v)
 		b.InsertInstruction(inst)
-		m.definitions[inst.Return()] = backend.SSAValueDefinition{Instr: inst}
+		m.definitions[inst.Return] = backend.SSAValueDefinition{Instr: inst}
 		return inst
 	}
 	insertI64Const := func(m *mockCompiler, b ssa.Builder, v uint64) *ssa.Value {
 		inst := b.AllocateInstruction()
 		inst.AsIconst64(v)
 		b.InsertInstruction(inst)
-		m.definitions[inst.Return()] = backend.SSAValueDefinition{Instr: inst, V: inst.Return()}
+		m.definitions[inst.Return] = backend.SSAValueDefinition{Instr: inst, V: inst.Return}
 		return inst
 	}
 	insertIadd := func(m *mockCompiler, b ssa.Builder, lhs, rhs ssa.Var) *ssa.Value {
 		inst := b.AllocateInstruction()
 		inst.AsIadd(lhs, rhs)
 		b.InsertInstruction(inst)
-		m.definitions[inst.Return()] = backend.SSAValueDefinition{Instr: inst, V: inst.Return()}
+		m.definitions[inst.Return] = backend.SSAValueDefinition{Instr: inst, V: inst.Return}
 		return inst
 	}
 	insertExt := func(m *mockCompiler, b ssa.Builder, v ssa.Var, from, to byte, signed bool) *ssa.Value {
@@ -330,7 +330,7 @@ func TestMachine_collectAddends(t *testing.T) {
 			inst.AsUExtend(v, from, to)
 		}
 		b.InsertInstruction(inst)
-		m.definitions[inst.Return()] = backend.SSAValueDefinition{Instr: inst, V: v}
+		m.definitions[inst.Return] = backend.SSAValueDefinition{Instr: inst, V: v}
 		return inst
 	}
 
@@ -354,9 +354,9 @@ func TestMachine_collectAddends(t *testing.T) {
 			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				minus1 := int32(-1)
 				c1, c2, c3, c4 := insertI32Const(ctx, b, 1), insertI32Const(ctx, b, 2), insertI32Const(ctx, b, 3), insertI32Const(ctx, b, uint32(minus1))
-				iadd1, iadd2 := insertIadd(ctx, b, c1.Return(), c2.Return()), insertIadd(ctx, b, c3.Return(), c4.Return())
-				iadd3 := insertIadd(ctx, b, iadd1.Return(), iadd2.Return())
-				return iadd3.Return(), func(t *testing.T) {
+				iadd1, iadd2 := insertIadd(ctx, b, c1.Return, c2.Return), insertIadd(ctx, b, c3.Return, c4.Return)
+				iadd3 := insertIadd(ctx, b, iadd1.Return, iadd2.Return)
+				return iadd3.Return, func(t *testing.T) {
 					for _, instr := range []*ssa.Value{iadd1, iadd2, iadd3} {
 						require.True(t, instr.Lowered())
 					}
@@ -369,9 +369,9 @@ func TestMachine_collectAddends(t *testing.T) {
 			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				minus1 := int32(-1)
 				c1, c2, c3, c4 := insertI64Const(ctx, b, 1), insertI64Const(ctx, b, 2), insertI64Const(ctx, b, 3), insertI64Const(ctx, b, uint64(minus1))
-				iadd1, iadd2 := insertIadd(ctx, b, c1.Return(), c2.Return()), insertIadd(ctx, b, c3.Return(), c4.Return())
-				iadd3 := insertIadd(ctx, b, iadd1.Return(), iadd2.Return())
-				return iadd3.Return(), func(t *testing.T) {
+				iadd1, iadd2 := insertIadd(ctx, b, c1.Return, c2.Return), insertIadd(ctx, b, c3.Return, c4.Return)
+				iadd3 := insertIadd(ctx, b, iadd1.Return, iadd2.Return)
+				return iadd3.Return, func(t *testing.T) {
 					for _, instr := range []*ssa.Value{iadd1, iadd2, iadd3} {
 						require.True(t, instr.Lowered())
 					}
@@ -385,11 +385,11 @@ func TestMachine_collectAddends(t *testing.T) {
 				param := addParam(ctx, b, types.I32)
 				minus1 := int32(-1)
 				c1, c2, c3, c4 := insertI32Const(ctx, b, 1), insertI32Const(ctx, b, 2), insertI32Const(ctx, b, 3), insertI32Const(ctx, b, uint32(minus1))
-				iadd1, iadd2 := insertIadd(ctx, b, c1.Return(), c2.Return()), insertIadd(ctx, b, c3.Return(), c4.Return())
-				iadd3 := insertIadd(ctx, b, iadd1.Return(), iadd2.Return())
-				iadd4 := insertIadd(ctx, b, param, iadd3.Return())
+				iadd1, iadd2 := insertIadd(ctx, b, c1.Return, c2.Return), insertIadd(ctx, b, c3.Return, c4.Return)
+				iadd3 := insertIadd(ctx, b, iadd1.Return, iadd2.Return)
+				iadd4 := insertIadd(ctx, b, param, iadd3.Return)
 
-				return iadd4.Return(), func(t *testing.T) {
+				return iadd4.Return, func(t *testing.T) {
 					for _, instr := range []*ssa.Value{iadd1, iadd2, iadd3, iadd4} {
 						require.True(t, instr.Lowered())
 					}
@@ -405,11 +405,11 @@ func TestMachine_collectAddends(t *testing.T) {
 			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				param := addParam(ctx, b, types.I64)
 				c1, c2 := insertI32Const(ctx, b, 1), insertI32Const(ctx, b, 2)
-				iadd1 := insertIadd(ctx, b, c1.Return(), c2.Return())
-				ext := insertExt(ctx, b, iadd1.Return(), 32, 64, true)
+				iadd1 := insertIadd(ctx, b, c1.Return, c2.Return)
+				ext := insertExt(ctx, b, iadd1.Return, 32, 64, true)
 				ctx.vRegMap[ext.Args[0]] = v2000
-				iadd4 := insertIadd(ctx, b, param, ext.Return())
-				return iadd4.Return(), func(t *testing.T) {
+				iadd4 := insertIadd(ctx, b, param, ext.Return)
+				return iadd4.Return, func(t *testing.T) {
 					for _, instr := range []*ssa.Value{ext, iadd4} {
 						require.True(t, instr.Lowered())
 					}
@@ -424,10 +424,10 @@ func TestMachine_collectAddends(t *testing.T) {
 				param := addParam(ctx, b, types.I64)
 				minus1 := int32(-1)
 				c1 := insertI32Const(ctx, b, uint32(minus1))
-				ext := insertExt(ctx, b, c1.Return(), 32, 64, true)
+				ext := insertExt(ctx, b, c1.Return, 32, 64, true)
 				ctx.vRegMap[ext.Args[0]] = v2000
-				iadd4 := insertIadd(ctx, b, param, ext.Return())
-				return iadd4.Return(), func(t *testing.T) {
+				iadd4 := insertIadd(ctx, b, param, ext.Return)
+				return iadd4.Return, func(t *testing.T) {
 					for _, instr := range []*ssa.Value{ext, iadd4} {
 						require.True(t, instr.Lowered())
 					}
@@ -442,10 +442,10 @@ func TestMachine_collectAddends(t *testing.T) {
 				param := addParam(ctx, b, types.I64)
 				minus1 := int32(-1)
 				c1 := insertI32Const(ctx, b, uint32(minus1))
-				ext := insertExt(ctx, b, c1.Return(), 32, 64, false)
+				ext := insertExt(ctx, b, c1.Return, 32, 64, false)
 				ctx.vRegMap[ext.Args[0]] = v2000
-				iadd4 := insertIadd(ctx, b, param, ext.Return())
-				return iadd4.Return(), func(t *testing.T) {
+				iadd4 := insertIadd(ctx, b, param, ext.Return)
+				return iadd4.Return, func(t *testing.T) {
 					for _, instr := range []*ssa.Value{ext, iadd4} {
 						require.True(t, instr.Lowered())
 					}

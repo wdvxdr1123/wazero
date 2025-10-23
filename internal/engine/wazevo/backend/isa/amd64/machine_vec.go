@@ -820,7 +820,7 @@ func (m *machine) lowerWideningPairwiseDotProductS(x, y, ret ssa.Var) {
 
 func (m *machine) lowerVIabs(instr *ssa.Value) {
 	x, lane := instr.ArgWithLane()
-	rd := m.c.VRegOf(instr.Return())
+	rd := m.c.VRegOf(instr.Return)
 
 	if lane == types.VecLaneI64x2 {
 		_xx := m.getOperand_Reg(m.c.ValueDefinition(x))
@@ -862,7 +862,7 @@ func (m *machine) lowerVIabs(instr *ssa.Value) {
 func (m *machine) lowerVIpopcnt(instr *ssa.Value) {
 	x := instr.Args[0]
 	rn := m.getOperand_Reg(m.c.ValueDefinition(x))
-	rd := m.c.VRegOf(instr.Return())
+	rd := m.c.VRegOf(instr.Return)
 
 	tmp1 := m.c.AllocateVReg(types.V128)
 	m.lowerVconst(tmp1, 0x0f0f0f0f0f0f0f0f, 0x0f0f0f0f0f0f0f0f)
@@ -917,7 +917,7 @@ func (m *machine) lowerVIpopcnt(instr *ssa.Value) {
 
 func (m *machine) lowerVImul(instr *ssa.Value) {
 	x, y, lane := instr.Arg2WithLane()
-	rd := m.c.VRegOf(instr.Return())
+	rd := m.c.VRegOf(instr.Return)
 	if lane == types.VecLaneI64x2 {
 		rn := m.getOperand_Reg(m.c.ValueDefinition(x))
 		rm := m.getOperand_Reg(m.c.ValueDefinition(y))
@@ -988,6 +988,6 @@ func (m *machine) lowerVImul(instr *ssa.Value) {
 		default:
 			panic("unsupported: " + lane.String())
 		}
-		m.lowerVbBinOp(vecOp, x, y, instr.Return())
+		m.lowerVbBinOp(vecOp, x, y, instr.Return)
 	}
 }

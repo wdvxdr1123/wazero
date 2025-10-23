@@ -8,7 +8,7 @@ import (
 
 // lowerConstant allocates a new VReg and inserts the instruction to load the constant value.
 func (m *machine) lowerConstant(instr *ssa.Value) (vr regalloc.VReg) {
-	val := instr.Return()
+	val := instr.Return
 	valType := val.Type()
 
 	vr = m.c.AllocateVReg(valType)
@@ -22,7 +22,7 @@ func (m *machine) InsertLoadConstantBlockArg(instr *ssa.Value, vr regalloc.VReg)
 }
 
 func (m *machine) insertLoadConstant(instr *ssa.Value, vr regalloc.VReg) {
-	val := instr.Return()
+	val := instr.Return
 	valType := val.Type()
 	v := instr.ConstantVal()
 

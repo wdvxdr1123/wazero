@@ -152,7 +152,7 @@ func (m *machine) lowerAddendFromInstr(instr *ssa.Value) addend {
 	switch op := instr.Opcode(); op {
 	case ssa.OpcodeIconst:
 		u64 := instr.ConstantVal()
-		if instr.Return().Type().Bits() == 32 {
+		if instr.Return.Type().Bits() == 32 {
 			return addend{regalloc.VRegInvalid, int64(int32(u64)), 0} // sign-extend.
 		} else {
 			return addend{regalloc.VRegInvalid, int64(u64), 0}

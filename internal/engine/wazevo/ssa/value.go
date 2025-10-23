@@ -25,9 +25,9 @@ type Value struct {
 	Type     *types.Type
 	u1, u2   uint64
 
-	// Returns is the (first) return value of this instruction.
+	// Return is the (first) return value of this instruction.
 	// For branching instructions except for OpcodeBrTable, they hold BlockID to jump cast to Value.
-	Returns        []Var
+	Return         Var
 	gid            InstructionGroupID
 	sourceOffset   SourceOffset
 	live           bool
@@ -80,7 +80,7 @@ func resetValue(i *Value) {
 	*i = Value{}
 	i.Args = i.argStorage[:0]
 	i.ArgSlice = i.ArgSlice[:0]
-	i.Returns = i.Returns[:0]
+	i.Return = InvalidVar
 	i.Type = types.Invalid
 	i.sourceOffset = sourceOffsetUnknown
 	for idx := range i.argStorage {
@@ -101,15 +101,6 @@ func resetValue(i *Value) {
 //
 // See passDeadCodeElimination.
 type InstructionGroupID uint32
-
-// Return returns a Value(s) produced by this instruction if any.
-// If there's multiple return values, only the first one is returned.
-func (i *Value) Return() (first Var) {
-	if len(i.Returns) == 0 {
-		return InvalidVar
-	}
-	return i.Returns[0]
-}
 
 // ArgWithLane returns the first argument to this instruction, and the lane type.
 func (i *Value) ArgWithLane() (Var, types.VecLane) {
@@ -1220,6 +1211,17 @@ func (i *Value) CallIndirectData() (funcPtr Var, sigID types.SignatureID, args [
 	return
 }
 
+func (i *Value) AsSelectTuple(v Var, index int) {
+	i.opcode = OpcodeSelectTuple
+	i.setArg1(v)
+	i.u1 = uint64(index)
+	i.Type = v.Type().At(index)
+}
+
+func (i *Value) SelectTupleData() (v Var, index int) {
+	return i.Args[0], int(i.u1)
+}
+
 // AsClz initializes this instruction as a Count Leading Zeroes instruction with OpcodeClz.
 func (i *Value) AsClz(x Var) {
 	i.opcode = OpcodeClz
@@ -1612,22 +1614,15 @@ func (i *Value) Format(b Builder) string {
 		}
 	case OpcodeWideningPairwiseDotProductS:
 		instSuffix = fmt.Sprintf(" %s, %s", i.Args[0].Format(b), i.Args[1].Format(b))
+	case OpcodeSelectTuple:
+		instSuffix = fmt.Sprintf(" %s, %d", i.Args[0].Format(b), i.u1)
 	default:
 		panic(fmt.Sprintf("TODO: format for %s", i.opcode))
 	}
 
 	instr := i.opcode.String() + instSuffix
-
-	var rvs []string
-	for _, v := range i.Returns {
-		if !v.Valid() {
-			continue
-		}
-		rvs = append(rvs, v.formatWithType(b))
-	}
-
-	if len(rvs) > 0 {
-		return fmt.Sprintf("%s = %s", strings.Join(rvs, ", "), instr)
+	if i.Return.Valid() {
+		return fmt.Sprintf("%s = %s", i.Return.formatWithType(b), instr)
 	} else {
 		return instr
 	}
@@ -1945,6 +1940,8 @@ func (o Opcode) String() (ret string) {
 		return "FvpromoteLow"
 	case OpcodeVZeroExtLoad:
 		return "VZeroExtLoad"
+	case OpcodeSelectTuple:
+		return "SelectTuple"
 	}
 	panic(fmt.Sprintf("unknown opcode %d", o))
 }

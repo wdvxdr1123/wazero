@@ -241,7 +241,7 @@ func (m *machine) getOperand_ER_SR_NR(def backend.SSAValueDefinition, mode extMo
 		case (signed && !modeSigned) || (!signed && modeSigned):
 			// We need to {sign, zero}-extend the result of the {zero,sign} extension.
 			eop := extendOpFrom(modeSigned, innerExtToBits)
-			op = operandER(m.compiler.VRegOf(extInstr.Return()), eop, modeBits)
+			op = operandER(m.compiler.VRegOf(extInstr.Return), eop, modeBits)
 			// Note that we failed to merge the inner extension instruction this case.
 		}
 		return

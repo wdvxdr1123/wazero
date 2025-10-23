@@ -207,7 +207,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b.SetCurrentBlock(b0)
 				c := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c)
-				insertIf(b, b0, b2, c.Return())
+				insertIf(b, b0, b2, c.Return)
 				insertJump(b, b0, b1)
 				insertJump(b, b1, b3)
 				insertJump(b, b2, b3)
@@ -244,7 +244,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b.SetCurrentBlock(b2)
 				c := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c)
-				insertIf(b, b2, b1, c.Return())
+				insertIf(b, b2, b1, c.Return)
 				insertJump(b, b2, b3)
 				b.Seal(b0)
 				b.Seal(b1)
@@ -280,7 +280,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b.SetCurrentBlock(b2)
 				c := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c)
-				insertIf(b, b2, b3, c.Return())
+				insertIf(b, b2, b3, c.Return)
 				insertJump(b, b2, b1)
 				b.Seal(b0)
 				b.Seal(b1)
@@ -320,14 +320,14 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b.SetCurrentBlock(b0)
 				c1 := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c1)
-				insertIf(b, b1, b2, c1.Return())
+				insertIf(b, b1, b2, c1.Return)
 				insertJump(b, b1, b3)
 				insertJump(b, b3, b4)
 				insertJump(b, b2, b4)
 				b.SetCurrentBlock(b4)
 				c2 := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c2)
-				insertIf(b, b4, b1, c2.Return())
+				insertIf(b, b4, b1, c2.Return)
 				insertJump(b, b4, b5)
 				b.Seal(b0)
 				b.Seal(b1)
@@ -368,13 +368,13 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b.SetCurrentBlock(b1)
 				c1 := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c1)
-				insertIf(b, b1, b2, c1.Return())
+				insertIf(b, b1, b2, c1.Return)
 				insertJump(b, b1, b3)
 
 				b.SetCurrentBlock(b2)
 				c2 := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c2)
-				insertIf(b, b2, b1, c2.Return())
+				insertIf(b, b2, b1, c2.Return)
 				insertJump(b, b2, b3)
 				insertJump(b, b3, b4)
 
@@ -405,7 +405,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 
 				b.SetCurrentBlock(b0)
 				{
-					arg := b.AllocateInstruction().AsIconst32(1000).Insert(b).Return()
+					arg := b.AllocateInstruction().AsIconst32(1000).Insert(b).Return
 					insertIf(b, b0, b1, p, arg)
 					insertJump(b, b0, b2)
 				}
@@ -416,7 +416,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				}
 				b.SetCurrentBlock(b2)
 				{
-					arg := b.AllocateInstruction().AsIconst32(1).Insert(b).Return()
+					arg := b.AllocateInstruction().AsIconst32(1).Insert(b).Return
 					insertJump(b, b2, b1, arg)
 				}
 
@@ -448,22 +448,22 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				{
 					c := b.AllocateInstruction().AsIconst32(100).Insert(b)
 					cmp := b.AllocateInstruction().
-						AsIcmp(b2Param, c.Return(), IntegerCmpCondUnsignedLessThan).
+						AsIcmp(b2Param, c.Return, IntegerCmpCondUnsignedLessThan).
 						Insert(b)
-					insertIf(b, b2, b1, cmp.Return(), b2Param)
+					insertIf(b, b2, b1, cmp.Return, b2Param)
 					insertJump(b, b2, b3)
 				}
 
 				b.SetCurrentBlock(b3)
 				{
 					one := b.AllocateInstruction().AsIconst32(1).Insert(b)
-					minusOned := b.AllocateInstruction().AsIsub(b2Param, one.Return()).Insert(b)
+					minusOned := b.AllocateInstruction().AsIsub(b2Param, one.Return).Insert(b)
 					c := b.AllocateInstruction().AsIconst32(150).Insert(b)
 					cmp := b.AllocateInstruction().
-						AsIcmp(b2Param, c.Return(), IntegerCmpCondEqual).
+						AsIcmp(b2Param, c.Return, IntegerCmpCondEqual).
 						Insert(b)
-					insertIf(b, b3, b1, cmp.Return(), minusOned.Return())
-					insertJump(b, b3, b2, minusOned.Return())
+					insertIf(b, b3, b1, cmp.Return, minusOned.Return)
+					insertJump(b, b3, b2, minusOned.Return)
 				}
 
 				b.Seal(b0)

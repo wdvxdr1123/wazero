@@ -197,7 +197,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 
 		iconst := builder.AllocateInstruction().AsIconst32(uint32(c)).Insert(builder)
-		value := iconst.Return()
+		value := iconst.Return
 		state.push(value)
 	case wasm.OpcodeI64Const:
 		c := c.readI64s()
@@ -205,7 +205,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		iconst := builder.AllocateInstruction().AsIconst64(uint64(c)).Insert(builder)
-		value := iconst.Return()
+		value := iconst.Return
 		state.push(value)
 	case wasm.OpcodeF32Const:
 		f32 := c.readF32()
@@ -215,7 +215,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		f32const := builder.AllocateInstruction().
 			AsF32const(f32).
 			Insert(builder).
-			Return()
+			Return
 		state.push(f32const)
 	case wasm.OpcodeF64Const:
 		f64 := c.readF64()
@@ -225,7 +225,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		f64const := builder.AllocateInstruction().
 			AsF64const(f64).
 			Insert(builder).
-			Return()
+			Return
 		state.push(f64const)
 	case wasm.OpcodeI32Add, wasm.OpcodeI64Add:
 		if state.unreachable {
@@ -235,7 +235,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		iadd := builder.AllocateInstruction()
 		iadd.AsIadd(x, y)
 		builder.InsertInstruction(iadd)
-		value := iadd.Return()
+		value := iadd.Return
 		state.push(value)
 	case wasm.OpcodeI32Sub, wasm.OpcodeI64Sub:
 		if state.unreachable {
@@ -245,7 +245,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		isub := builder.AllocateInstruction()
 		isub.AsIsub(x, y)
 		builder.InsertInstruction(isub)
-		value := isub.Return()
+		value := isub.Return
 		state.push(value)
 	case wasm.OpcodeF32Add, wasm.OpcodeF64Add:
 		if state.unreachable {
@@ -255,7 +255,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		iadd := builder.AllocateInstruction()
 		iadd.AsFadd(x, y)
 		builder.InsertInstruction(iadd)
-		value := iadd.Return()
+		value := iadd.Return
 		state.push(value)
 	case wasm.OpcodeI32Mul, wasm.OpcodeI64Mul:
 		if state.unreachable {
@@ -265,7 +265,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		imul := builder.AllocateInstruction()
 		imul.AsImul(x, y)
 		builder.InsertInstruction(imul)
-		value := imul.Return()
+		value := imul.Return
 		state.push(value)
 	case wasm.OpcodeF32Sub, wasm.OpcodeF64Sub:
 		if state.unreachable {
@@ -275,7 +275,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		isub := builder.AllocateInstruction()
 		isub.AsFsub(x, y)
 		builder.InsertInstruction(isub)
-		value := isub.Return()
+		value := isub.Return
 		state.push(value)
 	case wasm.OpcodeF32Mul, wasm.OpcodeF64Mul:
 		if state.unreachable {
@@ -285,7 +285,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		isub := builder.AllocateInstruction()
 		isub.AsFmul(x, y)
 		builder.InsertInstruction(isub)
-		value := isub.Return()
+		value := isub.Return
 		state.push(value)
 	case wasm.OpcodeF32Div, wasm.OpcodeF64Div:
 		if state.unreachable {
@@ -295,7 +295,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		isub := builder.AllocateInstruction()
 		isub.AsFdiv(x, y)
 		builder.InsertInstruction(isub)
-		value := isub.Return()
+		value := isub.Return
 		state.push(value)
 	case wasm.OpcodeF32Max, wasm.OpcodeF64Max:
 		if state.unreachable {
@@ -305,7 +305,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		isub := builder.AllocateInstruction()
 		isub.AsFmax(x, y)
 		builder.InsertInstruction(isub)
-		value := isub.Return()
+		value := isub.Return
 		state.push(value)
 	case wasm.OpcodeF32Min, wasm.OpcodeF64Min:
 		if state.unreachable {
@@ -315,7 +315,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		isub := builder.AllocateInstruction()
 		isub.AsFmin(x, y)
 		builder.InsertInstruction(isub)
-		value := isub.Return()
+		value := isub.Return
 		state.push(value)
 	case wasm.OpcodeI64Extend8S:
 		if state.unreachable {
@@ -360,9 +360,9 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 		builder.InsertInstruction(zero)
 		icmp := builder.AllocateInstruction().
-			AsIcmp(x, zero.Return(), ssa.IntegerCmpCondEqual).
+			AsIcmp(x, zero.Return, ssa.IntegerCmpCondEqual).
 			Insert(builder).
-			Return()
+			Return
 		state.push(icmp)
 	case wasm.OpcodeI32Eq, wasm.OpcodeI64Eq:
 		if state.unreachable {
@@ -450,28 +450,28 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		x := state.pop()
-		v := builder.AllocateInstruction().AsFneg(x).Insert(builder).Return()
+		v := builder.AllocateInstruction().AsFneg(x).Insert(builder).Return
 		state.push(v)
 	case wasm.OpcodeF32Sqrt, wasm.OpcodeF64Sqrt:
 		if state.unreachable {
 			break
 		}
 		x := state.pop()
-		v := builder.AllocateInstruction().AsSqrt(x).Insert(builder).Return()
+		v := builder.AllocateInstruction().AsSqrt(x).Insert(builder).Return
 		state.push(v)
 	case wasm.OpcodeF32Abs, wasm.OpcodeF64Abs:
 		if state.unreachable {
 			break
 		}
 		x := state.pop()
-		v := builder.AllocateInstruction().AsFabs(x).Insert(builder).Return()
+		v := builder.AllocateInstruction().AsFabs(x).Insert(builder).Return
 		state.push(v)
 	case wasm.OpcodeF32Copysign, wasm.OpcodeF64Copysign:
 		if state.unreachable {
 			break
 		}
 		y, x := state.pop(), state.pop()
-		v := builder.AllocateInstruction().AsFcopysign(x, y).Insert(builder).Return()
+		v := builder.AllocateInstruction().AsFcopysign(x, y).Insert(builder).Return
 		state.push(v)
 
 	case wasm.OpcodeF32Ceil, wasm.OpcodeF64Ceil:
@@ -479,28 +479,28 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		x := state.pop()
-		v := builder.AllocateInstruction().AsCeil(x).Insert(builder).Return()
+		v := builder.AllocateInstruction().AsCeil(x).Insert(builder).Return
 		state.push(v)
 	case wasm.OpcodeF32Floor, wasm.OpcodeF64Floor:
 		if state.unreachable {
 			break
 		}
 		x := state.pop()
-		v := builder.AllocateInstruction().AsFloor(x).Insert(builder).Return()
+		v := builder.AllocateInstruction().AsFloor(x).Insert(builder).Return
 		state.push(v)
 	case wasm.OpcodeF32Trunc, wasm.OpcodeF64Trunc:
 		if state.unreachable {
 			break
 		}
 		x := state.pop()
-		v := builder.AllocateInstruction().AsTrunc(x).Insert(builder).Return()
+		v := builder.AllocateInstruction().AsTrunc(x).Insert(builder).Return
 		state.push(v)
 	case wasm.OpcodeF32Nearest, wasm.OpcodeF64Nearest:
 		if state.unreachable {
 			break
 		}
 		x := state.pop()
-		v := builder.AllocateInstruction().AsNearest(x).Insert(builder).Return()
+		v := builder.AllocateInstruction().AsNearest(x).Insert(builder).Return
 		state.push(v)
 	case wasm.OpcodeI64TruncF64S, wasm.OpcodeI64TruncF32S,
 		wasm.OpcodeI32TruncF64S, wasm.OpcodeI32TruncF32S,
@@ -515,7 +515,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			op == wasm.OpcodeI64TruncF64S || op == wasm.OpcodeI64TruncF32S || op == wasm.OpcodeI32TruncF32S || op == wasm.OpcodeI32TruncF64S,
 			op == wasm.OpcodeI64TruncF64S || op == wasm.OpcodeI64TruncF32S || op == wasm.OpcodeI64TruncF64U || op == wasm.OpcodeI64TruncF32U,
 			false,
-		).Insert(builder).Return()
+		).Insert(builder).Return
 		state.push(ret)
 	case wasm.OpcodeMiscPrefix:
 		state.pc++
@@ -541,7 +541,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				miscOp == wasm.OpcodeMiscI64TruncSatF64S || miscOp == wasm.OpcodeMiscI64TruncSatF32S || miscOp == wasm.OpcodeMiscI32TruncSatF32S || miscOp == wasm.OpcodeMiscI32TruncSatF64S,
 				miscOp == wasm.OpcodeMiscI64TruncSatF64S || miscOp == wasm.OpcodeMiscI64TruncSatF32S || miscOp == wasm.OpcodeMiscI64TruncSatF64U || miscOp == wasm.OpcodeMiscI64TruncSatF32U,
 				true,
-			).Insert(builder).Return()
+			).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeMiscTableSize:
@@ -554,13 +554,13 @@ func (c *Compiler) lowerCurrentOpcode() {
 			loadTableInstancePtr := builder.AllocateInstruction()
 			loadTableInstancePtr.AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), types.I64)
 			builder.InsertInstruction(loadTableInstancePtr)
-			tableInstancePtr := loadTableInstancePtr.Return()
+			tableInstancePtr := loadTableInstancePtr.Return
 
 			// Load the table's length.
 			loadTableLen := builder.AllocateInstruction().
 				AsLoad(tableInstancePtr, tableInstanceLenOffset, types.I32).
 				Insert(builder)
-			state.push(loadTableLen.Return())
+			state.push(loadTableLen.Return)
 
 		case wasm.OpcodeMiscTableGrow:
 			tableIndex := c.readI32u()
@@ -570,7 +570,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			c.storeCallerModuleContext()
 
-			tableIndexVal := builder.AllocateInstruction().AsIconst32(tableIndex).Insert(builder).Return()
+			tableIndexVal := builder.AllocateInstruction().AsIconst32(tableIndex).Insert(builder).Return
 
 			num := state.pop()
 			r := state.pop()
@@ -579,14 +579,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 				AsLoad(c.execCtxPtrValue,
 					wazevoapi.ExecutionContextOffsetTableGrowTrampolineAddress.U32(),
 					types.I64,
-				).Insert(builder).Return()
+				).Insert(builder).Return
 
 			args := []ssa.Var{c.execCtxPtrValue, tableIndexVal, num, r}
 			callGrowRet := builder.
 				AllocateInstruction().
 				AsCallIndirect(tableGrowPtr, &c.tableGrowSig, args).
-				Insert(builder).Return()
-			state.push(callGrowRet)
+				Insert(builder).Return
+			state.push(c.select0(callGrowRet))
 
 		case wasm.OpcodeMiscTableCopy:
 			dstTableIndex := c.readI32u()
@@ -596,11 +596,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 
 			copySize := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			srcOffset := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			dstOffset := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 
 			// Out of bounds check.
 			dstTableInstancePtr := c.boundsCheckInTable(dstTableIndex, dstOffset, copySize)
@@ -609,14 +609,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			dstTableBaseAddr := c.loadTableBaseAddr(dstTableInstancePtr)
 			srcTableBaseAddr := c.loadTableBaseAddr(srcTableInstancePtr)
 
-			three := builder.AllocateInstruction().AsIconst64(3).Insert(builder).Return()
+			three := builder.AllocateInstruction().AsIconst64(3).Insert(builder).Return
 
-			dstOffsetInBytes := builder.AllocateInstruction().AsIshl(dstOffset, three).Insert(builder).Return()
-			dstAddr := builder.AllocateInstruction().AsIadd(dstTableBaseAddr, dstOffsetInBytes).Insert(builder).Return()
-			srcOffsetInBytes := builder.AllocateInstruction().AsIshl(srcOffset, three).Insert(builder).Return()
-			srcAddr := builder.AllocateInstruction().AsIadd(srcTableBaseAddr, srcOffsetInBytes).Insert(builder).Return()
+			dstOffsetInBytes := builder.AllocateInstruction().AsIshl(dstOffset, three).Insert(builder).Return
+			dstAddr := builder.AllocateInstruction().AsIadd(dstTableBaseAddr, dstOffsetInBytes).Insert(builder).Return
+			srcOffsetInBytes := builder.AllocateInstruction().AsIshl(srcOffset, three).Insert(builder).Return
+			srcAddr := builder.AllocateInstruction().AsIadd(srcTableBaseAddr, srcOffsetInBytes).Insert(builder).Return
 
-			copySizeInBytes := builder.AllocateInstruction().AsIshl(copySize, three).Insert(builder).Return()
+			copySizeInBytes := builder.AllocateInstruction().AsIshl(copySize, three).Insert(builder).Return
 			c.callMemmove(dstAddr, srcAddr, copySizeInBytes)
 
 		case wasm.OpcodeMiscMemoryCopy:
@@ -626,11 +626,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 
 			copySize := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			srcOffset := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			dstOffset := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 
 			// Out of bounds check.
 			memLen := c.getMemoryLenValue(false)
@@ -638,8 +638,8 @@ func (c *Compiler) lowerCurrentOpcode() {
 			c.boundsCheckInMemory(memLen, srcOffset, copySize)
 
 			memBase := c.getMemoryBaseValue(false)
-			dstAddr := builder.AllocateInstruction().AsIadd(memBase, dstOffset).Insert(builder).Return()
-			srcAddr := builder.AllocateInstruction().AsIadd(memBase, srcOffset).Insert(builder).Return()
+			dstAddr := builder.AllocateInstruction().AsIadd(memBase, dstOffset).Insert(builder).Return
+			srcAddr := builder.AllocateInstruction().AsIadd(memBase, srcOffset).Insert(builder).Return
 
 			c.callMemmove(dstAddr, srcAddr, copySize)
 
@@ -653,18 +653,18 @@ func (c *Compiler) lowerCurrentOpcode() {
 			offset := state.pop()
 
 			fillSizeExt := builder.
-				AllocateInstruction().AsUExtend(fillSize, 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(fillSize, 32, 64).Insert(builder).Return
 			offsetExt := builder.
-				AllocateInstruction().AsUExtend(offset, 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(offset, 32, 64).Insert(builder).Return
 			tableInstancePtr := c.boundsCheckInTable(tableIndex, offsetExt, fillSizeExt)
 
-			three := builder.AllocateInstruction().AsIconst64(3).Insert(builder).Return()
-			offsetInBytes := builder.AllocateInstruction().AsIshl(offsetExt, three).Insert(builder).Return()
-			fillSizeInBytes := builder.AllocateInstruction().AsIshl(fillSizeExt, three).Insert(builder).Return()
+			three := builder.AllocateInstruction().AsIconst64(3).Insert(builder).Return
+			offsetInBytes := builder.AllocateInstruction().AsIshl(offsetExt, three).Insert(builder).Return
+			fillSizeInBytes := builder.AllocateInstruction().AsIshl(fillSizeExt, three).Insert(builder).Return
 
 			// Calculate the base address of the table.
 			tableBaseAddr := c.loadTableBaseAddr(tableInstancePtr)
-			addr := builder.AllocateInstruction().AsIadd(tableBaseAddr, offsetInBytes).Insert(builder).Return()
+			addr := builder.AllocateInstruction().AsIadd(tableBaseAddr, offsetInBytes).Insert(builder).Return
 
 			// Uses the copy trick for faster filling buffer like memory.fill, but in this case we copy 8 bytes at a time.
 			// Tables are rarely huge, so ignore the 8KB maximum.
@@ -683,9 +683,9 @@ func (c *Compiler) lowerCurrentOpcode() {
 			followingBlk := builder.AllocateBasicBlock()
 
 			// Insert the jump to the beforeLoop block; If the fillSize is zero, then jump to the following block to skip entire logics.
-			zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return()
+			zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return
 			ifFillSizeZero := builder.AllocateInstruction().AsIcmp(fillSizeExt, zero, ssa.IntegerCmpCondEqual).
-				Insert(builder).Return()
+				Insert(builder).Return
 			curBlock := builder.CurrentBlock()
 			curBlock.Kind = ssa.BlockIf
 			curBlock.ControlValue = ifFillSizeZero
@@ -695,19 +695,19 @@ func (c *Compiler) lowerCurrentOpcode() {
 			// buf[0:8] = value
 			builder.SetCurrentBlock(beforeLoop)
 			builder.AllocateInstruction().AsStore(ssa.OpcodeStore, value, addr, 0).Insert(builder)
-			eight := builder.AllocateInstruction().AsIconst64(8).Insert(builder).Return()
+			eight := builder.AllocateInstruction().AsIconst64(8).Insert(builder).Return
 			c.insertJumpToBlock([]ssa.Var{eight}, loopBlk)
 
 			builder.SetCurrentBlock(loopBlk)
-			dstAddr := builder.AllocateInstruction().AsIadd(addr, loopVar).Insert(builder).Return()
+			dstAddr := builder.AllocateInstruction().AsIadd(addr, loopVar).Insert(builder).Return
 
-			newLoopVar := builder.AllocateInstruction().AsIadd(loopVar, loopVar).Insert(builder).Return()
+			newLoopVar := builder.AllocateInstruction().AsIadd(loopVar, loopVar).Insert(builder).Return
 			newLoopVarLessThanFillSize := builder.AllocateInstruction().
-				AsIcmp(newLoopVar, fillSizeInBytes, ssa.IntegerCmpCondUnsignedLessThan).Insert(builder).Return()
+				AsIcmp(newLoopVar, fillSizeInBytes, ssa.IntegerCmpCondUnsignedLessThan).Insert(builder).Return
 
 			// On the last iteration, count must be fillSizeInBytes-loopVar.
-			diff := builder.AllocateInstruction().AsIsub(fillSizeInBytes, loopVar).Insert(builder).Return()
-			count := builder.AllocateInstruction().AsSelect(newLoopVarLessThanFillSize, loopVar, diff).Insert(builder).Return()
+			diff := builder.AllocateInstruction().AsIsub(fillSizeInBytes, loopVar).Insert(builder).Return
+			count := builder.AllocateInstruction().AsSelect(newLoopVarLessThanFillSize, loopVar, diff).Insert(builder).Return
 
 			c.callMemmove(dstAddr, addr, count)
 
@@ -730,16 +730,16 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 
 			fillSize := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			value := state.pop()
 			offset := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 
 			// Out of bounds check.
 			c.boundsCheckInMemory(c.getMemoryLenValue(false), offset, fillSize)
 
 			// Calculate the base address:
-			addr := builder.AllocateInstruction().AsIadd(c.getMemoryBaseValue(false), offset).Insert(builder).Return()
+			addr := builder.AllocateInstruction().AsIadd(c.getMemoryBaseValue(false), offset).Insert(builder).Return
 
 			// Uses the copy trick for faster filling buffer, with a maximum chunk size of 8KB.
 			// https://github.com/golang/go/blob/go1.24.0/src/bytes/bytes.go#L664-L673
@@ -759,9 +759,9 @@ func (c *Compiler) lowerCurrentOpcode() {
 			followingBlk := builder.AllocateBasicBlock()
 
 			// Insert the jump to the beforeLoop block; If the fillSize is zero, then jump to the following block to skip entire logics.
-			zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return()
+			zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return
 			ifFillSizeZero := builder.AllocateInstruction().AsIcmp(fillSize, zero, ssa.IntegerCmpCondEqual).
-				Insert(builder).Return()
+				Insert(builder).Return
 
 			curBlock := builder.CurrentBlock()
 			curBlock.Kind = ssa.BlockIf
@@ -772,26 +772,26 @@ func (c *Compiler) lowerCurrentOpcode() {
 			// buf[0] = value
 			builder.SetCurrentBlock(beforeLoop)
 			builder.AllocateInstruction().AsStore(ssa.OpcodeIstore8, value, addr, 0).Insert(builder)
-			one := builder.AllocateInstruction().AsIconst64(1).Insert(builder).Return()
+			one := builder.AllocateInstruction().AsIconst64(1).Insert(builder).Return
 			c.insertJumpToBlock([]ssa.Var{one}, loopBlk)
 
 			builder.SetCurrentBlock(loopBlk)
-			dstAddr := builder.AllocateInstruction().AsIadd(addr, loopVar).Insert(builder).Return()
+			dstAddr := builder.AllocateInstruction().AsIadd(addr, loopVar).Insert(builder).Return
 
 			// chunk := ((i - 1) & 8191) + 1
-			mask := builder.AllocateInstruction().AsIconst64(8191).Insert(builder).Return()
-			tmp1 := builder.AllocateInstruction().AsIsub(loopVar, one).Insert(builder).Return()
-			tmp2 := builder.AllocateInstruction().AsBand(tmp1, mask).Insert(builder).Return()
-			chunk := builder.AllocateInstruction().AsIadd(tmp2, one).Insert(builder).Return()
+			mask := builder.AllocateInstruction().AsIconst64(8191).Insert(builder).Return
+			tmp1 := builder.AllocateInstruction().AsIsub(loopVar, one).Insert(builder).Return
+			tmp2 := builder.AllocateInstruction().AsBand(tmp1, mask).Insert(builder).Return
+			chunk := builder.AllocateInstruction().AsIadd(tmp2, one).Insert(builder).Return
 
 			// i += chunk
-			newLoopVar := builder.AllocateInstruction().AsIadd(loopVar, chunk).Insert(builder).Return()
+			newLoopVar := builder.AllocateInstruction().AsIadd(loopVar, chunk).Insert(builder).Return
 			newLoopVarLessThanFillSize := builder.AllocateInstruction().
-				AsIcmp(newLoopVar, fillSize, ssa.IntegerCmpCondUnsignedLessThan).Insert(builder).Return()
+				AsIcmp(newLoopVar, fillSize, ssa.IntegerCmpCondUnsignedLessThan).Insert(builder).Return
 
 			// count = min(chunk, fillSize-loopVar)
-			diff := builder.AllocateInstruction().AsIsub(fillSize, loopVar).Insert(builder).Return()
-			count := builder.AllocateInstruction().AsSelect(newLoopVarLessThanFillSize, chunk, diff).Insert(builder).Return()
+			diff := builder.AllocateInstruction().AsIsub(fillSize, loopVar).Insert(builder).Return
+			count := builder.AllocateInstruction().AsSelect(newLoopVarLessThanFillSize, chunk, diff).Insert(builder).Return
 
 			c.callMemmove(dstAddr, addr, count)
 
@@ -814,11 +814,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 
 			copySize := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			offsetInDataInstance := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			offsetInMemory := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 
 			dataInstPtr := c.dataOrElementInstanceAddr(index, c.offset.DataInstances1stElement)
 
@@ -826,11 +826,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 			c.boundsCheckInMemory(c.getMemoryLenValue(false), offsetInMemory, copySize)
 			c.boundsCheckInDataOrElementInstance(dataInstPtr, offsetInDataInstance, copySize, wazevoapi.ExitCodeMemoryOutOfBounds)
 
-			dataInstBaseAddr := builder.AllocateInstruction().AsLoad(dataInstPtr, 0, types.I64).Insert(builder).Return()
-			srcAddr := builder.AllocateInstruction().AsIadd(dataInstBaseAddr, offsetInDataInstance).Insert(builder).Return()
+			dataInstBaseAddr := builder.AllocateInstruction().AsLoad(dataInstPtr, 0, types.I64).Insert(builder).Return
+			srcAddr := builder.AllocateInstruction().AsIadd(dataInstBaseAddr, offsetInDataInstance).Insert(builder).Return
 
 			memBase := c.getMemoryBaseValue(false)
-			dstAddr := builder.AllocateInstruction().AsIadd(memBase, offsetInMemory).Insert(builder).Return()
+			dstAddr := builder.AllocateInstruction().AsIadd(memBase, offsetInMemory).Insert(builder).Return
 
 			c.callMemmove(dstAddr, srcAddr, copySize)
 
@@ -842,11 +842,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 
 			copySize := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			offsetInElementInstance := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 			offsetInTable := builder.
-				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return()
+				AllocateInstruction().AsUExtend(state.pop(), 32, 64).Insert(builder).Return
 
 			elemInstPtr := c.dataOrElementInstanceAddr(elemIndex, c.offset.ElementInstances1stElement)
 
@@ -854,18 +854,18 @@ func (c *Compiler) lowerCurrentOpcode() {
 			tableInstancePtr := c.boundsCheckInTable(tableIndex, offsetInTable, copySize)
 			c.boundsCheckInDataOrElementInstance(elemInstPtr, offsetInElementInstance, copySize, wazevoapi.ExitCodeTableOutOfBounds)
 
-			three := builder.AllocateInstruction().AsIconst64(3).Insert(builder).Return()
+			three := builder.AllocateInstruction().AsIconst64(3).Insert(builder).Return
 			// Calculates the destination address in the table.
-			tableOffsetInBytes := builder.AllocateInstruction().AsIshl(offsetInTable, three).Insert(builder).Return()
+			tableOffsetInBytes := builder.AllocateInstruction().AsIshl(offsetInTable, three).Insert(builder).Return
 			tableBaseAddr := c.loadTableBaseAddr(tableInstancePtr)
-			dstAddr := builder.AllocateInstruction().AsIadd(tableBaseAddr, tableOffsetInBytes).Insert(builder).Return()
+			dstAddr := builder.AllocateInstruction().AsIadd(tableBaseAddr, tableOffsetInBytes).Insert(builder).Return
 
 			// Calculates the source address in the element instance.
-			srcOffsetInBytes := builder.AllocateInstruction().AsIshl(offsetInElementInstance, three).Insert(builder).Return()
-			elemInstBaseAddr := builder.AllocateInstruction().AsLoad(elemInstPtr, 0, types.I64).Insert(builder).Return()
-			srcAddr := builder.AllocateInstruction().AsIadd(elemInstBaseAddr, srcOffsetInBytes).Insert(builder).Return()
+			srcOffsetInBytes := builder.AllocateInstruction().AsIshl(offsetInElementInstance, three).Insert(builder).Return
+			elemInstBaseAddr := builder.AllocateInstruction().AsLoad(elemInstPtr, 0, types.I64).Insert(builder).Return
+			srcAddr := builder.AllocateInstruction().AsIadd(elemInstBaseAddr, srcOffsetInBytes).Insert(builder).Return
 
-			copySizeInBytes := builder.AllocateInstruction().AsIshl(copySize, three).Insert(builder).Return()
+			copySizeInBytes := builder.AllocateInstruction().AsIshl(copySize, three).Insert(builder).Return
 			c.callMemmove(dstAddr, srcAddr, copySizeInBytes)
 
 		case wasm.OpcodeMiscElemDrop:
@@ -893,7 +893,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 		reinterpret := builder.AllocateInstruction().
 			AsBitcast(state.pop(), types.I32).
-			Insert(builder).Return()
+			Insert(builder).Return
 		state.push(reinterpret)
 
 	case wasm.OpcodeI64ReinterpretF64:
@@ -902,7 +902,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 		reinterpret := builder.AllocateInstruction().
 			AsBitcast(state.pop(), types.I64).
-			Insert(builder).Return()
+			Insert(builder).Return
 		state.push(reinterpret)
 
 	case wasm.OpcodeF32ReinterpretI32:
@@ -911,7 +911,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 		reinterpret := builder.AllocateInstruction().
 			AsBitcast(state.pop(), types.F32).
-			Insert(builder).Return()
+			Insert(builder).Return
 		state.push(reinterpret)
 
 	case wasm.OpcodeF64ReinterpretI64:
@@ -920,7 +920,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 		reinterpret := builder.AllocateInstruction().
 			AsBitcast(state.pop(), types.F64).
-			Insert(builder).Return()
+			Insert(builder).Return
 		state.push(reinterpret)
 
 	case wasm.OpcodeI32DivS, wasm.OpcodeI64DivS:
@@ -928,7 +928,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		y, x := state.pop(), state.pop()
-		result := builder.AllocateInstruction().AsSDiv(x, y, c.execCtxPtrValue).Insert(builder).Return()
+		result := builder.AllocateInstruction().AsSDiv(x, y, c.execCtxPtrValue).Insert(builder).Return
 		state.push(result)
 
 	case wasm.OpcodeI32DivU, wasm.OpcodeI64DivU:
@@ -936,7 +936,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		y, x := state.pop(), state.pop()
-		result := builder.AllocateInstruction().AsUDiv(x, y, c.execCtxPtrValue).Insert(builder).Return()
+		result := builder.AllocateInstruction().AsUDiv(x, y, c.execCtxPtrValue).Insert(builder).Return
 		state.push(result)
 
 	case wasm.OpcodeI32RemS, wasm.OpcodeI64RemS:
@@ -944,7 +944,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		y, x := state.pop(), state.pop()
-		result := builder.AllocateInstruction().AsSRem(x, y, c.execCtxPtrValue).Insert(builder).Return()
+		result := builder.AllocateInstruction().AsSRem(x, y, c.execCtxPtrValue).Insert(builder).Return
 		state.push(result)
 
 	case wasm.OpcodeI32RemU, wasm.OpcodeI64RemU:
@@ -952,7 +952,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		y, x := state.pop(), state.pop()
-		result := builder.AllocateInstruction().AsURem(x, y, c.execCtxPtrValue).Insert(builder).Return()
+		result := builder.AllocateInstruction().AsURem(x, y, c.execCtxPtrValue).Insert(builder).Return
 		state.push(result)
 
 	case wasm.OpcodeI32And, wasm.OpcodeI64And:
@@ -963,7 +963,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		and := builder.AllocateInstruction()
 		and.AsBand(x, y)
 		builder.InsertInstruction(and)
-		value := and.Return()
+		value := and.Return
 		state.push(value)
 	case wasm.OpcodeI32Or, wasm.OpcodeI64Or:
 		if state.unreachable {
@@ -973,7 +973,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		or := builder.AllocateInstruction()
 		or.AsBor(x, y)
 		builder.InsertInstruction(or)
-		value := or.Return()
+		value := or.Return
 		state.push(value)
 	case wasm.OpcodeI32Xor, wasm.OpcodeI64Xor:
 		if state.unreachable {
@@ -983,7 +983,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		xor := builder.AllocateInstruction()
 		xor.AsBxor(x, y)
 		builder.InsertInstruction(xor)
-		value := xor.Return()
+		value := xor.Return
 		state.push(value)
 	case wasm.OpcodeI32Shl, wasm.OpcodeI64Shl:
 		if state.unreachable {
@@ -993,7 +993,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		ishl := builder.AllocateInstruction()
 		ishl.AsIshl(x, y)
 		builder.InsertInstruction(ishl)
-		value := ishl.Return()
+		value := ishl.Return
 		state.push(value)
 	case wasm.OpcodeI32ShrU, wasm.OpcodeI64ShrU:
 		if state.unreachable {
@@ -1003,7 +1003,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		ishl := builder.AllocateInstruction()
 		ishl.AsUshr(x, y)
 		builder.InsertInstruction(ishl)
-		value := ishl.Return()
+		value := ishl.Return
 		state.push(value)
 	case wasm.OpcodeI32ShrS, wasm.OpcodeI64ShrS:
 		if state.unreachable {
@@ -1013,7 +1013,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		ishl := builder.AllocateInstruction()
 		ishl.AsSshr(x, y)
 		builder.InsertInstruction(ishl)
-		value := ishl.Return()
+		value := ishl.Return
 		state.push(value)
 	case wasm.OpcodeI32Rotl, wasm.OpcodeI64Rotl:
 		if state.unreachable {
@@ -1023,7 +1023,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		rotl := builder.AllocateInstruction()
 		rotl.AsRotl(x, y)
 		builder.InsertInstruction(rotl)
-		value := rotl.Return()
+		value := rotl.Return
 		state.push(value)
 	case wasm.OpcodeI32Rotr, wasm.OpcodeI64Rotr:
 		if state.unreachable {
@@ -1033,7 +1033,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		rotr := builder.AllocateInstruction()
 		rotr.AsRotr(x, y)
 		builder.InsertInstruction(rotr)
-		value := rotr.Return()
+		value := rotr.Return
 		state.push(value)
 	case wasm.OpcodeI32Clz, wasm.OpcodeI64Clz:
 		if state.unreachable {
@@ -1043,7 +1043,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		clz := builder.AllocateInstruction()
 		clz.AsClz(x)
 		builder.InsertInstruction(clz)
-		value := clz.Return()
+		value := clz.Return
 		state.push(value)
 	case wasm.OpcodeI32Ctz, wasm.OpcodeI64Ctz:
 		if state.unreachable {
@@ -1053,7 +1053,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		ctz := builder.AllocateInstruction()
 		ctz.AsCtz(x)
 		builder.InsertInstruction(ctz)
-		value := ctz.Return()
+		value := ctz.Return
 		state.push(value)
 	case wasm.OpcodeI32Popcnt, wasm.OpcodeI64Popcnt:
 		if state.unreachable {
@@ -1063,7 +1063,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		popcnt := builder.AllocateInstruction()
 		popcnt.AsPopcnt(x)
 		builder.InsertInstruction(popcnt)
-		value := popcnt.Return()
+		value := popcnt.Return
 		state.push(value)
 
 	case wasm.OpcodeI32WrapI64:
@@ -1071,7 +1071,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			break
 		}
 		x := state.pop()
-		wrap := builder.AllocateInstruction().AsIreduce(x, types.I32).Insert(builder).Return()
+		wrap := builder.AllocateInstruction().AsIreduce(x, types.I32).Insert(builder).Return
 		state.push(wrap)
 	case wasm.OpcodeGlobalGet:
 		index := c.readI32u()
@@ -1129,7 +1129,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		sl := builder.AllocateInstruction().
 			AsSelect(cond, v1, v2).
 			Insert(builder).
-			Return()
+			Return
 		state.push(sl)
 
 	case wasm.OpcodeMemorySize:
@@ -1143,26 +1143,26 @@ func (c *Compiler) lowerCurrentOpcode() {
 			memInstPtr := builder.AllocateInstruction().
 				AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64).
 				Insert(builder).
-				Return()
+				Return
 
 			memSizeInBytes = builder.AllocateInstruction().
 				AsLoad(memInstPtr, memoryInstanceBufSizeOffset, types.I32).
 				Insert(builder).
-				Return()
+				Return
 		} else {
 			memSizeInBytes = builder.AllocateInstruction().
 				AsLoad(c.moduleCtxPtrValue, c.offset.LocalMemoryLen().U32(), types.I32).
 				Insert(builder).
-				Return()
+				Return
 		}
 
 		amount := builder.AllocateInstruction()
 		amount.AsIconst32(uint32(wasm.MemoryPageSizeInBits))
 		builder.InsertInstruction(amount)
 		memSize := builder.AllocateInstruction().
-			AsUshr(memSizeInBytes, amount.Return()).
+			AsUshr(memSizeInBytes, amount.Return).
 			Insert(builder).
-			Return()
+			Return
 		state.push(memSize)
 
 	case wasm.OpcodeMemoryGrow:
@@ -1178,14 +1178,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			AsLoad(c.execCtxPtrValue,
 				wazevoapi.ExecutionContextOffsetMemoryGrowTrampolineAddress.U32(),
 				types.I64,
-			).Insert(builder).Return()
+			).Insert(builder).Return
 
 		args := []ssa.Var{c.execCtxPtrValue, pages}
 		callGrowRet := builder.
 			AllocateInstruction().
 			AsCallIndirect(memoryGrowPtr, &c.memoryGrowSig, args).
-			Insert(builder).Return()
-		state.push(callGrowRet)
+			Insert(builder).Return
+		state.push(c.select0(callGrowRet))
 
 		// After the memory grow, reload the cached memory base and len.
 		c.reloadMemoryBaseLen()
@@ -1308,7 +1308,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			panic("BUG")
 		}
 		builder.InsertInstruction(load)
-		state.push(load.Return())
+		state.push(load.Return)
 	case wasm.OpcodeBlock:
 		// Note: we do not need to create a BB for this as that would always have only one predecessor
 		// which is the current BB, and therefore it's always ok to merge them in any way.
@@ -1363,7 +1363,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				AsLoad(c.execCtxPtrValue,
 					wazevoapi.ExecutionContextOffsetCheckModuleExitCodeTrampolineAddress.U32(),
 					types.I64,
-				).Insert(builder).Return()
+				).Insert(builder).Return
 
 			args := []ssa.Var{c.execCtxPtrValue}
 			builder.AllocateInstruction().
@@ -1610,7 +1610,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			state.pop(),
 			op == wasm.OpcodeF64ConvertI32S || op == wasm.OpcodeF64ConvertI64S,
 			true,
-		).Insert(builder).Return()
+		).Insert(builder).Return
 		state.push(result)
 	case wasm.OpcodeF32ConvertI32S, wasm.OpcodeF32ConvertI64S, wasm.OpcodeF32ConvertI32U, wasm.OpcodeF32ConvertI64U:
 		if state.unreachable {
@@ -1620,7 +1620,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			state.pop(),
 			op == wasm.OpcodeF32ConvertI32S || op == wasm.OpcodeF32ConvertI64S,
 			false,
-		).Insert(builder).Return()
+		).Insert(builder).Return
 		state.push(result)
 	case wasm.OpcodeF32DemoteF64:
 		if state.unreachable {
@@ -1629,7 +1629,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		cvt := builder.AllocateInstruction()
 		cvt.AsFdemote(state.pop())
 		builder.InsertInstruction(cvt)
-		state.push(cvt.Return())
+		state.push(cvt.Return)
 	case wasm.OpcodeF64PromoteF32:
 		if state.unreachable {
 			break
@@ -1637,7 +1637,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		cvt := builder.AllocateInstruction()
 		cvt.AsFpromote(state.pop())
 		builder.InsertInstruction(cvt)
-		state.push(cvt.Return())
+		state.push(cvt.Return)
 
 	case wasm.OpcodeVecPrefix:
 		state.pc++
@@ -1652,7 +1652,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if state.unreachable {
 				break
 			}
-			ret := builder.AllocateInstruction().AsVconst(lo, hi).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVconst(lo, hi).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128Load:
 			_, offset := c.readMemArg()
@@ -1664,7 +1664,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			load := builder.AllocateInstruction()
 			load.AsLoad(addr, offset, types.V128)
 			builder.InsertInstruction(load)
-			state.push(load.Return())
+			state.push(load.Return)
 		case wasm.OpcodeVecV128Load8Lane, wasm.OpcodeVecV128Load16Lane, wasm.OpcodeVecV128Load32Lane:
 			_, offset := c.readMemArg()
 			state.pc++
@@ -1688,10 +1688,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 			addr := c.memOpSetup(baseAddr, uint64(offset), opSize)
 			load := builder.AllocateInstruction().
 				AsExtLoad(loadOp, addr, offset, false).
-				Insert(builder).Return()
+				Insert(builder).Return
 			ret := builder.AllocateInstruction().
 				AsInsertlane(vector, load, laneIndex, lane).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128Load64Lane:
 			_, offset := c.readMemArg()
@@ -1705,10 +1705,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 			addr := c.memOpSetup(baseAddr, uint64(offset), 8)
 			load := builder.AllocateInstruction().
 				AsLoad(addr, offset, types.I64).
-				Insert(builder).Return()
+				Insert(builder).Return
 			ret := builder.AllocateInstruction().
 				AsInsertlane(vector, load, laneIndex, types.VecLaneI64x2).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecV128Load32zero, wasm.OpcodeVecV128Load64zero:
@@ -1730,7 +1730,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			ret := builder.AllocateInstruction().
 				AsVZeroExtLoad(addr, offset, scalarType).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecV128Load8x8u, wasm.OpcodeVecV128Load8x8s,
@@ -1763,10 +1763,10 @@ func (c *Compiler) lowerCurrentOpcode() {
 			addr := c.memOpSetup(baseAddr, uint64(offset), 8)
 			load := builder.AllocateInstruction().
 				AsLoad(addr, offset, types.F64).
-				Insert(builder).Return()
+				Insert(builder).Return
 			ret := builder.AllocateInstruction().
 				AsWiden(load, lane, signed, true).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128Load8Splat, wasm.OpcodeVecV128Load16Splat,
 			wasm.OpcodeVecV128Load32Splat, wasm.OpcodeVecV128Load64Splat:
@@ -1790,7 +1790,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			addr := c.memOpSetup(baseAddr, uint64(offset), opSize)
 			ret := builder.AllocateInstruction().
 				AsLoadSplat(addr, offset, lane).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128Store:
 			_, offset := c.readMemArg()
@@ -1829,7 +1829,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			addr := c.memOpSetup(baseAddr, uint64(offset), opSize)
 			value := builder.AllocateInstruction().
 				AsExtractlane(vector, laneIndex, lane, false).
-				Insert(builder).Return()
+				Insert(builder).Return
 			builder.AllocateInstruction().
 				AsStore(storeOp, value, addr, offset).
 				Insert(builder)
@@ -1838,7 +1838,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				break
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVbnot(v1).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVbnot(v1).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128And:
 			if state.unreachable {
@@ -1846,7 +1846,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVband(v1, v2).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVband(v1, v2).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128AndNot:
 			if state.unreachable {
@@ -1854,7 +1854,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVbandnot(v1, v2).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVbandnot(v1, v2).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128Or:
 			if state.unreachable {
@@ -1862,7 +1862,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVbor(v1, v2).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVbor(v1, v2).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128Xor:
 			if state.unreachable {
@@ -1870,7 +1870,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVbxor(v1, v2).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVbxor(v1, v2).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128Bitselect:
 			if state.unreachable {
@@ -1879,14 +1879,14 @@ func (c *Compiler) lowerCurrentOpcode() {
 			c := state.pop()
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVbitselect(c, v1, v2).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVbitselect(c, v1, v2).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128AnyTrue:
 			if state.unreachable {
 				break
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVanyTrue(v1).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVanyTrue(v1).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16AllTrue, wasm.OpcodeVecI16x8AllTrue, wasm.OpcodeVecI32x4AllTrue, wasm.OpcodeVecI64x2AllTrue:
 			if state.unreachable {
@@ -1904,7 +1904,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneI64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVallTrue(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVallTrue(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16BitMask, wasm.OpcodeVecI16x8BitMask, wasm.OpcodeVecI32x4BitMask, wasm.OpcodeVecI64x2BitMask:
 			if state.unreachable {
@@ -1922,7 +1922,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneI64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVhighBits(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVhighBits(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Abs, wasm.OpcodeVecI16x8Abs, wasm.OpcodeVecI32x4Abs, wasm.OpcodeVecI64x2Abs:
 			if state.unreachable {
@@ -1940,7 +1940,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneI64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVIabs(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVIabs(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Neg, wasm.OpcodeVecI16x8Neg, wasm.OpcodeVecI32x4Neg, wasm.OpcodeVecI64x2Neg:
 			if state.unreachable {
@@ -1958,7 +1958,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneI64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVIneg(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVIneg(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Popcnt:
 			if state.unreachable {
@@ -1967,7 +1967,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			lane := types.VecLaneI8x16
 			v1 := state.pop()
 
-			ret := builder.AllocateInstruction().AsVIpopcnt(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVIpopcnt(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Add, wasm.OpcodeVecI16x8Add, wasm.OpcodeVecI32x4Add, wasm.OpcodeVecI64x2Add:
 			if state.unreachable {
@@ -1986,7 +1986,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVIadd(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVIadd(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16AddSatS, wasm.OpcodeVecI16x8AddSatS:
 			if state.unreachable {
@@ -2001,7 +2001,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVSaddSat(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVSaddSat(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16AddSatU, wasm.OpcodeVecI16x8AddSatU:
 			if state.unreachable {
@@ -2016,7 +2016,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVUaddSat(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVUaddSat(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16SubSatS, wasm.OpcodeVecI16x8SubSatS:
 			if state.unreachable {
@@ -2031,7 +2031,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVSsubSat(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVSsubSat(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16SubSatU, wasm.OpcodeVecI16x8SubSatU:
 			if state.unreachable {
@@ -2046,7 +2046,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVUsubSat(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVUsubSat(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecI8x16Sub, wasm.OpcodeVecI16x8Sub, wasm.OpcodeVecI32x4Sub, wasm.OpcodeVecI64x2Sub:
@@ -2066,7 +2066,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVIsub(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVIsub(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16MinS, wasm.OpcodeVecI16x8MinS, wasm.OpcodeVecI32x4MinS:
 			if state.unreachable {
@@ -2083,7 +2083,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVImin(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVImin(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16MinU, wasm.OpcodeVecI16x8MinU, wasm.OpcodeVecI32x4MinU:
 			if state.unreachable {
@@ -2100,7 +2100,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVUmin(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVUmin(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16MaxS, wasm.OpcodeVecI16x8MaxS, wasm.OpcodeVecI32x4MaxS:
 			if state.unreachable {
@@ -2117,7 +2117,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVImax(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVImax(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16MaxU, wasm.OpcodeVecI16x8MaxU, wasm.OpcodeVecI32x4MaxU:
 			if state.unreachable {
@@ -2134,7 +2134,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVUmax(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVUmax(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16AvgrU, wasm.OpcodeVecI16x8AvgrU:
 			if state.unreachable {
@@ -2149,7 +2149,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVAvgRound(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVAvgRound(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI16x8Mul, wasm.OpcodeVecI32x4Mul, wasm.OpcodeVecI64x2Mul:
 			if state.unreachable {
@@ -2166,7 +2166,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVImul(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVImul(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI16x8Q15mulrSatS:
 			if state.unreachable {
@@ -2174,7 +2174,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsSqmulRoundSat(v1, v2, types.VecLaneI16x8).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsSqmulRoundSat(v1, v2, types.VecLaneI16x8).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Eq, wasm.OpcodeVecI16x8Eq, wasm.OpcodeVecI32x4Eq, wasm.OpcodeVecI64x2Eq:
 			if state.unreachable {
@@ -2194,7 +2194,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondEqual, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Ne, wasm.OpcodeVecI16x8Ne, wasm.OpcodeVecI32x4Ne, wasm.OpcodeVecI64x2Ne:
 			if state.unreachable {
@@ -2214,7 +2214,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondNotEqual, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondNotEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16LtS, wasm.OpcodeVecI16x8LtS, wasm.OpcodeVecI32x4LtS, wasm.OpcodeVecI64x2LtS:
 			if state.unreachable {
@@ -2234,7 +2234,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondSignedLessThan, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondSignedLessThan, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16LtU, wasm.OpcodeVecI16x8LtU, wasm.OpcodeVecI32x4LtU:
 			if state.unreachable {
@@ -2252,7 +2252,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondUnsignedLessThan, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondUnsignedLessThan, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16LeS, wasm.OpcodeVecI16x8LeS, wasm.OpcodeVecI32x4LeS, wasm.OpcodeVecI64x2LeS:
 			if state.unreachable {
@@ -2272,7 +2272,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondSignedLessThanOrEqual, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondSignedLessThanOrEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16LeU, wasm.OpcodeVecI16x8LeU, wasm.OpcodeVecI32x4LeU:
 			if state.unreachable {
@@ -2290,7 +2290,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondUnsignedLessThanOrEqual, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondUnsignedLessThanOrEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16GtS, wasm.OpcodeVecI16x8GtS, wasm.OpcodeVecI32x4GtS, wasm.OpcodeVecI64x2GtS:
 			if state.unreachable {
@@ -2310,7 +2310,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondSignedGreaterThan, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondSignedGreaterThan, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16GtU, wasm.OpcodeVecI16x8GtU, wasm.OpcodeVecI32x4GtU:
 			if state.unreachable {
@@ -2328,7 +2328,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondUnsignedGreaterThan, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondUnsignedGreaterThan, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16GeS, wasm.OpcodeVecI16x8GeS, wasm.OpcodeVecI32x4GeS, wasm.OpcodeVecI64x2GeS:
 			if state.unreachable {
@@ -2348,7 +2348,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondSignedGreaterThanOrEqual, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondSignedGreaterThanOrEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16GeU, wasm.OpcodeVecI16x8GeU, wasm.OpcodeVecI32x4GeU:
 			if state.unreachable {
@@ -2366,7 +2366,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVIcmp(v1, v2, ssa.IntegerCmpCondUnsignedGreaterThanOrEqual, lane).Insert(builder).Return()
+				AsVIcmp(v1, v2, ssa.IntegerCmpCondUnsignedGreaterThanOrEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Max, wasm.OpcodeVecF64x2Max:
 			if state.unreachable {
@@ -2381,7 +2381,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFmax(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFmax(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Abs, wasm.OpcodeVecF64x2Abs:
 			if state.unreachable {
@@ -2395,7 +2395,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFabs(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFabs(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Min, wasm.OpcodeVecF64x2Min:
 			if state.unreachable {
@@ -2410,7 +2410,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFmin(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFmin(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Neg, wasm.OpcodeVecF64x2Neg:
 			if state.unreachable {
@@ -2424,7 +2424,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFneg(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFneg(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Sqrt, wasm.OpcodeVecF64x2Sqrt:
 			if state.unreachable {
@@ -2438,7 +2438,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVSqrt(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVSqrt(v1, lane).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecF32x4Add, wasm.OpcodeVecF64x2Add:
@@ -2454,7 +2454,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFadd(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFadd(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Sub, wasm.OpcodeVecF64x2Sub:
 			if state.unreachable {
@@ -2469,7 +2469,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFsub(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFsub(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Mul, wasm.OpcodeVecF64x2Mul:
 			if state.unreachable {
@@ -2484,7 +2484,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFmul(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFmul(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Div, wasm.OpcodeVecF64x2Div:
 			if state.unreachable {
@@ -2499,7 +2499,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFdiv(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFdiv(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecI16x8ExtaddPairwiseI8x16S, wasm.OpcodeVecI16x8ExtaddPairwiseI8x16U:
@@ -2508,7 +2508,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v := state.pop()
 			signed := vecOp == wasm.OpcodeVecI16x8ExtaddPairwiseI8x16S
-			ret := builder.AllocateInstruction().AsExtIaddPairwise(v, types.VecLaneI8x16, signed).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsExtIaddPairwise(v, types.VecLaneI8x16, signed).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecI32x4ExtaddPairwiseI16x8S, wasm.OpcodeVecI32x4ExtaddPairwiseI16x8U:
@@ -2517,7 +2517,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v := state.pop()
 			signed := vecOp == wasm.OpcodeVecI32x4ExtaddPairwiseI16x8S
-			ret := builder.AllocateInstruction().AsExtIaddPairwise(v, types.VecLaneI16x8, signed).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsExtIaddPairwise(v, types.VecLaneI16x8, signed).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecI16x8ExtMulLowI8x16S, wasm.OpcodeVecI16x8ExtMulLowI8x16U:
@@ -2598,7 +2598,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 
-			ret := builder.AllocateInstruction().AsWideningPairwiseDotProductS(v1, v2).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsWideningPairwiseDotProductS(v1, v2).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecF32x4Eq, wasm.OpcodeVecF64x2Eq:
@@ -2615,7 +2615,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcmp(v1, v2, ssa.FloatCmpCondEqual, lane).Insert(builder).Return()
+				AsVFcmp(v1, v2, ssa.FloatCmpCondEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Ne, wasm.OpcodeVecF64x2Ne:
 			if state.unreachable {
@@ -2631,7 +2631,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcmp(v1, v2, ssa.FloatCmpCondNotEqual, lane).Insert(builder).Return()
+				AsVFcmp(v1, v2, ssa.FloatCmpCondNotEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Lt, wasm.OpcodeVecF64x2Lt:
 			if state.unreachable {
@@ -2647,7 +2647,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcmp(v1, v2, ssa.FloatCmpCondLessThan, lane).Insert(builder).Return()
+				AsVFcmp(v1, v2, ssa.FloatCmpCondLessThan, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Le, wasm.OpcodeVecF64x2Le:
 			if state.unreachable {
@@ -2663,7 +2663,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcmp(v1, v2, ssa.FloatCmpCondLessThanOrEqual, lane).Insert(builder).Return()
+				AsVFcmp(v1, v2, ssa.FloatCmpCondLessThanOrEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Gt, wasm.OpcodeVecF64x2Gt:
 			if state.unreachable {
@@ -2679,7 +2679,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcmp(v1, v2, ssa.FloatCmpCondGreaterThan, lane).Insert(builder).Return()
+				AsVFcmp(v1, v2, ssa.FloatCmpCondGreaterThan, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Ge, wasm.OpcodeVecF64x2Ge:
 			if state.unreachable {
@@ -2695,7 +2695,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcmp(v1, v2, ssa.FloatCmpCondGreaterThanOrEqual, lane).Insert(builder).Return()
+				AsVFcmp(v1, v2, ssa.FloatCmpCondGreaterThanOrEqual, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Ceil, wasm.OpcodeVecF64x2Ceil:
 			if state.unreachable {
@@ -2709,7 +2709,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVCeil(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVCeil(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Floor, wasm.OpcodeVecF64x2Floor:
 			if state.unreachable {
@@ -2723,7 +2723,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVFloor(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVFloor(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Trunc, wasm.OpcodeVecF64x2Trunc:
 			if state.unreachable {
@@ -2737,7 +2737,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVTrunc(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVTrunc(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Nearest, wasm.OpcodeVecF64x2Nearest:
 			if state.unreachable {
@@ -2751,7 +2751,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVNearest(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVNearest(v1, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Pmin, wasm.OpcodeVecF64x2Pmin:
 			if state.unreachable {
@@ -2766,7 +2766,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVMinPseudo(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVMinPseudo(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4Pmax, wasm.OpcodeVecF64x2Pmax:
 			if state.unreachable {
@@ -2781,7 +2781,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVMaxPseudo(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVMaxPseudo(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI32x4TruncSatF32x4S, wasm.OpcodeVecI32x4TruncSatF32x4U:
 			if state.unreachable {
@@ -2789,7 +2789,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcvtToIntSat(v1, types.VecLaneF32x4, vecOp == wasm.OpcodeVecI32x4TruncSatF32x4S).Insert(builder).Return()
+				AsVFcvtToIntSat(v1, types.VecLaneF32x4, vecOp == wasm.OpcodeVecI32x4TruncSatF32x4S).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI32x4TruncSatF64x2SZero, wasm.OpcodeVecI32x4TruncSatF64x2UZero:
 			if state.unreachable {
@@ -2797,7 +2797,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcvtToIntSat(v1, types.VecLaneF64x2, vecOp == wasm.OpcodeVecI32x4TruncSatF64x2SZero).Insert(builder).Return()
+				AsVFcvtToIntSat(v1, types.VecLaneF64x2, vecOp == wasm.OpcodeVecI32x4TruncSatF64x2SZero).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4ConvertI32x4S, wasm.OpcodeVecF32x4ConvertI32x4U:
 			if state.unreachable {
@@ -2805,7 +2805,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
-				AsVFcvtFromInt(v1, types.VecLaneF32x4, vecOp == wasm.OpcodeVecF32x4ConvertI32x4S).Insert(builder).Return()
+				AsVFcvtFromInt(v1, types.VecLaneF32x4, vecOp == wasm.OpcodeVecF32x4ConvertI32x4S).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF64x2ConvertLowI32x4S, wasm.OpcodeVecF64x2ConvertLowI32x4U:
 			if state.unreachable {
@@ -2815,11 +2815,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 			if runtime.GOARCH == "arm64" {
 				// TODO: this is weird. fix.
 				v1 = builder.AllocateInstruction().
-					AsWiden(v1, types.VecLaneI32x4, vecOp == wasm.OpcodeVecF64x2ConvertLowI32x4S, true).Insert(builder).Return()
+					AsWiden(v1, types.VecLaneI32x4, vecOp == wasm.OpcodeVecF64x2ConvertLowI32x4S, true).Insert(builder).Return
 			}
 			ret := builder.AllocateInstruction().
 				AsVFcvtFromInt(v1, types.VecLaneF64x2, vecOp == wasm.OpcodeVecF64x2ConvertLowI32x4S).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16NarrowI16x8S, wasm.OpcodeVecI8x16NarrowI16x8U:
 			if state.unreachable {
@@ -2829,7 +2829,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsNarrow(v1, v2, types.VecLaneI16x8, vecOp == wasm.OpcodeVecI8x16NarrowI16x8S).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI16x8NarrowI32x4S, wasm.OpcodeVecI16x8NarrowI32x4U:
 			if state.unreachable {
@@ -2839,7 +2839,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsNarrow(v1, v2, types.VecLaneI32x4, vecOp == wasm.OpcodeVecI16x8NarrowI32x4S).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI16x8ExtendLowI8x16S, wasm.OpcodeVecI16x8ExtendLowI8x16U:
 			if state.unreachable {
@@ -2848,7 +2848,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsWiden(v1, types.VecLaneI8x16, vecOp == wasm.OpcodeVecI16x8ExtendLowI8x16S, true).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI16x8ExtendHighI8x16S, wasm.OpcodeVecI16x8ExtendHighI8x16U:
 			if state.unreachable {
@@ -2857,7 +2857,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsWiden(v1, types.VecLaneI8x16, vecOp == wasm.OpcodeVecI16x8ExtendHighI8x16S, false).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI32x4ExtendLowI16x8S, wasm.OpcodeVecI32x4ExtendLowI16x8U:
 			if state.unreachable {
@@ -2866,7 +2866,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsWiden(v1, types.VecLaneI16x8, vecOp == wasm.OpcodeVecI32x4ExtendLowI16x8S, true).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI32x4ExtendHighI16x8S, wasm.OpcodeVecI32x4ExtendHighI16x8U:
 			if state.unreachable {
@@ -2875,7 +2875,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsWiden(v1, types.VecLaneI16x8, vecOp == wasm.OpcodeVecI32x4ExtendHighI16x8S, false).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI64x2ExtendLowI32x4S, wasm.OpcodeVecI64x2ExtendLowI32x4U:
 			if state.unreachable {
@@ -2884,7 +2884,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsWiden(v1, types.VecLaneI32x4, vecOp == wasm.OpcodeVecI64x2ExtendLowI32x4S, true).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI64x2ExtendHighI32x4S, wasm.OpcodeVecI64x2ExtendHighI32x4U:
 			if state.unreachable {
@@ -2893,7 +2893,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsWiden(v1, types.VecLaneI32x4, vecOp == wasm.OpcodeVecI64x2ExtendHighI32x4S, false).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecF64x2PromoteLowF32x4Zero:
@@ -2903,7 +2903,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsFvpromoteLow(v1, types.VecLaneF32x4).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecF32x4DemoteF64x2Zero:
 			if state.unreachable {
@@ -2912,7 +2912,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v1 := state.pop()
 			ret := builder.AllocateInstruction().
 				AsFvdemote(v1, types.VecLaneF64x2).
-				Insert(builder).Return()
+				Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16Shl, wasm.OpcodeVecI16x8Shl, wasm.OpcodeVecI32x4Shl, wasm.OpcodeVecI64x2Shl:
 			if state.unreachable {
@@ -2931,7 +2931,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVIshl(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVIshl(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16ShrS, wasm.OpcodeVecI16x8ShrS, wasm.OpcodeVecI32x4ShrS, wasm.OpcodeVecI64x2ShrS:
 			if state.unreachable {
@@ -2950,7 +2950,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVSshr(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVSshr(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16ShrU, wasm.OpcodeVecI16x8ShrU, wasm.OpcodeVecI32x4ShrU, wasm.OpcodeVecI64x2ShrU:
 			if state.unreachable {
@@ -2969,7 +2969,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsVUshr(v1, v2, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsVUshr(v1, v2, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecI8x16ExtractLaneS, wasm.OpcodeVecI16x8ExtractLaneS:
 			state.pc++
@@ -2985,7 +2985,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			index := c.wasmFunctionBody[state.pc]
-			ext := builder.AllocateInstruction().AsExtractlane(v1, index, lane, true).Insert(builder).Return()
+			ext := builder.AllocateInstruction().AsExtractlane(v1, index, lane, true).Insert(builder).Return
 			state.push(ext)
 		case wasm.OpcodeVecI8x16ExtractLaneU, wasm.OpcodeVecI16x8ExtractLaneU,
 			wasm.OpcodeVecI32x4ExtractLane, wasm.OpcodeVecI64x2ExtractLane,
@@ -3011,7 +3011,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v1 := state.pop()
 			index := c.wasmFunctionBody[state.pc]
-			ext := builder.AllocateInstruction().AsExtractlane(v1, index, lane, false).Insert(builder).Return()
+			ext := builder.AllocateInstruction().AsExtractlane(v1, index, lane, false).Insert(builder).Return
 			state.push(ext)
 		case wasm.OpcodeVecI8x16ReplaceLane, wasm.OpcodeVecI16x8ReplaceLane,
 			wasm.OpcodeVecI32x4ReplaceLane, wasm.OpcodeVecI64x2ReplaceLane,
@@ -3038,7 +3038,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			v2 := state.pop()
 			v1 := state.pop()
 			index := c.wasmFunctionBody[state.pc]
-			ret := builder.AllocateInstruction().AsInsertlane(v1, v2, index, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsInsertlane(v1, v2, index, lane).Insert(builder).Return
 			state.push(ret)
 		case wasm.OpcodeVecV128i8x16Shuffle:
 			state.pc++
@@ -3049,7 +3049,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsShuffle(v1, v2, laneIndexes).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsShuffle(v1, v2, laneIndexes).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecI8x16Swizzle:
@@ -3058,7 +3058,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 			v2 := state.pop()
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsSwizzle(v1, v2, types.VecLaneI8x16).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsSwizzle(v1, v2, types.VecLaneI8x16).Insert(builder).Return
 			state.push(ret)
 
 		case wasm.OpcodeVecI8x16Splat,
@@ -3086,7 +3086,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				lane = types.VecLaneF64x2
 			}
 			v1 := state.pop()
-			ret := builder.AllocateInstruction().AsSplat(v1, lane).Insert(builder).Return()
+			ret := builder.AllocateInstruction().AsSplat(v1, lane).Insert(builder).Return
 			state.push(ret)
 
 		default:
@@ -3127,13 +3127,13 @@ func (c *Compiler) lowerCurrentOpcode() {
 				AsLoad(c.execCtxPtrValue,
 					trampoline.U32(),
 					types.I64,
-				).Insert(builder).Return()
+				).Insert(builder).Return
 
 			args := []ssa.Var{c.execCtxPtrValue, timeout, exp, addr}
 			memoryWaitRet := builder.AllocateInstruction().
 				AsCallIndirect(memoryWaitPtr, sig, args).
-				Insert(builder).Return()
-			state.push(memoryWaitRet)
+				Insert(builder).Return
+			state.push(c.select0(memoryWaitRet))
 		case wasm.OpcodeAtomicMemoryNotify:
 			_, offset := c.readMemArg()
 			if state.unreachable {
@@ -3149,12 +3149,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 				AsLoad(c.execCtxPtrValue,
 					wazevoapi.ExecutionContextOffsetMemoryNotifyTrampolineAddress.U32(),
 					types.I64,
-				).Insert(builder).Return()
+				).Insert(builder).Return
 			args := []ssa.Var{c.execCtxPtrValue, count, addr}
 			memoryNotifyRet := builder.AllocateInstruction().
 				AsCallIndirect(memoryNotifyPtr, &c.memoryNotifySig, args).
-				Insert(builder).Return()
-			state.push(memoryNotifyRet)
+				Insert(builder).Return
+			state.push(c.select0(memoryNotifyRet))
 		case wasm.OpcodeAtomicI32Load, wasm.OpcodeAtomicI64Load, wasm.OpcodeAtomicI32Load8U, wasm.OpcodeAtomicI32Load16U, wasm.OpcodeAtomicI64Load8U, wasm.OpcodeAtomicI64Load16U, wasm.OpcodeAtomicI64Load32U:
 			_, offset := c.readMemArg()
 			if state.unreachable {
@@ -3184,7 +3184,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 
 			addr := c.atomicMemOpSetup(baseAddr, uint64(offset), size)
-			res := builder.AllocateInstruction().AsAtomicLoad(addr, size, typ).Insert(builder).Return()
+			res := builder.AllocateInstruction().AsAtomicLoad(addr, size, typ).Insert(builder).Return
 			state.push(res)
 		case wasm.OpcodeAtomicI32Store, wasm.OpcodeAtomicI64Store, wasm.OpcodeAtomicI32Store8, wasm.OpcodeAtomicI32Store16, wasm.OpcodeAtomicI64Store8, wasm.OpcodeAtomicI64Store16, wasm.OpcodeAtomicI64Store32:
 			_, offset := c.readMemArg()
@@ -3301,7 +3301,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			}
 
 			addr := c.atomicMemOpSetup(baseAddr, uint64(offset), size)
-			res := builder.AllocateInstruction().AsAtomicRmw(rmwOp, addr, val, size).Insert(builder).Return()
+			res := builder.AllocateInstruction().AsAtomicRmw(rmwOp, addr, val, size).Insert(builder).Return
 			state.push(res)
 		case wasm.OpcodeAtomicI32RmwCmpxchg, wasm.OpcodeAtomicI64RmwCmpxchg, wasm.OpcodeAtomicI32Rmw8CmpxchgU, wasm.OpcodeAtomicI32Rmw16CmpxchgU, wasm.OpcodeAtomicI64Rmw8CmpxchgU, wasm.OpcodeAtomicI64Rmw16CmpxchgU, wasm.OpcodeAtomicI64Rmw32CmpxchgU:
 			_, offset := c.readMemArg()
@@ -3325,7 +3325,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 				size = 1
 			}
 			addr := c.atomicMemOpSetup(baseAddr, uint64(offset), size)
-			res := builder.AllocateInstruction().AsAtomicCas(addr, exp, repl, size).Insert(builder).Return()
+			res := builder.AllocateInstruction().AsAtomicCas(addr, exp, repl, size).Insert(builder).Return
 			state.push(res)
 		case wasm.OpcodeAtomicFence:
 			order := c.readByte()
@@ -3346,27 +3346,27 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 		c.storeCallerModuleContext()
 
-		funcIndexVal := builder.AllocateInstruction().AsIconst32(funcIndex).Insert(builder).Return()
+		funcIndexVal := builder.AllocateInstruction().AsIconst32(funcIndex).Insert(builder).Return
 
 		refFuncPtr := builder.AllocateInstruction().
 			AsLoad(c.execCtxPtrValue,
 				wazevoapi.ExecutionContextOffsetRefFuncTrampolineAddress.U32(),
 				types.I64,
-			).Insert(builder).Return()
+			).Insert(builder).Return
 
 		args := []ssa.Var{c.execCtxPtrValue, funcIndexVal}
 		refFuncRet := builder.
 			AllocateInstruction().
 			AsCallIndirect(refFuncPtr, &c.refFuncSig, args).
-			Insert(builder).Return()
-		state.push(refFuncRet)
+			Insert(builder).Return
+		state.push(c.select0(refFuncRet))
 
 	case wasm.OpcodeRefNull:
 		c.loweringState.pc++ // skips the reference type as we treat both of them as i64(0).
 		if state.unreachable {
 			break
 		}
-		ret := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return()
+		ret := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return
 		state.push(ret)
 	case wasm.OpcodeRefIsNull:
 		if state.unreachable {
@@ -3375,9 +3375,9 @@ func (c *Compiler) lowerCurrentOpcode() {
 		r := state.pop()
 		zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder)
 		icmp := builder.AllocateInstruction().
-			AsIcmp(r, zero.Return(), ssa.IntegerCmpCondEqual).
+			AsIcmp(r, zero.Return, ssa.IntegerCmpCondEqual).
 			Insert(builder).
-			Return()
+			Return
 		state.push(icmp)
 	case wasm.OpcodeTableSet:
 		tableIndex := c.readI32u()
@@ -3397,7 +3397,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		}
 		targetOffsetInTable := state.pop()
 		elementAddr := c.lowerAccessTableWithBoundsCheck(tableIndex, targetOffsetInTable)
-		loaded := builder.AllocateInstruction().AsLoad(elementAddr, 0, types.I64).Insert(builder).Return()
+		loaded := builder.AllocateInstruction().AsLoad(elementAddr, 0, types.I64).Insert(builder).Return
 		state.push(loaded)
 
 	case wasm.OpcodeTailCallReturnCallIndirect:
@@ -3443,10 +3443,10 @@ func (c *Compiler) lowerExtMul(v1, v2 ssa.Var, from, to types.VecLane, signed, l
 	// TODO: The sequence `Widen; Widen; VIMul` can be substituted for a single instruction on some ISAs.
 	builder := c.ssaBuilder
 
-	v1lo := builder.AllocateInstruction().AsWiden(v1, from, signed, low).Insert(builder).Return()
-	v2lo := builder.AllocateInstruction().AsWiden(v2, from, signed, low).Insert(builder).Return()
+	v1lo := builder.AllocateInstruction().AsWiden(v1, from, signed, low).Insert(builder).Return
+	v2lo := builder.AllocateInstruction().AsWiden(v2, from, signed, low).Insert(builder).Return
 
-	return builder.AllocateInstruction().AsVImul(v1lo, v2lo, to).Insert(builder).Return()
+	return builder.AllocateInstruction().AsVImul(v1lo, v2lo, to).Insert(builder).Return
 }
 
 const (
@@ -3461,42 +3461,42 @@ func (c *Compiler) lowerAccessTableWithBoundsCheck(tableIndex uint32, elementOff
 	loadTableInstancePtr := builder.AllocateInstruction()
 	loadTableInstancePtr.AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), types.I64)
 	builder.InsertInstruction(loadTableInstancePtr)
-	tableInstancePtr := loadTableInstancePtr.Return()
+	tableInstancePtr := loadTableInstancePtr.Return
 
 	// Load the table's length.
 	loadTableLen := builder.AllocateInstruction()
 	loadTableLen.AsLoad(tableInstancePtr, tableInstanceLenOffset, types.I32)
 	builder.InsertInstruction(loadTableLen)
-	tableLen := loadTableLen.Return()
+	tableLen := loadTableLen.Return
 
 	// Compare the length and the target, and trap if out of bounds.
 	checkOOB := builder.AllocateInstruction()
 	checkOOB.AsIcmp(elementOffsetInTable, tableLen, ssa.IntegerCmpCondUnsignedGreaterThanOrEqual)
 	builder.InsertInstruction(checkOOB)
 	exitIfOOB := builder.AllocateInstruction()
-	exitIfOOB.AsExitIfTrueWithCode(c.execCtxPtrValue, checkOOB.Return(), wazevoapi.ExitCodeTableOutOfBounds)
+	exitIfOOB.AsExitIfTrueWithCode(c.execCtxPtrValue, checkOOB.Return, wazevoapi.ExitCodeTableOutOfBounds)
 	builder.InsertInstruction(exitIfOOB)
 
 	// Get the base address of wasm.TableInstance.References.
 	loadTableBaseAddress := builder.AllocateInstruction()
 	loadTableBaseAddress.AsLoad(tableInstancePtr, tableInstanceBaseAddressOffset, types.I64)
 	builder.InsertInstruction(loadTableBaseAddress)
-	tableBase := loadTableBaseAddress.Return()
+	tableBase := loadTableBaseAddress.Return
 
 	// Calculate the address of the target function. First we need to multiply targetOffsetInTable by 8 (pointer size).
 	multiplyBy8 := builder.AllocateInstruction()
 	three := builder.AllocateInstruction()
 	three.AsIconst64(3)
 	builder.InsertInstruction(three)
-	multiplyBy8.AsIshl(elementOffsetInTable, three.Return())
+	multiplyBy8.AsIshl(elementOffsetInTable, three.Return)
 	builder.InsertInstruction(multiplyBy8)
-	targetOffsetInTableMultipliedBy8 := multiplyBy8.Return()
+	targetOffsetInTableMultipliedBy8 := multiplyBy8.Return
 
 	// Then add the multiplied value to the base which results in the address of the target function (*wazevo.functionInstance)
 	calcElementAddressInTable := builder.AllocateInstruction()
 	calcElementAddressInTable.AsIadd(tableBase, targetOffsetInTableMultipliedBy8)
 	builder.InsertInstruction(calcElementAddressInTable)
-	return calcElementAddressInTable.Return()
+	return calcElementAddressInTable.Return
 }
 
 func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Signature, args []ssa.Var, funcRefOrPtrValue ssa.Var) {
@@ -3545,15 +3545,33 @@ func (c *Compiler) prepareCall(fnIndex uint32) (isIndirect bool, sig *types.Sign
 		builder.InsertInstruction(loadFuncPtr)
 		builder.InsertInstruction(loadModuleCtxPtr)
 
-		args = append(args, loadModuleCtxPtr.Return())
+		args = append(args, loadModuleCtxPtr.Return)
 		args = append(args, vs...)
-		return true, sig, args, loadFuncPtr.Return()
+		return true, sig, args, loadFuncPtr.Return
+	}
+}
+
+func (c *Compiler) select0(call ssa.Var) ssa.Var {
+	builder := c.ssaBuilder
+	sel := builder.AllocateInstruction()
+	sel.AsSelectTuple(call, 0)
+	builder.InsertInstruction(sel)
+	return sel.Return
+}
+
+func (c *Compiler) lowerCallReturns(call *ssa.Value) {
+	builder := c.ssaBuilder
+	state := c.state()
+	for i := 0; i < call.Type.Len(); i++ {
+		sel := builder.AllocateInstruction()
+		sel.AsSelectTuple(call.Return, i)
+		builder.InsertInstruction(sel)
+		state.push(sel.Return)
 	}
 }
 
 func (c *Compiler) lowerCall(fnIndex uint32) {
 	builder := c.ssaBuilder
-	state := c.state()
 	isIndirect, sig, args, funcRefOrPtrValue := c.prepareCall(fnIndex)
 
 	call := builder.AllocateInstruction()
@@ -3564,13 +3582,7 @@ func (c *Compiler) lowerCall(fnIndex uint32) {
 	}
 	builder.InsertInstruction(call)
 
-	for _, v := range call.Returns {
-		if !v.Valid() {
-			continue
-		}
-		state.push(v)
-	}
-
+	c.lowerCallReturns(call)
 	c.reloadAfterCall()
 }
 
@@ -3583,53 +3595,53 @@ func (c *Compiler) prepareCallIndirect(typeIndex, tableIndex uint32) (ssa.Var, *
 	loadFunctionInstancePtr := builder.AllocateInstruction()
 	loadFunctionInstancePtr.AsLoad(functionInstancePtrAddress, 0, types.I64)
 	builder.InsertInstruction(loadFunctionInstancePtr)
-	functionInstancePtr := loadFunctionInstancePtr.Return()
+	functionInstancePtr := loadFunctionInstancePtr.Return
 
 	// Check if it is not the null pointer.
 	zero := builder.AllocateInstruction()
 	zero.AsIconst64(0)
 	builder.InsertInstruction(zero)
 	checkNull := builder.AllocateInstruction()
-	checkNull.AsIcmp(functionInstancePtr, zero.Return(), ssa.IntegerCmpCondEqual)
+	checkNull.AsIcmp(functionInstancePtr, zero.Return, ssa.IntegerCmpCondEqual)
 	builder.InsertInstruction(checkNull)
 	exitIfNull := builder.AllocateInstruction()
-	exitIfNull.AsExitIfTrueWithCode(c.execCtxPtrValue, checkNull.Return(), wazevoapi.ExitCodeIndirectCallNullPointer)
+	exitIfNull.AsExitIfTrueWithCode(c.execCtxPtrValue, checkNull.Return, wazevoapi.ExitCodeIndirectCallNullPointer)
 	builder.InsertInstruction(exitIfNull)
 
 	// We need to do the type check. First, load the target function instance's typeID.
 	loadTypeID := builder.AllocateInstruction()
 	loadTypeID.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceTypeIDOffset, types.I32)
 	builder.InsertInstruction(loadTypeID)
-	actualTypeID := loadTypeID.Return()
+	actualTypeID := loadTypeID.Return
 
 	// Next, we load the expected TypeID:
 	loadTypeIDsBegin := builder.AllocateInstruction()
 	loadTypeIDsBegin.AsLoad(c.moduleCtxPtrValue, c.offset.TypeIDs1stElement.U32(), types.I64)
 	builder.InsertInstruction(loadTypeIDsBegin)
-	typeIDsBegin := loadTypeIDsBegin.Return()
+	typeIDsBegin := loadTypeIDsBegin.Return
 
 	loadExpectedTypeID := builder.AllocateInstruction()
 	loadExpectedTypeID.AsLoad(typeIDsBegin, uint32(typeIndex)*4 /* size of wasm.FunctionTypeID */, types.I32)
 	builder.InsertInstruction(loadExpectedTypeID)
-	expectedTypeID := loadExpectedTypeID.Return()
+	expectedTypeID := loadExpectedTypeID.Return
 
 	// Check if the type ID matches.
 	checkTypeID := builder.AllocateInstruction()
 	checkTypeID.AsIcmp(actualTypeID, expectedTypeID, ssa.IntegerCmpCondNotEqual)
 	builder.InsertInstruction(checkTypeID)
 	exitIfNotMatch := builder.AllocateInstruction()
-	exitIfNotMatch.AsExitIfTrueWithCode(c.execCtxPtrValue, checkTypeID.Return(), wazevoapi.ExitCodeIndirectCallTypeMismatch)
+	exitIfNotMatch.AsExitIfTrueWithCode(c.execCtxPtrValue, checkTypeID.Return, wazevoapi.ExitCodeIndirectCallTypeMismatch)
 	builder.InsertInstruction(exitIfNotMatch)
 
 	// Now ready to call the function. Load the executable and moduleContextOpaquePtr from the function instance.
 	loadExecutablePtr := builder.AllocateInstruction()
 	loadExecutablePtr.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceExecutableOffset, types.I64)
 	builder.InsertInstruction(loadExecutablePtr)
-	executablePtr := loadExecutablePtr.Return()
+	executablePtr := loadExecutablePtr.Return
 	loadModuleContextOpaquePtr := builder.AllocateInstruction()
 	loadModuleContextOpaquePtr.AsLoad(functionInstancePtr, wazevoapi.FunctionInstanceModuleContextOpaquePtrOffset, types.I64)
 	builder.InsertInstruction(loadModuleContextOpaquePtr)
-	moduleContextOpaquePtr := loadModuleContextOpaquePtr.Return()
+	moduleContextOpaquePtr := loadModuleContextOpaquePtr.Return
 
 	typ := &c.m.TypeSection[typeIndex]
 	tail := len(state.values) - len(typ.Params)
@@ -3648,20 +3660,13 @@ func (c *Compiler) prepareCallIndirect(typeIndex, tableIndex uint32) (ssa.Var, *
 
 func (c *Compiler) lowerCallIndirect(typeIndex, tableIndex uint32) {
 	builder := c.ssaBuilder
-	state := c.state()
 	executablePtr, typ, args := c.prepareCallIndirect(typeIndex, tableIndex)
 
 	call := builder.AllocateInstruction()
 	call.AsCallIndirect(executablePtr, c.signatures[typ], args)
 	builder.InsertInstruction(call)
 
-	for _, v := range call.Returns {
-		if !v.Valid() {
-			continue
-		}
-		state.push(v)
-	}
-
+	c.lowerCallReturns(call)
 	c.reloadAfterCall()
 }
 
@@ -3679,7 +3684,6 @@ func (c *Compiler) lowerTailCallReturn() {
 func (c *Compiler) lowerTailCallReturnCall(fnIndex uint32) {
 	isIndirect, sig, args, funcRefOrPtrValue := c.prepareCall(fnIndex)
 	builder := c.ssaBuilder
-	state := c.state()
 
 	call := builder.AllocateInstruction()
 	if isIndirect {
@@ -3694,20 +3698,13 @@ func (c *Compiler) lowerTailCallReturnCall(fnIndex uint32) {
 	// a regular call, so we include return handling and let the backend delete it
 	// when redundant.
 	// For details, see internal/engine/RATIONALE.md
-	for _, v := range call.Returns {
-		if !v.Valid() {
-			continue
-		}
-		state.push(v)
-	}
-
+	c.lowerCallReturns(call)
 	c.reloadAfterCall()
 	c.lowerTailCallReturn()
 }
 
 func (c *Compiler) lowerTailCallReturnCallIndirect(typeIndex, tableIndex uint32) {
 	builder := c.ssaBuilder
-	state := c.state()
 	executablePtr, typ, args := c.prepareCallIndirect(typeIndex, tableIndex)
 
 	call := builder.AllocateInstruction()
@@ -3719,13 +3716,7 @@ func (c *Compiler) lowerTailCallReturnCallIndirect(typeIndex, tableIndex uint32)
 	// a regular call, so we include return handling and let the backend delete it
 	// when redundant.
 	// For details, see internal/engine/RATIONALE.md
-	for _, v := range call.Returns {
-		if !v.Valid() {
-			continue
-		}
-		state.push(v)
-	}
-
+	c.lowerCallReturns(call)
 	c.reloadAfterCall()
 	c.lowerTailCallReturn()
 }
@@ -3748,9 +3739,9 @@ func (c *Compiler) memOpSetup(baseAddr ssa.Var, constOffset, operationSizeInByte
 				extBaseAddr := builder.AllocateInstruction().
 					AsUExtend(baseAddr, 32, 64).
 					Insert(builder).
-					Return()
+					Return
 				address = builder.AllocateInstruction().
-					AsIadd(memBase, extBaseAddr).Insert(builder).Return()
+					AsIadd(memBase, extBaseAddr).Insert(builder).Return
 				known.absoluteAddr = address // Update the absolute address for the subsequent memory access.
 			}
 			return
@@ -3765,29 +3756,29 @@ func (c *Compiler) memOpSetup(baseAddr ssa.Var, constOffset, operationSizeInByte
 	extBaseAddr := builder.AllocateInstruction().
 		AsUExtend(baseAddr, 32, 64).
 		Insert(builder).
-		Return()
+		Return
 
 	// Note: memLen is already zero extended to 64-bit space at the load time.
 	memLen := c.getMemoryLenValue(false)
 
 	// baseAddrPlusCeil = baseAddr + ceil
 	baseAddrPlusCeil := builder.AllocateInstruction()
-	baseAddrPlusCeil.AsIadd(extBaseAddr, ceilConst.Return())
+	baseAddrPlusCeil.AsIadd(extBaseAddr, ceilConst.Return)
 	builder.InsertInstruction(baseAddrPlusCeil)
 
 	// Check for out of bounds memory access: `memLen >= baseAddrPlusCeil`.
 	cmp := builder.AllocateInstruction()
-	cmp.AsIcmp(memLen, baseAddrPlusCeil.Return(), ssa.IntegerCmpCondUnsignedLessThan)
+	cmp.AsIcmp(memLen, baseAddrPlusCeil.Return, ssa.IntegerCmpCondUnsignedLessThan)
 	builder.InsertInstruction(cmp)
 	exitIfNZ := builder.AllocateInstruction()
-	exitIfNZ.AsExitIfTrueWithCode(c.execCtxPtrValue, cmp.Return(), wazevoapi.ExitCodeMemoryOutOfBounds)
+	exitIfNZ.AsExitIfTrueWithCode(c.execCtxPtrValue, cmp.Return, wazevoapi.ExitCodeMemoryOutOfBounds)
 	builder.InsertInstruction(exitIfNZ)
 
 	// Load the value from memBase + extBaseAddr.
 	if address == ssa.InvalidVar { // Reuse the value if the memBase is already calculated at this point.
 		memBase := c.getMemoryBaseValue(false)
 		address = builder.AllocateInstruction().
-			AsIadd(memBase, extBaseAddr).Insert(builder).Return()
+			AsIadd(memBase, extBaseAddr).Insert(builder).Return
 	}
 
 	// Record the bound ceil for this baseAddr is known to be safe for the subsequent memory access in the same block.
@@ -3805,8 +3796,8 @@ func (c *Compiler) atomicMemOpSetup(baseAddr ssa.Var, constOffset, operationSize
 	if constOffset == 0 {
 		addr = addrWithoutOffset
 	} else {
-		offset := builder.AllocateInstruction().AsIconst64(constOffset).Insert(builder).Return()
-		addr = builder.AllocateInstruction().AsIadd(addrWithoutOffset, offset).Insert(builder).Return()
+		offset := builder.AllocateInstruction().AsIconst64(constOffset).Insert(builder).Return
+		addr = builder.AllocateInstruction().AsIadd(addrWithoutOffset, offset).Insert(builder).Return
 	}
 
 	c.memAlignmentCheck(addr, operationSizeInBytes)
@@ -3830,10 +3821,10 @@ func (c *Compiler) memAlignmentCheck(addr ssa.Var, operationSizeInBytes uint64) 
 
 	builder := c.ssaBuilder
 
-	mask := builder.AllocateInstruction().AsIconst64(checkBits).Insert(builder).Return()
-	masked := builder.AllocateInstruction().AsBand(addr, mask).Insert(builder).Return()
-	zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return()
-	cmp := builder.AllocateInstruction().AsIcmp(masked, zero, ssa.IntegerCmpCondNotEqual).Insert(builder).Return()
+	mask := builder.AllocateInstruction().AsIconst64(checkBits).Insert(builder).Return
+	masked := builder.AllocateInstruction().AsBand(addr, mask).Insert(builder).Return
+	zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return
+	cmp := builder.AllocateInstruction().AsIcmp(masked, zero, ssa.IntegerCmpCondNotEqual).Insert(builder).Return
 	builder.AllocateInstruction().AsExitIfTrueWithCode(c.execCtxPtrValue, cmp, wazevoapi.ExitCodeUnalignedAtomic).Insert(builder)
 }
 
@@ -3848,7 +3839,7 @@ func (c *Compiler) callMemmove(dst, src, size ssa.Var) {
 		AsLoad(c.execCtxPtrValue,
 			wazevoapi.ExecutionContextOffsetMemmoveAddress.U32(),
 			types.I64,
-		).Insert(builder).Return()
+		).Insert(builder).Return
 	builder.AllocateInstruction().AsCallGoRuntimeMemmove(memmovePtr, &c.memmoveSig, args).Insert(builder)
 }
 
@@ -3889,7 +3880,7 @@ func (c *Compiler) setWasmGlobalValue(index wasm.Index, v ssa.Var) {
 		builder.InsertInstruction(loadGlobalInstPtr)
 
 		store := builder.AllocateInstruction()
-		store.AsStore(ssa.OpcodeStore, v, loadGlobalInstPtr.Return(), uint32(0))
+		store.AsStore(ssa.OpcodeStore, v, loadGlobalInstPtr.Return, uint32(0))
 		builder.InsertInstruction(store)
 
 	} else {
@@ -3920,13 +3911,13 @@ func (c *Compiler) getWasmGlobalValue(index wasm.Index, forceLoad bool) ssa.Var 
 		loadGlobalInstPtr.AsLoad(c.moduleCtxPtrValue, uint32(opaqueOffset), types.I64)
 		builder.InsertInstruction(loadGlobalInstPtr)
 		load = builder.AllocateInstruction().
-			AsLoad(loadGlobalInstPtr.Return(), uint32(0), typ)
+			AsLoad(loadGlobalInstPtr.Return, uint32(0), typ)
 	} else {
 		load = builder.AllocateInstruction().
 			AsLoad(c.moduleCtxPtrValue, uint32(opaqueOffset), typ)
 	}
 
-	v := load.Insert(builder).Return()
+	v := load.Insert(builder).Return
 	builder.DefineVariableInCurrentBB(variable, v)
 	return v
 }
@@ -3950,17 +3941,17 @@ func (c *Compiler) getMemoryBaseValue(forceReload bool) ssa.Var {
 		loadMemInstPtr := builder.AllocateInstruction()
 		loadMemInstPtr.AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64)
 		builder.InsertInstruction(loadMemInstPtr)
-		memInstPtr := loadMemInstPtr.Return()
+		memInstPtr := loadMemInstPtr.Return
 
 		loadBufPtr := builder.AllocateInstruction()
 		loadBufPtr.AsLoad(memInstPtr, memoryInstanceBufOffset, types.I64)
 		builder.InsertInstruction(loadBufPtr)
-		ret = loadBufPtr.Return()
+		ret = loadBufPtr.Return
 	} else {
 		load := builder.AllocateInstruction()
 		load.AsLoad(c.moduleCtxPtrValue, c.offset.LocalMemoryBase().U32(), types.I64)
 		builder.InsertInstruction(load)
-		ret = load.Return()
+		ret = load.Return
 	}
 
 	builder.DefineVariableInCurrentBB(variable, ret)
@@ -3981,30 +3972,30 @@ func (c *Compiler) getMemoryLenValue(forceReload bool) ssa.Var {
 		loadMemInstPtr := builder.AllocateInstruction()
 		loadMemInstPtr.AsLoad(c.moduleCtxPtrValue, c.offset.ImportedMemoryBegin.U32(), types.I64)
 		builder.InsertInstruction(loadMemInstPtr)
-		memInstPtr := loadMemInstPtr.Return()
+		memInstPtr := loadMemInstPtr.Return
 
 		loadBufSizePtr := builder.AllocateInstruction()
 		if c.memoryShared {
-			sizeOffset := builder.AllocateInstruction().AsIconst64(memoryInstanceBufSizeOffset).Insert(builder).Return()
-			addr := builder.AllocateInstruction().AsIadd(memInstPtr, sizeOffset).Insert(builder).Return()
+			sizeOffset := builder.AllocateInstruction().AsIconst64(memoryInstanceBufSizeOffset).Insert(builder).Return
+			addr := builder.AllocateInstruction().AsIadd(memInstPtr, sizeOffset).Insert(builder).Return
 			loadBufSizePtr.AsAtomicLoad(addr, 8, types.I64)
 		} else {
 			loadBufSizePtr.AsLoad(memInstPtr, memoryInstanceBufSizeOffset, types.I64)
 		}
 		builder.InsertInstruction(loadBufSizePtr)
 
-		ret = loadBufSizePtr.Return()
+		ret = loadBufSizePtr.Return
 	} else {
 		load := builder.AllocateInstruction()
 		if c.memoryShared {
-			lenOffset := builder.AllocateInstruction().AsIconst64(c.offset.LocalMemoryLen().U64()).Insert(builder).Return()
-			addr := builder.AllocateInstruction().AsIadd(c.moduleCtxPtrValue, lenOffset).Insert(builder).Return()
+			lenOffset := builder.AllocateInstruction().AsIconst64(c.offset.LocalMemoryLen().U64()).Insert(builder).Return
+			addr := builder.AllocateInstruction().AsIadd(c.moduleCtxPtrValue, lenOffset).Insert(builder).Return
 			load.AsAtomicLoad(addr, 8, types.I64)
 		} else {
 			load.AsExtLoad(ssa.OpcodeUload32, c.moduleCtxPtrValue, c.offset.LocalMemoryLen().U32(), true)
 		}
 		builder.InsertInstruction(load)
-		ret = load.Return()
+		ret = load.Return
 	}
 
 	builder.DefineVariableInCurrentBB(variable, ret)
@@ -4017,7 +4008,7 @@ func (c *Compiler) insertIcmp(cond ssa.IntegerCmpCond) {
 	cmp := builder.AllocateInstruction()
 	cmp.AsIcmp(x, y, cond)
 	builder.InsertInstruction(cmp)
-	value := cmp.Return()
+	value := cmp.Return
 	state.push(value)
 }
 
@@ -4027,7 +4018,7 @@ func (c *Compiler) insertFcmp(cond ssa.FloatCmpCond) {
 	cmp := builder.AllocateInstruction()
 	cmp.AsFcmp(x, y, cond)
 	builder.InsertInstruction(cmp)
-	value := cmp.Return()
+	value := cmp.Return
 	state.push(value)
 }
 
@@ -4141,7 +4132,7 @@ func (c *Compiler) insertIntegerExtend(signed bool, from, to byte) {
 		extend.AsUExtend(v, from, to)
 	}
 	builder.InsertInstruction(extend)
-	value := extend.Return()
+	value := extend.Return
 	state.push(value)
 }
 
@@ -4219,14 +4210,14 @@ func (c *Compiler) callListenerBefore() {
 		AsLoad(c.moduleCtxPtrValue,
 			c.offset.BeforeListenerTrampolines1stElement.U32(),
 			types.I64,
-		).Insert(builder).Return()
+		).Insert(builder).Return
 
 	beforeListenerPtr := builder.AllocateInstruction().
-		AsLoad(beforeListeners1stElement, uint32(c.wasmFunctionTypeIndex)*8 /* 8 bytes per index */, types.I64).Insert(builder).Return()
+		AsLoad(beforeListeners1stElement, uint32(c.wasmFunctionTypeIndex)*8 /* 8 bytes per index */, types.I64).Insert(builder).Return
 
 	entry := builder.EntryBlock()
 
-	args := []ssa.Var{c.execCtxPtrValue, builder.AllocateInstruction().AsIconst32(c.wasmLocalFunctionIndex).Insert(builder).Return()}
+	args := []ssa.Var{c.execCtxPtrValue, builder.AllocateInstruction().AsIconst32(c.wasmLocalFunctionIndex).Insert(builder).Return}
 	for i := 2; i < len(entry.Params); i++ {
 		args = append(args, entry.Params[i])
 	}
@@ -4245,18 +4236,18 @@ func (c *Compiler) callListenerAfter() {
 		AsLoad(c.moduleCtxPtrValue,
 			c.offset.AfterListenerTrampolines1stElement.U32(),
 			types.I64,
-		).Insert(builder).Return()
+		).Insert(builder).Return
 
 	afterListenerPtr := builder.AllocateInstruction().
 		AsLoad(afterListeners1stElement,
 			uint32(c.wasmFunctionTypeIndex)*8 /* 8 bytes per index */, types.I64).
 		Insert(builder).
-		Return()
+		Return
 
 	afterSig := c.listenerSignatures[c.wasmFunctionTyp][1]
 	args := []ssa.Var{
 		c.execCtxPtrValue,
-		builder.AllocateInstruction().AsIconst32(c.wasmLocalFunctionIndex).Insert(builder).Return(),
+		builder.AllocateInstruction().AsIconst32(c.wasmLocalFunctionIndex).Insert(builder).Return,
 	}
 
 	l := c.state()
@@ -4277,7 +4268,7 @@ func (c *Compiler) dropDataOrElementInstance(index uint32, firstItemOffset wazev
 	builder := c.ssaBuilder
 	instPtr := c.dataOrElementInstanceAddr(index, firstItemOffset)
 
-	zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return()
+	zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return
 
 	// Clear the instance.
 	builder.AllocateInstruction().AsStore(ssa.OpcodeStore, zero, instPtr, 0).Insert(builder)
@@ -4291,13 +4282,13 @@ func (c *Compiler) dataOrElementInstanceAddr(index uint32, firstItemOffset wazev
 	_1stItemPtr := builder.
 		AllocateInstruction().
 		AsLoad(c.moduleCtxPtrValue, firstItemOffset.U32(), types.I64).
-		Insert(builder).Return()
+		Insert(builder).Return
 
 	// Each data/element instance is a slice, so we need to multiply index by 16 to get the offset of the target instance.
 	index = index * elementOrDataInstanceSize
-	indexExt := builder.AllocateInstruction().AsIconst64(uint64(index)).Insert(builder).Return()
+	indexExt := builder.AllocateInstruction().AsIconst64(uint64(index)).Insert(builder).Return
 	// Then, add the offset to the address of the instance.
-	instPtr := builder.AllocateInstruction().AsIadd(_1stItemPtr, indexExt).Insert(builder).Return()
+	instPtr := builder.AllocateInstruction().AsIadd(_1stItemPtr, indexExt).Insert(builder).Return
 	return instPtr
 }
 
@@ -4305,12 +4296,12 @@ func (c *Compiler) boundsCheckInDataOrElementInstance(instPtr, offsetInInstance,
 	builder := c.ssaBuilder
 	dataInstLen := builder.AllocateInstruction().
 		AsLoad(instPtr, elementOrDataInstanceLenOffset, types.I64).
-		Insert(builder).Return()
-	ceil := builder.AllocateInstruction().AsIadd(offsetInInstance, copySize).Insert(builder).Return()
+		Insert(builder).Return
+	ceil := builder.AllocateInstruction().AsIadd(offsetInInstance, copySize).Insert(builder).Return
 	cmp := builder.AllocateInstruction().
 		AsIcmp(dataInstLen, ceil, ssa.IntegerCmpCondUnsignedLessThan).
 		Insert(builder).
-		Return()
+		Return
 	builder.AllocateInstruction().
 		AsExitIfTrueWithCode(c.execCtxPtrValue, cmp, exitCode).
 		Insert(builder)
@@ -4318,24 +4309,24 @@ func (c *Compiler) boundsCheckInDataOrElementInstance(instPtr, offsetInInstance,
 
 func (c *Compiler) boundsCheckInTable(tableIndex uint32, offset, size ssa.Var) (tableInstancePtr ssa.Var) {
 	builder := c.ssaBuilder
-	dstCeil := builder.AllocateInstruction().AsIadd(offset, size).Insert(builder).Return()
+	dstCeil := builder.AllocateInstruction().AsIadd(offset, size).Insert(builder).Return
 
 	// Load the table.
 	tableInstancePtr = builder.AllocateInstruction().
 		AsLoad(c.moduleCtxPtrValue, c.offset.TableOffset(int(tableIndex)).U32(), types.I64).
-		Insert(builder).Return()
+		Insert(builder).Return
 
 	// Load the table's length.
 	tableLen := builder.AllocateInstruction().
-		AsLoad(tableInstancePtr, tableInstanceLenOffset, types.I32).Insert(builder).Return()
-	tableLenExt := builder.AllocateInstruction().AsUExtend(tableLen, 32, 64).Insert(builder).Return()
+		AsLoad(tableInstancePtr, tableInstanceLenOffset, types.I32).Insert(builder).Return
+	tableLenExt := builder.AllocateInstruction().AsUExtend(tableLen, 32, 64).Insert(builder).Return
 
 	// Compare the length and the target, and trap if out of bounds.
 	checkOOB := builder.AllocateInstruction()
 	checkOOB.AsIcmp(tableLenExt, dstCeil, ssa.IntegerCmpCondUnsignedLessThan)
 	builder.InsertInstruction(checkOOB)
 	exitIfOOB := builder.AllocateInstruction()
-	exitIfOOB.AsExitIfTrueWithCode(c.execCtxPtrValue, checkOOB.Return(), wazevoapi.ExitCodeTableOutOfBounds)
+	exitIfOOB.AsExitIfTrueWithCode(c.execCtxPtrValue, checkOOB.Return, wazevoapi.ExitCodeTableOutOfBounds)
 	builder.InsertInstruction(exitIfOOB)
 	return
 }
@@ -4346,16 +4337,16 @@ func (c *Compiler) loadTableBaseAddr(tableInstancePtr ssa.Var) ssa.Var {
 		AllocateInstruction().
 		AsLoad(tableInstancePtr, tableInstanceBaseAddressOffset, types.I64).
 		Insert(builder)
-	return loadTableBaseAddress.Return()
+	return loadTableBaseAddress.Return
 }
 
 func (c *Compiler) boundsCheckInMemory(memLen, offset, size ssa.Var) {
 	builder := c.ssaBuilder
-	ceil := builder.AllocateInstruction().AsIadd(offset, size).Insert(builder).Return()
+	ceil := builder.AllocateInstruction().AsIadd(offset, size).Insert(builder).Return
 	cmp := builder.AllocateInstruction().
 		AsIcmp(memLen, ceil, ssa.IntegerCmpCondUnsignedLessThan).
 		Insert(builder).
-		Return()
+		Return
 	builder.AllocateInstruction().
 		AsExitIfTrueWithCode(c.execCtxPtrValue, cmp, wazevoapi.ExitCodeMemoryOutOfBounds).
 		Insert(builder)

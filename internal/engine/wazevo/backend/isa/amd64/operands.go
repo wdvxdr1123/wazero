@@ -294,7 +294,7 @@ func (m *machine) getOperand_Imm32_Reg(def backend.SSAValueDefinition) (op opera
 		// If the operation is 64-bit, x64 sign-extends the 32-bit immediate value.
 		// Therefore, we need to check if the immediate value is within the 32-bit range and if the sign bit is set,
 		// we should not use the immediate value.
-		if op, ok := asImm32Operand(instr.ConstantVal(), instr.Return().Type() == types.I32); ok {
+		if op, ok := asImm32Operand(instr.ConstantVal(), instr.Return.Type() == types.I32); ok {
 			instr.MarkLowered()
 			return op
 		}

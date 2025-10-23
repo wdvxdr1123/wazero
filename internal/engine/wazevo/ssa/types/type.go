@@ -1,6 +1,8 @@
 package types
 
-import "strings"
+import (
+	"strings"
+)
 
 type Type struct {
 	Kind     Kind
@@ -33,17 +35,17 @@ var Func = &Type{Kind: KindFunc}
 var Block = &Type{Kind: KindBlock}
 
 // IsInt returns true if the type is an integer type.
-func (t Type) IsInt() bool {
+func (t *Type) IsInt() bool {
 	return t.Kind == KindInteger
 }
 
 // IsFloat returns true if the type is a floating point type.
-func (t Type) IsFloat() bool {
+func (t *Type) IsFloat() bool {
 	return t.Kind == KindFloat
 }
 
 // Bits returns the number of bits required to represent the type.
-func (t Type) Bits() byte {
+func (t *Type) Bits() byte {
 	switch t.Kind {
 	case KindInteger, KindFloat:
 		if t.bits != 32 && t.bits != 64 {
@@ -61,33 +63,33 @@ func (t Type) Bits() byte {
 }
 
 // Size returns the number of bytes required to represent the type.
-func (t Type) Size() byte {
+func (t *Type) Size() byte {
 	return t.Bits() / 8
 }
 
-func (t Type) Invalid() bool {
+func (t *Type) Invalid() bool {
 	return t.Kind == KindInvalid
 }
 
-func (t Type) IsTuple() bool {
+func (t *Type) IsTuple() bool {
 	return t.Kind == KindTuple
 }
 
-func (t Type) Len() int {
+func (t *Type) Len() int {
 	if !t.IsTuple() {
 		panic("Len() is only valid for tuple types")
 	}
 	return len(t.elements)
 }
 
-func (t Type) At(i int) *Type {
+func (t *Type) At(i int) *Type {
 	if !t.IsTuple() {
 		panic("At() is only valid for tuple types")
 	}
 	return t.elements[i]
 }
 
-func (t Type) String() string {
+func (t *Type) String() string {
 	switch t.Kind {
 	case KindInvalid:
 		return "invalid"

@@ -64,7 +64,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
-				r := c.Return()
+				r := c.Return
 				ctx.vRegMap[r] = regalloc.VReg(50)
 				return backend.SSAValueDefinition{V: r}
 			},
@@ -78,9 +78,9 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
-				rs := c.Returns
-				ctx.vRegMap[rs[1]] = regalloc.VReg(50)
-				return backend.SSAValueDefinition{V: rs[1]}
+				rs := c.Return
+				ctx.vRegMap[rs] = regalloc.VReg(50)
+				return backend.SSAValueDefinition{V: rs}
 			},
 			exp: newOperandReg(regalloc.VReg(50)),
 		},
@@ -156,8 +156,8 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(iconst.Return(), 123, types.I64).Insert(builder)
-				ctx.definitions[iconst.Return()] = backend.SSAValueDefinition{Instr: iconst}
+				instr.AsLoad(iconst.Return, 123, types.I64).Insert(builder)
+				ctx.definitions[iconst.Return] = backend.SSAValueDefinition{Instr: iconst}
 				return backend.SSAValueDefinition{Instr: instr}
 			},
 			instructions: []string{
@@ -169,13 +169,13 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 			name: "amode with iconst and extend",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst := builder.AllocateInstruction().AsIconst32(0xffffff).Insert(builder)
-				uextend := builder.AllocateInstruction().AsUExtend(iconst.Return(), 32, 64).Insert(builder)
+				uextend := builder.AllocateInstruction().AsUExtend(iconst.Return, 32, 64).Insert(builder)
 
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(uextend.Return(), 123, types.I64).Insert(builder)
+				instr.AsLoad(uextend.Return, 123, types.I64).Insert(builder)
 
-				ctx.definitions[uextend.Return()] = backend.SSAValueDefinition{Instr: uextend}
-				ctx.definitions[iconst.Return()] = backend.SSAValueDefinition{Instr: iconst}
+				ctx.definitions[uextend.Return] = backend.SSAValueDefinition{Instr: uextend}
+				ctx.definitions[iconst.Return] = backend.SSAValueDefinition{Instr: iconst}
 
 				return backend.SSAValueDefinition{Instr: instr}
 			},
@@ -188,13 +188,13 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 			name: "amode with iconst and extend",
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst := builder.AllocateInstruction().AsIconst32(456).Insert(builder)
-				uextend := builder.AllocateInstruction().AsUExtend(iconst.Return(), 32, 64).Insert(builder)
+				uextend := builder.AllocateInstruction().AsUExtend(iconst.Return, 32, 64).Insert(builder)
 
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(uextend.Return(), 123, types.I64).Insert(builder)
+				instr.AsLoad(uextend.Return, 123, types.I64).Insert(builder)
 
-				ctx.definitions[uextend.Return()] = backend.SSAValueDefinition{Instr: uextend}
-				ctx.definitions[iconst.Return()] = backend.SSAValueDefinition{Instr: iconst}
+				ctx.definitions[uextend.Return] = backend.SSAValueDefinition{Instr: uextend}
+				ctx.definitions[iconst.Return] = backend.SSAValueDefinition{Instr: iconst}
 
 				return backend.SSAValueDefinition{Instr: instr}
 			},
@@ -208,15 +208,15 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				p := builder.CurrentBlock().AddParam(builder, types.I64)
 				iconst := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
-				iadd := builder.AllocateInstruction().AsIadd(iconst.Return(), p).Insert(builder)
+				iadd := builder.AllocateInstruction().AsIadd(iconst.Return, p).Insert(builder)
 
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(iadd.Return(), 789, types.I64).Insert(builder)
+				instr.AsLoad(iadd.Return, 789, types.I64).Insert(builder)
 
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
-				ctx.definitions[iconst.Return()] = backend.SSAValueDefinition{Instr: iconst}
-				ctx.definitions[iadd.Return()] = backend.SSAValueDefinition{Instr: iadd}
+				ctx.definitions[iconst.Return] = backend.SSAValueDefinition{Instr: iconst}
+				ctx.definitions[iadd.Return] = backend.SSAValueDefinition{Instr: iadd}
 
 				return backend.SSAValueDefinition{Instr: instr}
 			},
@@ -227,14 +227,14 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst1 := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
 				iconst2 := builder.AllocateInstruction().AsIconst64(123).Insert(builder)
-				iadd := builder.AllocateInstruction().AsIadd(iconst1.Return(), iconst2.Return()).Insert(builder)
+				iadd := builder.AllocateInstruction().AsIadd(iconst1.Return, iconst2.Return).Insert(builder)
 
 				instr := builder.AllocateInstruction()
-				instr.AsLoad(iadd.Return(), 789, types.I64).Insert(builder)
+				instr.AsLoad(iadd.Return, 789, types.I64).Insert(builder)
 
-				ctx.definitions[iconst1.Return()] = backend.SSAValueDefinition{Instr: iconst1}
-				ctx.definitions[iconst2.Return()] = backend.SSAValueDefinition{Instr: iconst2}
-				ctx.definitions[iadd.Return()] = backend.SSAValueDefinition{Instr: iadd}
+				ctx.definitions[iconst1.Return] = backend.SSAValueDefinition{Instr: iconst1}
+				ctx.definitions[iconst2.Return] = backend.SSAValueDefinition{Instr: iconst2}
+				ctx.definitions[iadd.Return] = backend.SSAValueDefinition{Instr: iadd}
 
 				return backend.SSAValueDefinition{Instr: instr}
 			},
@@ -346,7 +346,7 @@ L2:
 			ctx.definitions[p] = backend.SSAValueDefinition{V: p}
 			instr := &ssa.Value{}
 			instr.AsClz(p)
-			ctx.vRegMap[instr.Return()] = rcxVReg
+			ctx.vRegMap[instr.Return] = rcxVReg
 			m.lowerClz(instr)
 			m.FlushPendingInstructions()
 			m.rootInstr = m.perBlockHead
@@ -420,7 +420,7 @@ L2:
 			ctx.definitions[p] = backend.SSAValueDefinition{V: p}
 			instr := &ssa.Value{}
 			instr.AsCtz(p)
-			ctx.vRegMap[instr.Return()] = rcxVReg
+			ctx.vRegMap[instr.Return] = rcxVReg
 			m.lowerCtz(instr)
 			m.FlushPendingInstructions()
 			m.rootInstr = m.perBlockHead

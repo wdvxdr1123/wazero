@@ -224,12 +224,13 @@ func (c *compiler) assignVirtualRegisters() {
 
 		// Assigns each value to a virtual register produced by instructions.
 		for _, cur := range blk.Instructions() {
-			for _, r := range cur.Returns {
-				if !r.Valid() {
+			if cur.Return.Valid() {
+				id := cur.Return.ID()
+				ssaTyp := cur.Return.Type()
+				if ssaTyp.IsTuple() {
+					// skip tuple here becase all elements will be handled in SelectTuple.
 					continue
 				}
-				id := r.ID()
-				ssaTyp := r.Type()
 				vReg := c.AllocateVReg(ssaTyp)
 				c.ssaValueToVRegs[id] = vReg
 				c.ssaTypeOfVRegID[vReg.ID()] = ssaTyp

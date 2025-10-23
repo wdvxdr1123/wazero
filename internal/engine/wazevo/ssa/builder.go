@@ -246,7 +246,7 @@ func (b *builder) InsertZeroValue(t *types.Type) {
 	default:
 		panic("TODO: " + t.String())
 	}
-	b.zeros[t] = zeroInst.Insert(b).Return()
+	b.zeros[t] = zeroInst.Insert(b).Return
 }
 
 // ReturnBlock implements Builder.ReturnBlock.
@@ -372,26 +372,20 @@ func (b *builder) InsertInstruction(instr *Value) {
 		}
 	}
 
+	var t *types.Type
 	resultTypesFn := instructionReturnTypes[instr.opcode]
-	if resultTypesFn == nil {
+	if resultTypesFn != nil {
+		t = resultTypesFn(b, instr)
+	} else if instr.opcode == OpcodeSelectTuple {
+		index := instr.u1
+		t = instr.Args[0].Type().At(int(index))
+	} else {
 		panic("TODO: " + instr.Format(b))
 	}
-
-	t := resultTypesFn(b, instr)
-	if t.Invalid() {
-		return
-	}
-
-	if t.IsTuple() {
-		rValues := make([]Var, 0, t.Len())
-		for i := 0; i < t.Len(); i++ {
-			rn := b.allocateValue(t.At(i))
-			rValues = append(rValues, rn.setInstructionID(instr.id))
-		}
-		instr.Returns = rValues
-	} else {
+	instr.Type = t
+	if !t.Invalid() {
 		rn := b.allocateValue(t)
-		instr.Returns = []Var{rn.setInstructionID(instr.id)}
+		instr.Return = rn.setInstructionID(instr.id)
 	}
 }
 

@@ -52,6 +52,12 @@ type (
 		addends64              wazevoapi.Queue[regalloc.VReg]
 		unresolvedAddressModes []*instruction
 
+		callsLowerInfo map[ssa.Var]struct {
+			abi *backend.FunctionABI
+			// stackSlotSize is the size of the stack slot in bytes used for spilling registers.
+			stackSlotSize int64
+		}
+
 		// condBrRelocs holds the conditional branches which need offset relocation.
 		condBrRelocs []condBrReloc
 
@@ -267,6 +273,7 @@ func (m *machine) Reset() {
 	m.pendingInstructions = m.pendingInstructions[:0]
 	m.perBlockHead, m.perBlockEnd, m.rootInstr = nil, nil, nil
 	m.orderedSSABlockLabelPos = m.orderedSSABlockLabelPos[:0]
+	clear(m.callsLowerInfo)
 }
 
 // StartLoweringFunction implements backend.Machine StartLoweringFunction.

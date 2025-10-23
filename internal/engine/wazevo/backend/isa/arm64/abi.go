@@ -132,7 +132,7 @@ func (m *machine) LowerReturns(rets []ssa.Var) {
 		if def := m.compiler.ValueDefinition(ret); def.IsFromInstr() {
 			// Constant instructions are inlined.
 			if inst := def.Instr; inst.Constant() {
-				val := inst.Return()
+				val := inst.Return
 				valType := val.Type()
 				v := inst.ConstantVal()
 				m.insertLoadConstant(v, valType, reg)
@@ -188,7 +188,7 @@ func (m *machine) callerGenVRegToFunctionArg(a *backend.FunctionABI, argIndex in
 	if def.IsFromInstr() {
 		// Constant instructions are inlined.
 		if inst := def.Instr; inst.Constant() {
-			val := inst.Return()
+			val := inst.Return
 			valType := val.Type()
 			v := inst.ConstantVal()
 			m.insertLoadConstant(v, valType, reg)
@@ -275,7 +275,7 @@ func (m *machine) lowerCall(si *ssa.Value) {
 		m.insert(callInd)
 	}
 
-	m.insertReturns(si, calleeABI, stackSlotSize)
+	m.saveCallABI(si, calleeABI, stackSlotSize)
 }
 
 func (m *machine) prepareCall(si *ssa.Value, isDirectCall bool) (ssa.Var, ssa.FuncRef, *backend.FunctionABI, int64) {
@@ -303,14 +303,13 @@ func (m *machine) prepareCall(si *ssa.Value, isDirectCall bool) (ssa.Var, ssa.Fu
 	return indirectCalleePtr, directCallee, calleeABI, stackSlotSize
 }
 
-func (m *machine) insertReturns(si *ssa.Value, calleeABI *backend.FunctionABI, stackSlotSize int64) {
-	var index int
-	for _, r := range si.Returns {
-		if !r.Valid() {
-			continue
-		}
-		m.callerGenFunctionReturnVReg(calleeABI, index, m.compiler.VRegOf(r), stackSlotSize)
-		index++
+func (m *machine) saveCallABI(si *ssa.Value, calleeABI *backend.FunctionABI, stackSlotSize int64) {
+	m.callsLowerInfo[si.Return] = struct {
+		abi           *backend.FunctionABI
+		stackSlotSize int64
+	}{
+		abi:           calleeABI,
+		stackSlotSize: stackSlotSize,
 	}
 }
 
@@ -345,7 +344,7 @@ func (m *machine) lowerTailCall(si *ssa.Value) {
 	}
 
 	// If this is a proper tail call, returns will be cleared in the postRegAlloc phase.
-	m.insertReturns(si, calleeABI, stackSlotSize)
+	m.saveCallABI(si, calleeABI, stackSlotSize)
 }
 
 func (m *machine) insertAddOrSubStackPointer(rd regalloc.VReg, diff int64, add bool) {

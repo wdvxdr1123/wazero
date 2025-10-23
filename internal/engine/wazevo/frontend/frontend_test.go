@@ -84,15 +84,15 @@ blk0: (exec_ctx:i64, module_ctx:i64, v2:i32, v3:i32)
 	v4:i64 = Load module_ctx, 0x8
 	v5:i64 = Load v4, 0x0
 	v6:i32 = Iconst_32 0x0
-	CallIndirect v5:sig1, exec_ctx, v6, v2, v3
-	v7:i32 = Iadd v2, v3
-	v8:i32 = Isub v7, v2
+	v7:tuple{} = CallIndirect v5:sig1, exec_ctx, v6, v2, v3
+	v8:i32 = Iadd v2, v3
+	v9:i32 = Isub v8, v2
 	Store module_ctx, exec_ctx, 0x8
-	v9:i64 = Load module_ctx, 0x10
-	v10:i64 = Load v9, 0x0
-	v11:i32 = Iconst_32 0x0
-	CallIndirect v10:sig2, exec_ctx, v11, v8
-Plain --> blk_ret(v8)
+	v10:i64 = Load module_ctx, 0x10
+	v11:i64 = Load v10, 0x0
+	v12:i32 = Iconst_32 0x0
+	v13:tuple{} = CallIndirect v11:sig2, exec_ctx, v12, v9
+Plain --> blk_ret(v9)
 `,
 		},
 		{
@@ -265,7 +265,7 @@ Plain --> blk1
 
 blk1: () <-- (blk0,blk1)
 	v2:i64 = Load exec_ctx, 0x58
-	CallIndirect v2:sig2, exec_ctx
+	v3:tuple{} = CallIndirect v2:sig2, exec_ctx
 Plain --> blk1
 
 blk2: ()
@@ -280,7 +280,7 @@ Plain --> blk1
 
 blk1: () <-- (blk0,blk1)
 	v2:i64 = Load exec_ctx, 0x58
-	CallIndirect v2:sig2, exec_ctx
+	v3:tuple{} = CallIndirect v2:sig2, exec_ctx
 Plain --> blk1
 `,
 		},
@@ -552,11 +552,15 @@ signatures:
 	sig3: i64i64i32_i32i32
 
 blk0: (exec_ctx:i64, module_ctx:i64)
-	v2:i32 = Call f1:sig1, exec_ctx, module_ctx
-	v3:i32 = Iconst_32 0x5
-	v4:i32 = Call f2:sig2, exec_ctx, module_ctx, v2, v3
-	v5:i32, v6:i32 = Call f3:sig3, exec_ctx, module_ctx, v4
-Plain --> blk_ret(v5, v6)
+	v2:tuple{i32} = Call f1:sig1, exec_ctx, module_ctx
+	v3:i32 = SelectTuple v2, 0
+	v4:i32 = Iconst_32 0x5
+	v5:tuple{i32} = Call f2:sig2, exec_ctx, module_ctx, v3, v4
+	v6:i32 = SelectTuple v5, 0
+	v7:tuple{i32, i32} = Call f3:sig3, exec_ctx, module_ctx, v6
+	v8:i32 = SelectTuple v7, 0
+	v9:i32 = SelectTuple v7, 1
+Plain --> blk_ret(v8, v9)
 `,
 		},
 		{
@@ -567,7 +571,7 @@ signatures:
 	sig1: i64i64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64_v
 
 blk0: (exec_ctx:i64, module_ctx:i64, v2:i32, v3:i64, v4:f32, v5:f64)
-	Call f1:sig1, exec_ctx, module_ctx, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5
+	v6:tuple{} = Call f1:sig1, exec_ctx, module_ctx, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5, v2, v3, v4, v5
 Plain --> blk_ret
 `,
 		},
@@ -579,8 +583,48 @@ signatures:
 	sig0: i64i64i32i64f32f64_i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64i32i64f32f64
 
 blk0: (exec_ctx:i64, module_ctx:i64, v2:i32, v3:i64, v4:f32, v5:f64)
-	v6:i32, v7:i64, v8:f32, v9:f64, v10:i32, v11:i64, v12:f32, v13:f64, v14:i32, v15:i64, v16:f32, v17:f64, v18:i32, v19:i64, v20:f32, v21:f64, v22:i32, v23:i64, v24:f32, v25:f64, v26:i32, v27:i64, v28:f32, v29:f64, v30:i32, v31:i64, v32:f32, v33:f64, v34:i32, v35:i64, v36:f32, v37:f64, v38:i32, v39:i64, v40:f32, v41:f64, v42:i32, v43:i64, v44:f32, v45:f64 = Call f1:sig0, exec_ctx, module_ctx, v2, v3, v4, v5
-Plain --> blk_ret(v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32, v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45)
+	v6:tuple{i32, i64, f32, f64, i32, i64, f32, f64, i32, i64, f32, f64, i32, i64, f32, f64, i32, i64, f32, f64, i32, i64, f32, f64, i32, i64, f32, f64, i32, i64, f32, f64, i32, i64, f32, f64, i32, i64, f32, f64} = Call f1:sig0, exec_ctx, module_ctx, v2, v3, v4, v5
+	v7:i32 = SelectTuple v6, 0
+	v8:i64 = SelectTuple v6, 1
+	v9:f32 = SelectTuple v6, 2
+	v10:f64 = SelectTuple v6, 3
+	v11:i32 = SelectTuple v6, 4
+	v12:i64 = SelectTuple v6, 5
+	v13:f32 = SelectTuple v6, 6
+	v14:f64 = SelectTuple v6, 7
+	v15:i32 = SelectTuple v6, 8
+	v16:i64 = SelectTuple v6, 9
+	v17:f32 = SelectTuple v6, 10
+	v18:f64 = SelectTuple v6, 11
+	v19:i32 = SelectTuple v6, 12
+	v20:i64 = SelectTuple v6, 13
+	v21:f32 = SelectTuple v6, 14
+	v22:f64 = SelectTuple v6, 15
+	v23:i32 = SelectTuple v6, 16
+	v24:i64 = SelectTuple v6, 17
+	v25:f32 = SelectTuple v6, 18
+	v26:f64 = SelectTuple v6, 19
+	v27:i32 = SelectTuple v6, 20
+	v28:i64 = SelectTuple v6, 21
+	v29:f32 = SelectTuple v6, 22
+	v30:f64 = SelectTuple v6, 23
+	v31:i32 = SelectTuple v6, 24
+	v32:i64 = SelectTuple v6, 25
+	v33:f32 = SelectTuple v6, 26
+	v34:f64 = SelectTuple v6, 27
+	v35:i32 = SelectTuple v6, 28
+	v36:i64 = SelectTuple v6, 29
+	v37:f32 = SelectTuple v6, 30
+	v38:f64 = SelectTuple v6, 31
+	v39:i32 = SelectTuple v6, 32
+	v40:i64 = SelectTuple v6, 33
+	v41:f32 = SelectTuple v6, 34
+	v42:f64 = SelectTuple v6, 35
+	v43:i32 = SelectTuple v6, 36
+	v44:i64 = SelectTuple v6, 37
+	v45:f32 = SelectTuple v6, 38
+	v46:f64 = SelectTuple v6, 39
+Plain --> blk_ret(v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31, v32, v33, v34, v35, v36, v37, v38, v39, v40, v41, v42, v43, v44, v45, v46)
 `,
 		},
 		{
@@ -976,12 +1020,14 @@ Plain --> blk3
 blk3: () <-- (blk2)
 	v5:i32 = Iconst_32 0x1
 	v6:i32 = Isub v2, v5
-	v7:i32 = Call f0:sig0, exec_ctx, module_ctx, v6
-	v8:i32 = Iconst_32 0x2
-	v9:i32 = Isub v2, v8
-	v10:i32 = Call f0:sig0, exec_ctx, module_ctx, v9
-	v11:i32 = Iadd v7, v10
-Plain --> blk_ret(v11)
+	v7:tuple{i32} = Call f0:sig0, exec_ctx, module_ctx, v6
+	v8:i32 = SelectTuple v7, 0
+	v9:i32 = Iconst_32 0x2
+	v10:i32 = Isub v2, v9
+	v11:tuple{i32} = Call f0:sig0, exec_ctx, module_ctx, v10
+	v12:i32 = SelectTuple v11, 0
+	v13:i32 = Iadd v8, v12
+Plain --> blk_ret(v13)
 `,
 			expAfterPasses: `
 signatures:
@@ -1002,12 +1048,14 @@ Plain --> blk3
 blk3: () <-- (blk2)
 	v5:i32 = Iconst_32 0x1
 	v6:i32 = Isub v2, v5
-	v7:i32 = Call f0:sig0, exec_ctx, module_ctx, v6
-	v8:i32 = Iconst_32 0x2
-	v9:i32 = Isub v2, v8
-	v10:i32 = Call f0:sig0, exec_ctx, module_ctx, v9
-	v11:i32 = Iadd v7, v10
-Plain --> blk_ret(v11)
+	v7:tuple{i32} = Call f0:sig0, exec_ctx, module_ctx, v6
+	v8:i32 = SelectTuple v7, 0
+	v9:i32 = Iconst_32 0x2
+	v10:i32 = Isub v2, v9
+	v11:tuple{i32} = Call f0:sig0, exec_ctx, module_ctx, v10
+	v12:i32 = SelectTuple v11, 0
+	v13:i32 = Iadd v8, v12
+Plain --> blk_ret(v13)
 `,
 		},
 		{
@@ -1055,25 +1103,25 @@ blk0: (exec_ctx:i64, module_ctx:i64, v2:i32)
 If v4 --> blk1 Else --> blk2
 
 blk1: () <-- (blk0)
-	Call f1:sig1, exec_ctx, module_ctx
-	v5:i64 = Load module_ctx, 0x8
-	v6:i64 = Uload32 module_ctx, 0x10
+	v5:tuple{} = Call f1:sig1, exec_ctx, module_ctx
+	v6:i64 = Load module_ctx, 0x8
+	v7:i64 = Uload32 module_ctx, 0x10
 Plain --> blk3
 
 blk2: () <-- (blk0)
 Plain --> blk3
 
 blk3: () <-- (blk1,blk2)
-	v8:i64 = Iconst_64 0x4
-	v9:i64 = UExtend v2, 32->64
-	v10:i64 = Uload32 module_ctx, 0x10
-	v11:i64 = Iadd v9, v8
-	v12:i32 = Icmp lt_u, v10, v11
-	ExitIfTrue v12, exec_ctx, memory_out_of_bounds
-	v13:i64 = Load module_ctx, 0x8
-	v14:i64 = Iadd v13, v9
-	v15:i32 = Load v14, 0x0
-Plain --> blk_ret(v15)
+	v9:i64 = Iconst_64 0x4
+	v10:i64 = UExtend v2, 32->64
+	v11:i64 = Uload32 module_ctx, 0x10
+	v12:i64 = Iadd v10, v9
+	v13:i32 = Icmp lt_u, v11, v12
+	ExitIfTrue v13, exec_ctx, memory_out_of_bounds
+	v14:i64 = Load module_ctx, 0x8
+	v15:i64 = Iadd v14, v10
+	v16:i32 = Load v15, 0x0
+Plain --> blk_ret(v16)
 `,
 			expAfterPasses: `
 signatures:
@@ -1085,23 +1133,23 @@ blk0: (exec_ctx:i64, module_ctx:i64, v2:i32)
 IfNot v4 --> blk2 Else --> blk1
 
 blk1: () <-- (blk0)
-	Call f1:sig1, exec_ctx, module_ctx
+	v5:tuple{} = Call f1:sig1, exec_ctx, module_ctx
 Plain --> blk3
 
 blk2: () <-- (blk0)
 Plain --> blk3
 
 blk3: () <-- (blk1,blk2)
-	v8:i64 = Iconst_64 0x4
-	v9:i64 = UExtend v2, 32->64
-	v10:i64 = Uload32 module_ctx, 0x10
-	v11:i64 = Iadd v9, v8
-	v12:i32 = Icmp lt_u, v10, v11
-	ExitIfTrue v12, exec_ctx, memory_out_of_bounds
-	v13:i64 = Load module_ctx, 0x8
-	v14:i64 = Iadd v13, v9
-	v15:i32 = Load v14, 0x0
-Plain --> blk_ret(v15)
+	v9:i64 = Iconst_64 0x4
+	v10:i64 = UExtend v2, 32->64
+	v11:i64 = Uload32 module_ctx, 0x10
+	v12:i64 = Iadd v10, v9
+	v13:i32 = Icmp lt_u, v11, v12
+	ExitIfTrue v13, exec_ctx, memory_out_of_bounds
+	v14:i64 = Load module_ctx, 0x8
+	v15:i64 = Iadd v14, v10
+	v16:i32 = Load v15, 0x0
+Plain --> blk_ret(v16)
 `,
 		},
 		{
@@ -1114,8 +1162,9 @@ blk0: (exec_ctx:i64, module_ctx:i64, v2:i32)
 	Store module_ctx, exec_ctx, 0x8
 	v3:i64 = Load module_ctx, 0x8
 	v4:i64 = Load module_ctx, 0x10
-	v5:i32 = CallIndirect v3:sig1, exec_ctx, v4, v2, v2
-Plain --> blk_ret(v5)
+	v5:tuple{i32} = CallIndirect v3:sig1, exec_ctx, v4, v2, v2
+	v6:i32 = SelectTuple v5, 0
+Plain --> blk_ret(v6)
 `,
 		},
 		{
@@ -1219,12 +1268,12 @@ blk0: (exec_ctx:i64, module_ctx:i64)
 	v3:i64 = Load module_ctx, 0x20
 	v4:f32 = Load module_ctx, 0x30
 	v5:f64 = Load module_ctx, 0x40
-	Call f1:sig1, exec_ctx, module_ctx
-	v6:i32 = Load module_ctx, 0x10
-	v7:i64 = Load module_ctx, 0x20
-	v8:f32 = Load module_ctx, 0x30
-	v9:f64 = Load module_ctx, 0x40
-Plain --> blk_ret(v2, v3, v4, v5, v6, v7, v8, v9)
+	v6:tuple{} = Call f1:sig1, exec_ctx, module_ctx
+	v7:i32 = Load module_ctx, 0x10
+	v8:i64 = Load module_ctx, 0x20
+	v9:f32 = Load module_ctx, 0x30
+	v10:f64 = Load module_ctx, 0x40
+Plain --> blk_ret(v2, v3, v4, v5, v7, v8, v9, v10)
 `,
 			expAfterPasses: `
 signatures:
@@ -1235,12 +1284,12 @@ blk0: (exec_ctx:i64, module_ctx:i64)
 	v3:i64 = Load module_ctx, 0x20
 	v4:f32 = Load module_ctx, 0x30
 	v5:f64 = Load module_ctx, 0x40
-	Call f1:sig1, exec_ctx, module_ctx
-	v6:i32 = Load module_ctx, 0x10
-	v7:i64 = Load module_ctx, 0x20
-	v8:f32 = Load module_ctx, 0x30
-	v9:f64 = Load module_ctx, 0x40
-Plain --> blk_ret(v2, v3, v4, v5, v6, v7, v8, v9)
+	v6:tuple{} = Call f1:sig1, exec_ctx, module_ctx
+	v7:i32 = Load module_ctx, 0x10
+	v8:i64 = Load module_ctx, 0x20
+	v9:f32 = Load module_ctx, 0x30
+	v10:f64 = Load module_ctx, 0x40
+Plain --> blk_ret(v2, v3, v4, v5, v7, v8, v9, v10)
 `,
 		},
 		{
@@ -1255,36 +1304,39 @@ blk0: (exec_ctx:i64, module_ctx:i64)
 	Store module_ctx, exec_ctx, 0x8
 	v2:i64 = Load module_ctx, 0x18
 	v3:i64 = Load module_ctx, 0x20
-	v4:i32 = CallIndirect v2:sig0, exec_ctx, v3
-	v5:i64 = Load module_ctx, 0x8
-	v6:i64 = Load v5, 0x0
-	v7:i64 = Load module_ctx, 0x8
-	v8:i64 = Load v7, 0x8
-	v9:i64 = Load module_ctx, 0x8
-	v10:i32 = Load v9, 0x8
-	v11:i32 = Iconst_32 0x10
-	v12:i32 = Ushr v10, v11
-	v13:i32 = Iconst_32 0xa
+	v4:tuple{i32} = CallIndirect v2:sig0, exec_ctx, v3
+	v5:i32 = SelectTuple v4, 0
+	v6:i64 = Load module_ctx, 0x8
+	v7:i64 = Load v6, 0x0
+	v8:i64 = Load module_ctx, 0x8
+	v9:i64 = Load v8, 0x8
+	v10:i64 = Load module_ctx, 0x8
+	v11:i32 = Load v10, 0x8
+	v12:i32 = Iconst_32 0x10
+	v13:i32 = Ushr v11, v12
+	v14:i32 = Iconst_32 0xa
 	Store module_ctx, exec_ctx, 0x8
-	v14:i64 = Load exec_ctx, 0x48
-	v15:i32 = CallIndirect v14:sig2, exec_ctx, v13
-	v16:i64 = Load module_ctx, 0x8
-	v17:i64 = Load v16, 0x0
+	v15:i64 = Load exec_ctx, 0x48
+	v16:tuple{i32} = CallIndirect v15:sig2, exec_ctx, v14
+	v17:i32 = SelectTuple v16, 0
 	v18:i64 = Load module_ctx, 0x8
-	v19:i64 = Load v18, 0x8
+	v19:i64 = Load v18, 0x0
+	v20:i64 = Load module_ctx, 0x8
+	v21:i64 = Load v20, 0x8
 	Store module_ctx, exec_ctx, 0x8
-	v20:i64 = Load module_ctx, 0x18
-	v21:i64 = Load module_ctx, 0x20
-	v22:i32 = CallIndirect v20:sig0, exec_ctx, v21
-	v23:i64 = Load module_ctx, 0x8
-	v24:i64 = Load v23, 0x0
-	v25:i64 = Load module_ctx, 0x8
-	v26:i64 = Load v25, 0x8
-	v27:i64 = Load module_ctx, 0x8
-	v28:i32 = Load v27, 0x8
-	v29:i32 = Iconst_32 0x10
-	v30:i32 = Ushr v28, v29
-Plain --> blk_ret(v4, v12, v22, v30)
+	v22:i64 = Load module_ctx, 0x18
+	v23:i64 = Load module_ctx, 0x20
+	v24:tuple{i32} = CallIndirect v22:sig0, exec_ctx, v23
+	v25:i32 = SelectTuple v24, 0
+	v26:i64 = Load module_ctx, 0x8
+	v27:i64 = Load v26, 0x0
+	v28:i64 = Load module_ctx, 0x8
+	v29:i64 = Load v28, 0x8
+	v30:i64 = Load module_ctx, 0x8
+	v31:i32 = Load v30, 0x8
+	v32:i32 = Iconst_32 0x10
+	v33:i32 = Ushr v31, v32
+Plain --> blk_ret(v5, v13, v25, v33)
 `,
 			expAfterPasses: `
 signatures:
@@ -1295,24 +1347,26 @@ blk0: (exec_ctx:i64, module_ctx:i64)
 	Store module_ctx, exec_ctx, 0x8
 	v2:i64 = Load module_ctx, 0x18
 	v3:i64 = Load module_ctx, 0x20
-	v4:i32 = CallIndirect v2:sig0, exec_ctx, v3
-	v9:i64 = Load module_ctx, 0x8
-	v10:i32 = Load v9, 0x8
-	v11:i32 = Iconst_32 0x10
-	v12:i32 = Ushr v10, v11
-	v13:i32 = Iconst_32 0xa
+	v4:tuple{i32} = CallIndirect v2:sig0, exec_ctx, v3
+	v5:i32 = SelectTuple v4, 0
+	v10:i64 = Load module_ctx, 0x8
+	v11:i32 = Load v10, 0x8
+	v12:i32 = Iconst_32 0x10
+	v13:i32 = Ushr v11, v12
+	v14:i32 = Iconst_32 0xa
 	Store module_ctx, exec_ctx, 0x8
-	v14:i64 = Load exec_ctx, 0x48
-	v15:i32 = CallIndirect v14:sig2, exec_ctx, v13
+	v15:i64 = Load exec_ctx, 0x48
+	v16:tuple{i32} = CallIndirect v15:sig2, exec_ctx, v14
 	Store module_ctx, exec_ctx, 0x8
-	v20:i64 = Load module_ctx, 0x18
-	v21:i64 = Load module_ctx, 0x20
-	v22:i32 = CallIndirect v20:sig0, exec_ctx, v21
-	v27:i64 = Load module_ctx, 0x8
-	v28:i32 = Load v27, 0x8
-	v29:i32 = Iconst_32 0x10
-	v30:i32 = Ushr v28, v29
-Plain --> blk_ret(v4, v12, v22, v30)
+	v22:i64 = Load module_ctx, 0x18
+	v23:i64 = Load module_ctx, 0x20
+	v24:tuple{i32} = CallIndirect v22:sig0, exec_ctx, v23
+	v25:i32 = SelectTuple v24, 0
+	v30:i64 = Load module_ctx, 0x8
+	v31:i32 = Load v30, 0x8
+	v32:i32 = Iconst_32 0x10
+	v33:i32 = Ushr v31, v32
+Plain --> blk_ret(v5, v13, v25, v33)
 `,
 		},
 		{
@@ -1326,19 +1380,21 @@ blk0: (exec_ctx:i64, module_ctx:i64)
 	v2:i32 = Iconst_32 0x1
 	Store module_ctx, exec_ctx, 0x8
 	v3:i64 = Load exec_ctx, 0x48
-	v4:i32 = CallIndirect v3:sig1, exec_ctx, v2
-	v5:i64 = Load module_ctx, 0x8
-	v6:i64 = Uload32 module_ctx, 0x10
-	v7:i32 = Load module_ctx, 0x10
-	v8:i32 = Iconst_32 0x10
-	v9:i32 = Ushr v7, v8
-	v10:i32 = Iconst_32 0x1
+	v4:tuple{i32} = CallIndirect v3:sig1, exec_ctx, v2
+	v5:i32 = SelectTuple v4, 0
+	v6:i64 = Load module_ctx, 0x8
+	v7:i64 = Uload32 module_ctx, 0x10
+	v8:i32 = Load module_ctx, 0x10
+	v9:i32 = Iconst_32 0x10
+	v10:i32 = Ushr v8, v9
+	v11:i32 = Iconst_32 0x1
 	Store module_ctx, exec_ctx, 0x8
-	v11:i64 = Load exec_ctx, 0x48
-	v12:i32 = CallIndirect v11:sig1, exec_ctx, v10
-	v13:i64 = Load module_ctx, 0x8
-	v14:i64 = Uload32 module_ctx, 0x10
-Plain --> blk_ret(v4, v9, v12)
+	v12:i64 = Load exec_ctx, 0x48
+	v13:tuple{i32} = CallIndirect v12:sig1, exec_ctx, v11
+	v14:i32 = SelectTuple v13, 0
+	v15:i64 = Load module_ctx, 0x8
+	v16:i64 = Uload32 module_ctx, 0x10
+Plain --> blk_ret(v5, v10, v14)
 `,
 			expAfterPasses: `
 signatures:
@@ -1348,15 +1404,17 @@ blk0: (exec_ctx:i64, module_ctx:i64)
 	v2:i32 = Iconst_32 0x1
 	Store module_ctx, exec_ctx, 0x8
 	v3:i64 = Load exec_ctx, 0x48
-	v4:i32 = CallIndirect v3:sig1, exec_ctx, v2
-	v7:i32 = Load module_ctx, 0x10
-	v8:i32 = Iconst_32 0x10
-	v9:i32 = Ushr v7, v8
-	v10:i32 = Iconst_32 0x1
+	v4:tuple{i32} = CallIndirect v3:sig1, exec_ctx, v2
+	v5:i32 = SelectTuple v4, 0
+	v8:i32 = Load module_ctx, 0x10
+	v9:i32 = Iconst_32 0x10
+	v10:i32 = Ushr v8, v9
+	v11:i32 = Iconst_32 0x1
 	Store module_ctx, exec_ctx, 0x8
-	v11:i64 = Load exec_ctx, 0x48
-	v12:i32 = CallIndirect v11:sig1, exec_ctx, v10
-Plain --> blk_ret(v4, v9, v12)
+	v12:i64 = Load exec_ctx, 0x48
+	v13:tuple{i32} = CallIndirect v12:sig1, exec_ctx, v11
+	v14:i32 = SelectTuple v13, 0
+Plain --> blk_ret(v5, v10, v14)
 `,
 		},
 		{
@@ -1386,8 +1444,9 @@ blk0: (exec_ctx:i64, module_ctx:i64, v2:i32)
 	v17:i64 = Load v10, 0x0
 	v18:i64 = Load v10, 0x8
 	Store module_ctx, exec_ctx, 0x8
-	v19:i32 = CallIndirect v17:sig2, exec_ctx, v18
-Plain --> blk_ret(v19)
+	v19:tuple{i32} = CallIndirect v17:sig2, exec_ctx, v18
+	v20:i32 = SelectTuple v19, 0
+Plain --> blk_ret(v20)
 `,
 		},
 		{
@@ -1677,8 +1736,9 @@ blk0: (exec_ctx:i64, module_ctx:i64, v2:i32, v3:i32, v4:i64)
 	v19:i32 = Icmp neq, v17, v18
 	ExitIfTrue v19, exec_ctx, unaligned_atomic
 	v20:i64 = Load exec_ctx, 0x488
-	v21:i32 = CallIndirect v20:sig6, exec_ctx, v4, v3, v15
-Plain --> blk_ret(v21)
+	v21:tuple{i32} = CallIndirect v20:sig6, exec_ctx, v4, v3, v15
+	v22:i32 = SelectTuple v21, 0
+Plain --> blk_ret(v22)
 `,
 		},
 		{
@@ -1709,8 +1769,9 @@ blk0: (exec_ctx:i64, module_ctx:i64, v2:i32, v3:i64, v4:i64)
 	v19:i32 = Icmp neq, v17, v18
 	ExitIfTrue v19, exec_ctx, unaligned_atomic
 	v20:i64 = Load exec_ctx, 0x490
-	v21:i32 = CallIndirect v20:sig7, exec_ctx, v4, v3, v15
-Plain --> blk_ret(v21)
+	v21:tuple{i32} = CallIndirect v20:sig7, exec_ctx, v4, v3, v15
+	v22:i32 = SelectTuple v21, 0
+Plain --> blk_ret(v22)
 `,
 		},
 		{
@@ -1741,8 +1802,9 @@ blk0: (exec_ctx:i64, module_ctx:i64, v2:i32, v3:i32)
 	v18:i32 = Icmp neq, v16, v17
 	ExitIfTrue v18, exec_ctx, unaligned_atomic
 	v19:i64 = Load exec_ctx, 0x498
-	v20:i32 = CallIndirect v19:sig8, exec_ctx, v3, v14
-Plain --> blk_ret(v20)
+	v20:tuple{i32} = CallIndirect v19:sig8, exec_ctx, v3, v14
+	v21:i32 = SelectTuple v20, 0
+Plain --> blk_ret(v21)
 `,
 		},
 		{

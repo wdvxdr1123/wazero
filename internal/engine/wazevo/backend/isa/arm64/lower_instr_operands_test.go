@@ -77,7 +77,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 				instr := builder.AllocateInstruction()
 				instr.AsIconst32(0xf00000f)
 				builder.InsertInstruction(instr)
-				def = backend.SSAValueDefinition{Instr: instr, V: instr.Return()}
+				def = backend.SSAValueDefinition{Instr: instr, V: instr.Return}
 				ctx.vRegCounter = 99
 				return
 			},
@@ -95,9 +95,14 @@ func TestMachine_getOperand_NR(t *testing.T) {
 				builder.DeclareSignature(sig)
 				c.AsCall(ssa.FuncRef(0), sig, nil)
 				builder.InsertInstruction(c)
-				rs := c.Returns
-				ctx.vRegMap[rs[1]] = regalloc.VReg(50)
-				def = backend.SSAValueDefinition{Instr: c, V: rs[1]}
+
+				sel := builder.AllocateInstruction()
+				sel.AsSelectTuple(c.Return, 1)
+				builder.InsertInstruction(sel)
+
+				rs := sel.Return
+				ctx.vRegMap[rs] = regalloc.VReg(50)
+				def = backend.SSAValueDefinition{Instr: c, V: rs}
 				return
 			},
 			exp: operandNR(regalloc.VReg(50)),
@@ -124,13 +129,13 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		add := builder.AllocateInstruction()
 		add.AsIadd(p1, p2)
 		builder.InsertInstruction(add)
-		addResult := add.Return()
+		addResult := add.Return
 
 		amount := builder.AllocateInstruction()
 		amount.AsIconst32(14)
 		builder.InsertInstruction(amount)
 
-		amountVal := amount.Return()
+		amountVal := amount.Return
 
 		ishl := builder.AllocateInstruction()
 		ishl.AsIshl(addResult, amountVal)
@@ -144,8 +149,8 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		ctx.definitions[amountVal] = backend.SSAValueDefinition{Instr: amount, V: amountVal}
 
 		ctx.vRegMap[addResult] = regalloc.VReg(1234)
-		ctx.vRegMap[ishl.Return()] = regalloc.VReg(10)
-		def = backend.SSAValueDefinition{Instr: ishl, V: ishl.Return()}
+		ctx.vRegMap[ishl.Return] = regalloc.VReg(10)
+		def = backend.SSAValueDefinition{Instr: ishl, V: ishl.Return}
 		mode = extModeNone
 		verify = func(t *testing.T) {
 			require.True(t, ishl.Lowered())
@@ -182,7 +187,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 				add := builder.AllocateInstruction()
 				add.AsIadd(p1, p2)
 				builder.InsertInstruction(add)
-				addResult := add.Return()
+				addResult := add.Return
 
 				ishl := builder.AllocateInstruction()
 				ishl.AsIshl(addResult, p3)
@@ -196,8 +201,8 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 				ctx.definitions[p3] = backend.SSAValueDefinition{V: p3}
 				ctx.definitions[addResult] = backend.SSAValueDefinition{Instr: add, V: addResult}
 				ctx.vRegMap[addResult] = regalloc.VReg(1234) // whatever is fine.
-				ctx.vRegMap[ishl.Return()] = regalloc.VReg(10)
-				def = backend.SSAValueDefinition{Instr: ishl, V: ishl.Return()}
+				ctx.vRegMap[ishl.Return] = regalloc.VReg(10)
+				def = backend.SSAValueDefinition{Instr: ishl, V: ishl.Return}
 				return def, extModeNone, func(t *testing.T) {}
 			},
 			exp: operandNR(regalloc.VReg(10)),
@@ -219,13 +224,13 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 				add := builder.AllocateInstruction()
 				add.AsIadd(p1, p2)
 				builder.InsertInstruction(add)
-				addResult := add.Return()
+				addResult := add.Return
 
 				amount := builder.AllocateInstruction()
 				amount.AsIconst32(45) // should be taken modulo by 31.
 				builder.InsertInstruction(amount)
 
-				amountVal := amount.Return()
+				amountVal := amount.Return
 
 				ishl := builder.AllocateInstruction()
 				ishl.AsIshl(addResult, amountVal)
@@ -239,7 +244,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 				ctx.definitions[amountVal] = backend.SSAValueDefinition{Instr: amount, V: amountVal}
 
 				ctx.vRegMap[addResult] = regalloc.VReg(1234)
-				ctx.vRegMap[ishl.Return()] = regalloc.VReg(10)
+				ctx.vRegMap[ishl.Return] = regalloc.VReg(10)
 				def = backend.SSAValueDefinition{Instr: ishl}
 				mode = extModeNone
 				verify = func(t *testing.T) {
@@ -260,16 +265,16 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 
 				target := builder.AllocateInstruction().AsIconst64(0xff).Insert(builder)
 				amount := builder.AllocateInstruction().AsIconst32(14).Insert(builder)
-				targetVal, amountVal := target.Return(), amount.Return()
+				targetVal, amountVal := target.Return, amount.Return
 
 				ishl := builder.AllocateInstruction()
-				ishl.AsIshl(target.Return(), amountVal)
+				ishl.AsIshl(target.Return, amountVal)
 				builder.InsertInstruction(ishl)
 
 				ctx.definitions[targetVal] = backend.SSAValueDefinition{Instr: target, V: targetVal}
 				ctx.definitions[amountVal] = backend.SSAValueDefinition{Instr: amount, V: amountVal}
 				ctx.vRegMap[targetVal] = regalloc.VReg(1234)
-				ctx.vRegMap[ishl.Return()] = regalloc.VReg(10)
+				ctx.vRegMap[ishl.Return] = regalloc.VReg(10)
 				def = backend.SSAValueDefinition{Instr: ishl}
 				mode = extModeNone
 				verify = func(t *testing.T) {
@@ -374,7 +379,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 					extArg := ext.Args[0]
 					ctx.vRegMap[extArg] = regalloc.VReg(10)
 					ctx.definitions[v] = backend.SSAValueDefinition{V: extArg}
-					def = backend.SSAValueDefinition{Instr: ext, V: ext.Return()}
+					def = backend.SSAValueDefinition{Instr: ext, V: ext.Return}
 					return def, extModeNone, func(t *testing.T) {
 						require.True(t, ext.Lowered())
 					}
@@ -581,10 +586,10 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 						builder.InsertInstruction(ext)
 						extArg := ext.Args[0]
 						ctx.vRegMap[extArg] = argVReg
-						ctx.vRegMap[ext.Return()] = resultVReg
+						ctx.vRegMap[ext.Return] = resultVReg
 						if c.extArgConst {
 							iconst := builder.AllocateInstruction().AsIconst32(0xffff).Insert(builder)
-							m.compiler.(*mockCompiler).definitions[extArg] = backend.SSAValueDefinition{Instr: iconst, V: iconst.Return()}
+							m.compiler.(*mockCompiler).definitions[extArg] = backend.SSAValueDefinition{Instr: iconst, V: iconst.Return}
 						} else {
 							m.compiler.(*mockCompiler).definitions[extArg] = backend.SSAValueDefinition{V: extArg}
 						}
@@ -692,7 +697,7 @@ func TestMachine_getOperand_MaybeNegatedImm12_ER_SR_NR(t *testing.T) {
 				cinst := builder.AllocateInstruction()
 				cinst.AsIconst32(uint32(c))
 				builder.InsertInstruction(cinst)
-				def = backend.SSAValueDefinition{Instr: cinst, V: cinst.Return()}
+				def = backend.SSAValueDefinition{Instr: cinst, V: cinst.Return}
 				ctx.currentGID = 0xff // const can be merged anytime, regardless of the group id.
 				return
 			},
@@ -718,7 +723,7 @@ func TestMachine_getOperand_MaybeNegatedImm12_ER_SR_NR(t *testing.T) {
 				cinst := builder.AllocateInstruction()
 				cinst.AsIconst32(uint32(c))
 				builder.InsertInstruction(cinst)
-				def = backend.SSAValueDefinition{Instr: cinst, V: cinst.Return()}
+				def = backend.SSAValueDefinition{Instr: cinst, V: cinst.Return}
 				ctx.currentGID = 0xff // const can be merged anytime, regardless of the group id.
 				return
 			},

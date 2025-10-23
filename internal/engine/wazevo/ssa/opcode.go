@@ -452,6 +452,8 @@ const (
 	// for tail calls. Semantically, it combines CallIndirect + Return into a single operation.
 	OpcodeTailCallReturnCallIndirect
 
+	OpcodeSelectTuple
+
 	// opcodeEnd marks the end of the opcode list.
 	opcodeEnd
 )
@@ -643,6 +645,7 @@ var instructionSideEffects = [opcodeEnd]sideEffect{
 	OpcodeTailCallReturnCall:          sideEffectStrict,
 	OpcodeTailCallReturnCallIndirect:  sideEffectStrict,
 	OpcodeWideningPairwiseDotProductS: sideEffectNone,
+	OpcodeSelectTuple:                 sideEffectNone,
 }
 
 // sideEffect returns true if this instruction has side effects.

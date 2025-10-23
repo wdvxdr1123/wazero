@@ -265,13 +265,8 @@ func deadcode(b *builder) {
 				// The strict side effect should create different instruction groups.
 				gid++
 			default:
-				live := false
-				for _, v := range cur.Returns {
-					if v.Valid() && aliveValue[v.ID()] {
-						live = true
-					}
-				}
-				if live {
+				v := cur.Return
+				if v.Valid() && aliveValue[v.ID()] {
 					liveInstructions = append(liveInstructions, cur)
 				}
 			}
@@ -388,7 +383,7 @@ func nopElimination(b *builder) {
 						v = v % 32
 					}
 					if v == 0 {
-						b.alias(cur.Return(), x)
+						b.alias(cur.Return, x)
 					}
 				}
 			}

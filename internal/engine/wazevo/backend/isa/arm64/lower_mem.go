@@ -378,7 +378,7 @@ func (m *machine) collectAddends(ptr ssa.Var) (addends32 *wazevoapi.Queue[addend
 			// If the addend is constant, we just statically merge it into the offset.
 			ic := def.Instr
 			u64 := ic.ConstantVal()
-			if ic.Return().Type().Bits() == 32 {
+			if ic.Return.Type().Bits() == 32 {
 				offset += int64(int32(u64)) // sign-extend.
 			} else {
 				offset += int64(u64)

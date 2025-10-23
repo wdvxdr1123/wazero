@@ -59,7 +59,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 
 				c := newCompiler(context.Background(), m, builder)
 				c.ssaValueToVRegs = []regalloc.VReg{0, 1, 2, 3, 4, 5, 6, 7}
-				return c, []ssa.Var{i1.Return(), i2.Return(), f1.Return(), f2.Return()}, succ, func(t *testing.T) {
+				return c, []ssa.Var{i1.Return, i2.Return, f1.Return, f2.Return}, succ, func(t *testing.T) {
 					require.Equal(t, 4, len(insertedConstInstructions))
 					require.Equal(t, i1, insertedConstInstructions[0].instr)
 					require.Equal(t, regalloc.VReg(4), insertedConstInstructions[0].target)
@@ -123,7 +123,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 				}}
 				c := newCompiler(context.Background(), m, builder)
 				c.ssaValueToVRegs = []regalloc.VReg{0, 1}
-				return c, []ssa.Var{add.Return()}, blk, func(t *testing.T) {
+				return c, []ssa.Var{add.Return}, blk, func(t *testing.T) {
 					require.Equal(t, 1, len(insertMoves))
 					require.Equal(t, regalloc.VRegID(1), insertMoves[0].src.ID())
 					require.Equal(t, regalloc.VRegID(0), insertMoves[0].dst.ID())
