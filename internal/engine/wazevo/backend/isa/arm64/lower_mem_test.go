@@ -295,34 +295,34 @@ func Test_offsetFitsInAddressModeKindRegSignedImm9(t *testing.T) {
 
 func TestMachine_collectAddends(t *testing.T) {
 	v1000, v2000 := regalloc.VReg(1000).SetRegType(regalloc.RegTypeInt), regalloc.VReg(2000).SetRegType(regalloc.RegTypeInt)
-	addParam := func(ctx *mockCompiler, b ssa.Builder, typ *types.Type) ssa.Var {
+	addParam := func(ctx *mockCompiler, b *ssa.Builder, typ *types.Type) ssa.Var {
 		p := b.CurrentBlock().AddParam(b, typ)
 		ctx.vRegMap[p] = v1000
 		ctx.definitions[p] = backend.SSAValueDefinition{V: p}
 		return p
 	}
-	insertI32Const := func(m *mockCompiler, b ssa.Builder, v uint32) *ssa.Value {
+	insertI32Const := func(m *mockCompiler, b *ssa.Builder, v uint32) *ssa.Value {
 		inst := b.AllocateInstruction()
 		inst.AsIconst32(v)
 		b.InsertInstruction(inst)
 		m.definitions[inst.Return] = backend.SSAValueDefinition{Instr: inst}
 		return inst
 	}
-	insertI64Const := func(m *mockCompiler, b ssa.Builder, v uint64) *ssa.Value {
+	insertI64Const := func(m *mockCompiler, b *ssa.Builder, v uint64) *ssa.Value {
 		inst := b.AllocateInstruction()
 		inst.AsIconst64(v)
 		b.InsertInstruction(inst)
 		m.definitions[inst.Return] = backend.SSAValueDefinition{Instr: inst, V: inst.Return}
 		return inst
 	}
-	insertIadd := func(m *mockCompiler, b ssa.Builder, lhs, rhs ssa.Var) *ssa.Value {
+	insertIadd := func(m *mockCompiler, b *ssa.Builder, lhs, rhs ssa.Var) *ssa.Value {
 		inst := b.AllocateInstruction()
 		inst.AsIadd(lhs, rhs)
 		b.InsertInstruction(inst)
 		m.definitions[inst.Return] = backend.SSAValueDefinition{Instr: inst, V: inst.Return}
 		return inst
 	}
-	insertExt := func(m *mockCompiler, b ssa.Builder, v ssa.Var, from, to byte, signed bool) *ssa.Value {
+	insertExt := func(m *mockCompiler, b *ssa.Builder, v ssa.Var, from, to byte, signed bool) *ssa.Value {
 		inst := b.AllocateInstruction()
 		if signed {
 			inst.AsSExtend(v, from, to)
@@ -336,14 +336,14 @@ func TestMachine_collectAddends(t *testing.T) {
 
 	for _, tc := range []struct {
 		name   string
-		setup  func(*mockCompiler, ssa.Builder, *machine) (ptr ssa.Var, verify func(t *testing.T))
+		setup  func(*mockCompiler, *ssa.Builder, *machine) (ptr ssa.Var, verify func(t *testing.T))
 		exp32s []addend32
 		exp64s []regalloc.VReg
 		offset int64
 	}{
 		{
 			name: "non merged",
-			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				ptr = addParam(ctx, b, types.I64)
 				return ptr, func(t *testing.T) {}
 			},
@@ -351,7 +351,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		},
 		{
 			name: "i32 constant folded",
-			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				minus1 := int32(-1)
 				c1, c2, c3, c4 := insertI32Const(ctx, b, 1), insertI32Const(ctx, b, 2), insertI32Const(ctx, b, 3), insertI32Const(ctx, b, uint32(minus1))
 				iadd1, iadd2 := insertIadd(ctx, b, c1.Return, c2.Return), insertIadd(ctx, b, c3.Return, c4.Return)
@@ -366,7 +366,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		},
 		{
 			name: "i64 constant folded",
-			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				minus1 := int32(-1)
 				c1, c2, c3, c4 := insertI64Const(ctx, b, 1), insertI64Const(ctx, b, 2), insertI64Const(ctx, b, 3), insertI64Const(ctx, b, uint64(minus1))
 				iadd1, iadd2 := insertIadd(ctx, b, c1.Return, c2.Return), insertIadd(ctx, b, c3.Return, c4.Return)
@@ -381,7 +381,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		},
 		{
 			name: "constant folded with one 32 value",
-			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				param := addParam(ctx, b, types.I32)
 				minus1 := int32(-1)
 				c1, c2, c3, c4 := insertI32Const(ctx, b, 1), insertI32Const(ctx, b, 2), insertI32Const(ctx, b, 3), insertI32Const(ctx, b, uint32(minus1))
@@ -402,7 +402,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		},
 		{
 			name: "one 64 value + sign-extended (32->64) instr",
-			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				param := addParam(ctx, b, types.I64)
 				c1, c2 := insertI32Const(ctx, b, 1), insertI32Const(ctx, b, 2)
 				iadd1 := insertIadd(ctx, b, c1.Return, c2.Return)
@@ -420,7 +420,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		},
 		{
 			name: "one 64 value + sign-extended (32->64) const",
-			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				param := addParam(ctx, b, types.I64)
 				minus1 := int32(-1)
 				c1 := insertI32Const(ctx, b, uint32(minus1))
@@ -438,7 +438,7 @@ func TestMachine_collectAddends(t *testing.T) {
 		},
 		{
 			name: "one 64 value + zero-extended (32->64) const",
-			setup: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, verify func(t *testing.T)) {
 				param := addParam(ctx, b, types.I64)
 				minus1 := int32(-1)
 				c1 := insertI32Const(ctx, b, uint32(minus1))

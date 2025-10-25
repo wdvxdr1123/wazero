@@ -23,13 +23,13 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 	nextVReg := regalloc.VReg(100).SetRegType(regalloc.RegTypeInt)
 	for _, tc := range []struct {
 		name  string
-		in    func(*mockCompiler, ssa.Builder, *machine) (ptr ssa.Var, offset uint32)
+		in    func(*mockCompiler, *ssa.Builder, *machine) (ptr ssa.Var, offset uint32)
 		insts []string
 		am    *amode
 	}{
 		{
 			name: "iadd const, const; offset != 0",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
 				iconst1 := b.AllocateInstruction().AsIconst32(1).Insert(b)
 				iconst2 := b.AllocateInstruction().AsIconst32(2).Insert(b)
 				iadd := b.AllocateInstruction().AsIadd(iconst1.Return, iconst2.Return).Insert(b)
@@ -47,7 +47,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		},
 		{
 			name: "iadd const, param; offset != 0",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
 				iconst1 := b.AllocateInstruction().AsIconst32(1).Insert(b)
 				p := b.CurrentBlock().AddParam(b, types.I64)
 				iadd := b.AllocateInstruction().AsIadd(iconst1.Return, p).Insert(b)
@@ -63,7 +63,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		},
 		{
 			name: "iadd param, param; offset != 0",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
 				p1 := b.CurrentBlock().AddParam(b, types.I64)
 				p2 := b.CurrentBlock().AddParam(b, types.I64)
 				iadd := b.AllocateInstruction().AsIadd(p1, p2).Insert(b)
@@ -80,7 +80,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		},
 		{
 			name: "huge offset",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
 				ptr = b.CurrentBlock().AddParam(b, types.I64)
 				offset = 1 << 31
 				ctx.vRegMap[ptr] = raxVReg
@@ -96,7 +96,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		// The other iadd cases are covered by TestMachine_lowerAddendsToAmode.
 		{
 			name: "uextend const32",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
 				iconst32 := b.AllocateInstruction().AsIconst32(123).Insert(b)
 				uextend := b.AllocateInstruction().AsUExtend(iconst32.Return, 32, 64).Insert(b)
 				ctx.definitions[iconst32.Return] = backend.SSAValueDefinition{Instr: iconst32}
@@ -110,7 +110,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		},
 		{
 			name: "Ishl param64, const",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
 				p := b.CurrentBlock().AddParam(b, types.I64)
 				iconst64 := b.AllocateInstruction().AsIconst64(2).Insert(b)
 				ishl := b.AllocateInstruction().AsIshl(p, iconst64.Return).Insert(b)
@@ -127,7 +127,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		},
 		{
 			name: "add Iconst, (Ishl param64, const)",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
 				p1 := b.CurrentBlock().AddParam(b, types.I64)
 				p2 := b.CurrentBlock().AddParam(b, types.I64)
 				const2 := b.AllocateInstruction().AsIconst64(2).Insert(b)
@@ -159,26 +159,26 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 func TestMachine_lowerAddendFromInstr(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		in   func(*mockCompiler, ssa.Builder, *machine) *ssa.Value
+		in   func(*mockCompiler, *ssa.Builder, *machine) *ssa.Value
 		exp  addend
 	}{
 		{
 			name: "iconst64",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) *ssa.Value {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
 				return b.AllocateInstruction().AsIconst64(123 << 32).Insert(b)
 			},
 			exp: addend{regalloc.VRegInvalid, 123 << 32, 0},
 		},
 		{
 			name: "iconst32",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) *ssa.Value {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
 				return b.AllocateInstruction().AsIconst32(123).Insert(b)
 			},
 			exp: addend{regalloc.VRegInvalid, 123, 0},
 		},
 		{
 			name: "uextend const32",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) *ssa.Value {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
 				iconst32 := b.AllocateInstruction().AsIconst32(123).Insert(b)
 				ctx.definitions[iconst32.Return] = backend.SSAValueDefinition{Instr: iconst32}
 				return b.AllocateInstruction().AsUExtend(iconst32.Return, 32, 64).Insert(b)
@@ -187,7 +187,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		},
 		{
 			name: "uextend const64",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) *ssa.Value {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
 				p := b.CurrentBlock().AddParam(b, types.I32)
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
@@ -197,7 +197,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		},
 		{
 			name: "uextend param i32",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) *ssa.Value {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
 				p := b.CurrentBlock().AddParam(b, types.I32)
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
@@ -207,7 +207,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		},
 		{
 			name: "sextend const32",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) *ssa.Value {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
 				iconst32 := b.AllocateInstruction().AsIconst32(123).Insert(b)
 				ctx.definitions[iconst32.Return] = backend.SSAValueDefinition{Instr: iconst32}
 				return b.AllocateInstruction().AsSExtend(iconst32.Return, 32, 64).Insert(b)
@@ -216,7 +216,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		},
 		{
 			name: "sextend const64",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) *ssa.Value {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
 				p := b.CurrentBlock().AddParam(b, types.I32)
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
@@ -226,7 +226,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		},
 		{
 			name: "sextend param i32",
-			in: func(ctx *mockCompiler, b ssa.Builder, m *machine) *ssa.Value {
+			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
 				p := b.CurrentBlock().AddParam(b, types.I32)
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}

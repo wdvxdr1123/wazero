@@ -334,7 +334,7 @@ func (e *engine) compileLocalWasmFunction(
 	module *wasm.Module,
 	localFunctionIndex wasm.Index,
 	fe *frontend.Compiler,
-	ssaBuilder ssa.Builder,
+	ssaBuilder *ssa.Builder,
 	be backend.Compiler,
 	needListener bool,
 ) (body []byte, rels []backend.RelocationInfo, err error) {

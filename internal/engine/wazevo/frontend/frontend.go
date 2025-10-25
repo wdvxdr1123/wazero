@@ -18,8 +18,8 @@ type Compiler struct {
 
 	m      *wasm.Module
 	offset *wazevoapi.ModuleContextOffsetData
-	// ssaBuilder is a ssa.Builder used by this frontend.
-	ssaBuilder             ssa.Builder
+	// ssaBuilder is a *ssa.Builder used by this frontend.
+	ssaBuilder             *ssa.Builder
 	signatures             map[*wasm.FunctionType]*types.Signature
 	listenerSignatures     map[*wasm.FunctionType][2]*types.Signature
 	memoryGrowSig          types.Signature
@@ -88,7 +88,7 @@ type (
 var knownSafeBoundsAtTheEndOfBlockNil = wazevoapi.NewNilVarLength[knownSafeBoundWithID]()
 
 // NewFrontendCompiler returns a frontend Compiler.
-func NewFrontendCompiler(m *wasm.Module, ssaBuilder ssa.Builder, offset *wazevoapi.ModuleContextOffsetData, ensureTermination bool, listenerOn bool, sourceInfo bool) *Compiler {
+func NewFrontendCompiler(m *wasm.Module, ssaBuilder *ssa.Builder, offset *wazevoapi.ModuleContextOffsetData, ensureTermination bool, listenerOn bool, sourceInfo bool) *Compiler {
 	c := &Compiler{
 		m:                                 m,
 		ssaBuilder:                        ssaBuilder,

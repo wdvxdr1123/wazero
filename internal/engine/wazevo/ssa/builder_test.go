@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuilder_resolveAlias(t *testing.T) {
-	b := NewBuilder().(*builder)
+	b := NewBuilder()
 	v1 := b.allocateValue(types.I32)
 	v2 := b.allocateValue(types.I32)
 	v3 := b.allocateValue(types.I32)

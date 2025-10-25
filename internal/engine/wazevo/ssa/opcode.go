@@ -460,16 +460,16 @@ const (
 
 // returnTypesFn provides the info to determine the type of instruction.
 // t1 is the type of the first result, ts are the types of the remaining results.
-type returnTypesFn func(b *builder, instr *Value) *types.Type
+type returnTypesFn func(b *Builder, instr *Value) *types.Type
 
 var (
-	returnTypesFnNoReturns    returnTypesFn = func(b *builder, instr *Value) *types.Type { return types.Invalid }
-	returnTypesFnSingle                     = func(b *builder, instr *Value) *types.Type { return instr.Type }
-	returnTypesFnI32                        = func(b *builder, instr *Value) *types.Type { return types.I32 }
-	returnTypesFnF32                        = func(b *builder, instr *Value) *types.Type { return types.F32 }
-	returnTypesFnF64                        = func(b *builder, instr *Value) *types.Type { return types.F64 }
-	returnTypesFnV128                       = func(b *builder, instr *Value) *types.Type { return types.V128 }
-	returnTypesFnCallIndirect               = func(b *builder, instr *Value) *types.Type {
+	returnTypesFnNoReturns    returnTypesFn = func(b *Builder, instr *Value) *types.Type { return types.Invalid }
+	returnTypesFnSingle                     = func(b *Builder, instr *Value) *types.Type { return instr.Type }
+	returnTypesFnI32                        = func(b *Builder, instr *Value) *types.Type { return types.I32 }
+	returnTypesFnF32                        = func(b *Builder, instr *Value) *types.Type { return types.F32 }
+	returnTypesFnF64                        = func(b *Builder, instr *Value) *types.Type { return types.F64 }
+	returnTypesFnV128                       = func(b *Builder, instr *Value) *types.Type { return types.V128 }
+	returnTypesFnCallIndirect               = func(b *Builder, instr *Value) *types.Type {
 		sigID := types.SignatureID(instr.u1)
 		sig, ok := b.signatures[sigID]
 		if !ok {
@@ -477,7 +477,7 @@ var (
 		}
 		return types.NewTuple(sig.Results...)
 	}
-	returnTypesFnCall = func(b *builder, instr *Value) *types.Type {
+	returnTypesFnCall = func(b *Builder, instr *Value) *types.Type {
 		sigID := types.SignatureID(instr.u2)
 		sig, ok := b.signatures[sigID]
 		if !ok {

@@ -144,7 +144,7 @@ func (bb *BasicBlock) ReturnBlock() bool {
 	return bb.id == basicBlockIDReturnBlock
 }
 
-func (bb *BasicBlock) AddParam(b Builder, typ *types.Type) Var {
+func (bb *BasicBlock) AddParam(b *Builder, typ *types.Type) Var {
 	paramValue := b.allocateValue(typ)
 	bb.Params = append(bb.Params, paramValue)
 	return paramValue
@@ -261,7 +261,7 @@ func (bb *BasicBlock) succArguments(succ *BasicBlock) []Var {
 }
 
 // formatHeader returns the string representation of the header of the basicBlock.
-func (bb *BasicBlock) formatHeader(b Builder) string {
+func (bb *BasicBlock) formatHeader(b *Builder) string {
 	ps := make([]string, len(bb.Params))
 	for i, p := range bb.Params {
 		ps[i] = p.formatWithType(b)
@@ -283,7 +283,7 @@ func (bb *BasicBlock) formatHeader(b Builder) string {
 	}
 }
 
-func (bb *BasicBlock) formatEnd(b Builder) string {
+func (bb *BasicBlock) formatEnd(b *Builder) string {
 	var str strings.Builder
 	str.WriteString(bb.Kind.String())
 	if bb.ControlValue != InvalidVar {
@@ -313,7 +313,7 @@ func (bb *BasicBlock) formatEnd(b Builder) string {
 	return str.String()
 }
 
-func (bb *BasicBlock) formatSuccs(b Builder, sb *strings.Builder, i int) {
+func (bb *BasicBlock) formatSuccs(b *Builder, sb *strings.Builder, i int) {
 	sb.WriteString(bb.Succ[i].Name())
 	if len(bb.SuccArguments[i]) > 0 {
 		sb.WriteString("(")
@@ -328,7 +328,7 @@ func (bb *BasicBlock) formatSuccs(b Builder, sb *strings.Builder, i int) {
 }
 
 // validates validates the basicBlock for debugging purpose.
-func (bb *BasicBlock) validate(b *builder) {
+func (bb *BasicBlock) validate(b *Builder) {
 	if bb.invalid {
 		panic("BUG: trying to validate an invalid block: " + bb.Name())
 	}

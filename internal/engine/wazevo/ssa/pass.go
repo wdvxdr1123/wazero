@@ -10,7 +10,7 @@ const debugSSAPass = false
 
 type pass struct {
 	name string
-	fn   func(b *builder)
+	fn   func(b *Builder)
 }
 
 var passes = []pass{
@@ -46,13 +46,13 @@ var passes = []pass{
 	{"build-dominator-tree", buildDominatorTree},
 }
 
-// RunPasses implements Builder.RunPasses.
+// RunPasses runs various passes on the constructed SSA function.
 //
 // The order here matters; some pass depends on the previous ones.
 //
 // Note that passes suffixed with "Opt" are the optimization passes, meaning that they edit the instructions and blocks
 // while the other passes are not, like passEstimateBranchProbabilities does not edit them, but only calculates the additional information.
-func (b *builder) RunPasses() {
+func (b *Builder) RunPasses() {
 	for _, p := range passes {
 		if wazevoapi.SSALoggingEnabled {
 			fmt.Printf("Running pass: %s\n", p.name)
@@ -65,7 +65,7 @@ func (b *builder) RunPasses() {
 }
 
 // deadBlockElim searches the unreachable blocks, and sets the basicBlock.invalid flag true if so.
-func deadBlockElim(b *builder) {
+func deadBlockElim(b *Builder) {
 	entryBlk := b.entryBlk()
 	b.blkStack = append(b.blkStack, entryBlk)
 	for len(b.blkStack) > 0 {
@@ -100,7 +100,7 @@ func deadBlockElim(b *builder) {
 // redundantPhiElimination eliminates the redundant PHIs (in our terminology, parameters of a block).
 // This requires the reverse post-order traversal to be calculated before calling this function,
 // hence passCalculateImmediateDominators must be called before this.
-func redundantPhiElimination(b *builder) {
+func redundantPhiElimination(b *Builder) {
 	redundantParams := b.redundantParams[:0] // reuse the slice from previous iterations.
 
 	// TODO: this might be costly for large programs, but at least, as far as I did the experiment, it's almost the
@@ -226,7 +226,7 @@ func redundantPhiElimination(b *builder) {
 // the SSA function is ready to be used by backends.
 //
 // TODO: the algorithm here might not be efficient. Get back to this later.
-func deadcode(b *builder) {
+func deadcode(b *Builder) {
 	nvid := int(b.nextValueID)
 	if nvid >= len(b.valuesInfo) {
 		l := nvid - len(b.valuesInfo) + 1
@@ -353,7 +353,7 @@ func deadcode(b *builder) {
 	b.instStack = liveInstructions // we reuse the stack for the next iteration.
 }
 
-func (b *builder) incRefCount(id VarID, from *Value) {
+func (b *Builder) incRefCount(id VarID, from *Value) {
 	if wazevoapi.SSALoggingEnabled {
 		fmt.Printf("v%d referenced from %v\n", id, from.Format(b))
 	}
@@ -362,7 +362,7 @@ func (b *builder) incRefCount(id VarID, from *Value) {
 }
 
 // nopElimination eliminates the instructions which is essentially a no-op.
-func nopElimination(b *builder) {
+func nopElimination(b *Builder) {
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
 		for _, cur := range blk.Instructions() {
 			switch cur.Opcode() {

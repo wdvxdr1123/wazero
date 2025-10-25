@@ -151,7 +151,7 @@ func VerifyOrSetDeterministicCompilationContextValue(ctx context.Context, scope 
 			`BUG: Deterministic compilation failed for function%s at scope="%s".
 
 This is mostly due to (but might not be limited to):
-	* Resetting ssa.Builder, backend.Compiler or frontend.Compiler, etc doens't work as expected, and the compilation has been affected by the previous iterations.
+	* Resetting *ssa.Builder, backend.Compiler or frontend.Compiler, etc doens't work as expected, and the compilation has been affected by the previous iterations.
 	* Using a map with non-deterministic iteration order.
 
 ---------- [old] ----------

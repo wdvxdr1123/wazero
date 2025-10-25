@@ -13,7 +13,7 @@ import (
 // use builder.isDominatedBy to check if a block is dominated by another block.
 //
 // At the last of pass, this function also does the loop detection and sets the basicBlock.loop flag.
-func calculateImmediateDominators(b *builder) {
+func calculateImmediateDominators(b *Builder) {
 	reversePostOrder := b.reversePostOrderedBasicBlocks[:0]
 
 	// Store the reverse postorder from the entrypoint into reversePostOrder slice.
@@ -152,7 +152,7 @@ func intersect(doms []*BasicBlock, blk1 *BasicBlock, blk2 *BasicBlock) *BasicBlo
 // subPassLoopDetection detects loops in the function using the immediate dominators.
 //
 // This is run at the last of passCalculateImmediateDominators.
-func subPassLoopDetection(b *builder) {
+func subPassLoopDetection(b *Builder) {
 	for blk := b.blockIteratorBegin(); blk != nil; blk = b.blockIteratorNext() {
 		for i := range blk.Pred {
 			pred := blk.Pred[i]
@@ -168,7 +168,7 @@ func subPassLoopDetection(b *builder) {
 
 // buildLoopNestingForest builds the loop nesting forest for the function.
 // This must be called after branch splitting since it relies on the CFG.
-func buildLoopNestingForest(b *builder) {
+func buildLoopNestingForest(b *Builder) {
 	ent := b.entryBlk()
 	doms := b.dominators
 	for _, blk := range b.reversePostOrderedBasicBlocks {
@@ -210,7 +210,7 @@ type dominatorSparseTree struct {
 }
 
 // buildDominatorTree builds the dominator tree for the function, and constructs builder.sparseTree.
-func buildDominatorTree(b *builder) {
+func buildDominatorTree(b *Builder) {
 	// First we materialize the children of each node in the dominator tree.
 	idoms := b.dominators
 	for _, blk := range b.reversePostOrderedBasicBlocks {

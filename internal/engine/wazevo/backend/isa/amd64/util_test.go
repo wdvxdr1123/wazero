@@ -10,7 +10,7 @@ import (
 	"github.com/tetratelabs/wazero/internal/engine/wazevo/ssa/types"
 )
 
-func newSetupWithMockContext() (*mockCompiler, ssa.Builder, *machine) {
+func newSetupWithMockContext() (*mockCompiler, *ssa.Builder, *machine) {
 	ctx := newMockCompilationContext()
 	m := NewBackend().(*machine)
 	m.SetCompiler(ctx)
@@ -39,7 +39,7 @@ func (m *mockCompiler) GetFunctionABI(sig *types.Signature) *backend.FunctionABI
 	panic("implement me")
 }
 
-func (m *mockCompiler) SSABuilder() ssa.Builder { return nil }
+func (m *mockCompiler) SSABuilder() *ssa.Builder { return nil }
 
 func (m *mockCompiler) LoopNestingForestRoots() []ssa.BasicBlock { panic("TODO") }
 

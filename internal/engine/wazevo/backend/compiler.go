@@ -11,11 +11,11 @@ import (
 )
 
 // NewCompiler returns a new Compiler that can generate a machine code.
-func NewCompiler(ctx context.Context, mach Machine, builder ssa.Builder) Compiler {
+func NewCompiler(ctx context.Context, mach Machine, builder *ssa.Builder) Compiler {
 	return newCompiler(ctx, mach, builder)
 }
 
-func newCompiler(_ context.Context, mach Machine, builder ssa.Builder) *compiler {
+func newCompiler(_ context.Context, mach Machine, builder *ssa.Builder) *compiler {
 	argResultInts, argResultFloats := mach.ArgsResultsRegs()
 	c := &compiler{
 		mach: mach, ssaBuilder: builder,
@@ -27,11 +27,11 @@ func newCompiler(_ context.Context, mach Machine, builder ssa.Builder) *compiler
 	return c
 }
 
-// Compiler is the backend of wazevo which takes ssa.Builder and Machine,
+// Compiler is the backend of wazevo which takes *ssa.Builder and Machine,
 // use the information there to emit the final machine code.
 type Compiler interface {
-	// SSABuilder returns the ssa.Builder used by this compiler.
-	SSABuilder() ssa.Builder
+	// SSABuilder returns the *ssa.Builder used by this compiler.
+	SSABuilder() *ssa.Builder
 
 	// Compile executes the following steps:
 	// 	1. Lower()
@@ -124,7 +124,7 @@ type RelocationInfo struct {
 type compiler struct {
 	mach       Machine
 	currentGID ssa.InstructionGroupID
-	ssaBuilder ssa.Builder
+	ssaBuilder *ssa.Builder
 	// nextVRegID is the next virtual register ID to be allocated.
 	nextVRegID regalloc.VRegID
 	// ssaValueToVRegs maps ssa.ValueID to regalloc.VReg.
@@ -203,7 +203,7 @@ func (c *compiler) setCurrentGroupID(gid ssa.InstructionGroupID) {
 	c.currentGID = gid
 }
 
-// assignVirtualRegisters assigns a virtual register to each ssa.ValueID Valid in the ssa.Builder.
+// assignVirtualRegisters assigns a virtual register to each ssa.ValueID Valid in the *ssa.Builder.
 func (c *compiler) assignVirtualRegisters() {
 	builder := c.ssaBuilder
 	c.ssaValuesInfo = builder.ValuesInfo()
@@ -331,7 +331,7 @@ func (c *compiler) MatchInstrOneOf(def SSAValueDefinition, opcodes []ssa.Opcode)
 }
 
 // SSABuilder implements Compiler .SSABuilder.
-func (c *compiler) SSABuilder() ssa.Builder {
+func (c *compiler) SSABuilder() *ssa.Builder {
 	return c.ssaBuilder
 }
 

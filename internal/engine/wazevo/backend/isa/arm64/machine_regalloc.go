@@ -10,7 +10,7 @@ import (
 
 // regAllocFn implements regalloc.Function.
 type regAllocFn struct {
-	ssaB                   ssa.Builder
+	ssaB                   *ssa.Builder
 	m                      *machine
 	loopNestingForestRoots []*ssa.BasicBlock
 	blockIter              int

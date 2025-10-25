@@ -8,7 +8,7 @@ import (
 )
 
 func Test_maybeInvertBranch(t *testing.T) {
-	insertJump := func(b *builder, src, dst *BasicBlock) {
+	insertJump := func(b *Builder, src, dst *BasicBlock) {
 		b.SetCurrentBlock(src)
 		if src.Kind == BlockPlain && len(src.Succ) != 0 {
 			panic("BUG: multiple jumps in a plain block")
@@ -18,7 +18,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		dst.Pred = append(dst.Pred, src)
 	}
 
-	insertBrz := func(b *builder, src, dst *BasicBlock) {
+	insertBrz := func(b *Builder, src, dst *BasicBlock) {
 		b.SetCurrentBlock(src)
 		vinst := b.AllocateInstruction().AsIconst32(0)
 		b.InsertInstruction(vinst)
@@ -33,12 +33,12 @@ func Test_maybeInvertBranch(t *testing.T) {
 
 	for _, tc := range []struct {
 		name  string
-		setup func(b *builder) (now, next *BasicBlock, verify func(t *testing.T))
+		setup func(b *Builder) (now, next *BasicBlock, verify func(t *testing.T))
 		exp   bool
 	}{
 		{
 			name: "no conditional branch without previous instruction",
-			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
+			setup: func(b *Builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, now, next)
 				verify = func(t *testing.T) {
@@ -49,7 +49,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "no conditional branch with previous instruction",
-			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
+			setup: func(b *Builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
 				b.SetCurrentBlock(now)
 				prev := b.AllocateInstruction()
@@ -64,7 +64,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "tail target is already loop",
-			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
+			setup: func(b *Builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next, loopHeader, dummy := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				loopHeader.LoopHeader = true
 				insertBrz(b, now, dummy)
@@ -77,7 +77,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "tail target is already the next block",
-			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
+			setup: func(b *Builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next, dummy := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertBrz(b, now, dummy)
 				insertJump(b, now, next)
@@ -89,7 +89,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "conditional target is loop",
-			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
+			setup: func(b *Builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next, loopHeader := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				loopHeader.LoopHeader = true
 				insertBrz(b, now, loopHeader) // jump to loop, which needs inversion.
@@ -109,7 +109,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 		},
 		{
 			name: "conditional target is the next block",
-			setup: func(b *builder) (now, next *BasicBlock, verify func(t *testing.T)) {
+			setup: func(b *Builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
 				nowTarget := b.allocateBasicBlock()
 				insertBrz(b, now, next) // jump to the next block in conditional, which needs inversion.
@@ -130,7 +130,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 	} {
 
 		t.Run(tc.name, func(t *testing.T) {
-			b := NewBuilder().(*builder)
+			b := NewBuilder()
 			now, next, verify := tc.setup(b)
 			actual := maybeInvertBranches(now, next)
 			verify(t)
@@ -140,7 +140,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 }
 
 func TestBuilder_LayoutBlocks(t *testing.T) {
-	insertJump := func(b *builder, src, dst *BasicBlock, vs ...Var) {
+	insertJump := func(b *Builder, src, dst *BasicBlock, vs ...Var) {
 		b.SetCurrentBlock(src)
 		if src.Kind == BlockPlain && len(src.Succ) != 0 {
 			panic("BUG: multiple jumps in a plain block")
@@ -150,7 +150,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 		dst.Pred = append(dst.Pred, src)
 	}
 
-	insertIf := func(b *builder, src, dst *BasicBlock, condVal Var, vs ...Var) {
+	insertIf := func(b *Builder, src, dst *BasicBlock, condVal Var, vs ...Var) {
 		b.SetCurrentBlock(src)
 		vinst := b.AllocateInstruction().AsIconst32(0)
 		b.InsertInstruction(vinst)
@@ -166,12 +166,12 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 
 	for _, tc := range []struct {
 		name  string
-		setup func(b *builder)
+		setup func(b *Builder)
 		exp   []BasicBlockID
 	}{
 		{
 			name: "sequential - no critical edge",
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b1, b2, b3, b4 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b1, b2)
 				insertJump(b, b2, b3)
@@ -185,7 +185,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 		},
 		{
 			name: "sequential with unreachable predecessor",
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b0, unreachable, b2 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b2)
 				insertJump(b, unreachable, b2)
@@ -202,7 +202,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			// |         ^
 			// v         |
 			// 2 ---------
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				b.SetCurrentBlock(b0)
 				c := b.AllocateInstruction().AsIconst32(0)
@@ -237,7 +237,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			//    2--->4
 			//    v
 			//    3
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b1)
 				insertJump(b, b1, b2)
@@ -273,7 +273,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			//    2--->4
 			//    v
 			//    3
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b1)
 				insertJump(b, b1, b2)
@@ -313,7 +313,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			//    4---->6
 			//    v
 			//    5
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b0, b1, b2, b3, b4, b5 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(),
 					b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b1)
@@ -361,7 +361,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			//               |   7
 			//               |   v
 			//               +-->3--->4
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b0, b1, b2, b3, b4 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(),
 					b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b1)
@@ -398,7 +398,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 		},
 		{
 			name: "brz with arg",
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b0, b1, b2 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				p := b0.AddParam(b, types.I32)
 				retval := b1.AddParam(b, types.I32)
@@ -429,7 +429,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 		{
 			name: "loop with output",
 			exp:  []BasicBlockID{0x0, 0x2, 0x4, 0x1, 0x3, 0x5, 0x6},
-			setup: func(b *builder) {
+			setup: func(b *Builder) {
 				b.currentSignature = &types.Signature{Results: []*types.Type{types.I32}}
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 
@@ -474,7 +474,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			b := NewBuilder().(*builder)
+			b := NewBuilder()
 			tc.setup(b)
 
 			for _, p := range passes {

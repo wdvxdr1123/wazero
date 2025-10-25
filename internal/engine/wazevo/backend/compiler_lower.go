@@ -13,7 +13,7 @@ func (c *compiler) Lower() {
 	c.lowerBlocks()
 }
 
-// lowerBlocks lowers each block in the ssa.Builder.
+// lowerBlocks lowers each block in the *ssa.Builder.
 func (c *compiler) lowerBlocks() {
 	builder := c.ssaBuilder
 	blk := builder.BlockIteratorReversePostOrderBegin()

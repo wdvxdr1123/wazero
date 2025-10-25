@@ -32,13 +32,13 @@ func Test_asImm12(t *testing.T) {
 func TestMachine_getOperand_NR(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		setup        func(*mockCompiler, ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode)
+		setup        func(*mockCompiler, *ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode)
 		exp          operand
 		instructions []string
 	}{
 		{
 			name: "block param - no extend",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				blk := builder.CurrentBlock()
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
@@ -49,7 +49,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 		},
 		{
 			name: "block param - zero extend",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				blk := builder.CurrentBlock()
 				v := blk.AddParam(builder, types.I32)
 				ctx.vRegMap[v] = regToVReg(x4)
@@ -61,7 +61,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 		},
 		{
 			name: "block param - sign extend",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				blk := builder.CurrentBlock()
 				v := blk.AddParam(builder, types.I32)
 				ctx.vRegMap[v] = regToVReg(x4)
@@ -73,7 +73,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 		},
 		{
 			name: "const instr",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				instr := builder.AllocateInstruction()
 				instr.AsIconst32(0xf00000f)
 				builder.InsertInstruction(instr)
@@ -89,7 +89,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 		},
 		{
 			name: "non const instr",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				c := builder.AllocateInstruction()
 				sig := &types.Signature{Results: []*types.Type{types.I64, types.F64, types.F64}}
 				builder.DeclareSignature(sig)
@@ -120,7 +120,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 
 func TestMachine_getOperand_SR_NR(t *testing.T) {
 	ishlWithConstAmount := func(
-		ctx *mockCompiler, builder ssa.Builder, m *machine,
+		ctx *mockCompiler, builder *ssa.Builder, m *machine,
 	) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 		blk := builder.CurrentBlock()
 		// (p1+p2) << amount
@@ -161,13 +161,13 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 
 	for _, tc := range []struct {
 		name         string
-		setup        func(*mockCompiler, ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T))
+		setup        func(*mockCompiler, *ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T))
 		exp          operand
 		instructions []string
 	}{
 		{
 			name: "block param",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 				blk := builder.CurrentBlock()
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
@@ -178,7 +178,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		},
 		{
 			name: "ishl but not const amount",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 				blk := builder.CurrentBlock()
 				// (p1+p2) << p3
 				p1 := blk.AddParam(builder, types.I64)
@@ -215,7 +215,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		{
 			name: "ishl with const amount with i32",
 			setup: func(
-				ctx *mockCompiler, builder ssa.Builder, m *machine,
+				ctx *mockCompiler, builder *ssa.Builder, m *machine,
 			) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 				blk := builder.CurrentBlock()
 				// (p1+p2) << amount
@@ -258,7 +258,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		{
 			name: "ishl with const amount with const shift target",
 			setup: func(
-				ctx *mockCompiler, builder ssa.Builder, m *machine,
+				ctx *mockCompiler, builder *ssa.Builder, m *machine,
 			) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 				const nextVReg = 100
 				ctx.vRegCounter = nextVReg - 1
@@ -288,7 +288,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		},
 		{
 			name: "ishl with const amount but group id is different",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 				def, mode, _ = ishlWithConstAmount(ctx, builder, m)
 				ctx.currentGID = 1230
 				return
@@ -297,7 +297,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		},
 		{
 			name: "ishl with const amount but ref count is larger than 1",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 				def, mode, _ = ishlWithConstAmount(ctx, builder, m)
 				def.RefCount = 10
 				return
@@ -321,7 +321,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 	const nextVReg = 100
 	type testCase struct {
-		setup        func(*mockCompiler, ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T))
+		setup        func(*mockCompiler, *ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T))
 		exp          operand
 		instructions []string
 	}
@@ -337,7 +337,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 
 	t.Run("block param", func(t *testing.T) {
 		runner(testCase{
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 				blk := builder.CurrentBlock()
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
@@ -366,7 +366,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 			{from: 32, to: 64, signed: false, exp: operandER(regalloc.VReg(10), extendOpUXTW, 64)},
 		} {
 			runner(testCase{
-				setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
+				setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 					blk := builder.CurrentBlock()
 					v := blk.AddParam(builder, types.I64)
 					ext := builder.AllocateInstruction()
@@ -574,7 +574,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 		} {
 			t.Run(c.name, func(t *testing.T) {
 				runner(testCase{
-					setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
+					setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
 						blk := builder.CurrentBlock()
 						v := blk.AddParam(builder, types.I64)
 						ext := builder.AllocateInstruction()
@@ -609,13 +609,13 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 func TestMachine_getOperand_Imm12_ER_SR_NR(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		setup        func(*mockCompiler, ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode)
+		setup        func(*mockCompiler, *ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode)
 		exp          operand
 		instructions []string
 	}{
 		{
 			name: "block param",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				blk := builder.CurrentBlock()
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
@@ -626,7 +626,7 @@ func TestMachine_getOperand_Imm12_ER_SR_NR(t *testing.T) {
 		},
 		{
 			name: "const imm 12 no shift",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				cinst := builder.AllocateInstruction()
 				cinst.AsIconst32(0xfff)
 				builder.InsertInstruction(cinst)
@@ -638,7 +638,7 @@ func TestMachine_getOperand_Imm12_ER_SR_NR(t *testing.T) {
 		},
 		{
 			name: "const imm 12 with shift bit",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				cinst := builder.AllocateInstruction()
 				cinst.AsIconst32(0xabc_000)
 				builder.InsertInstruction(cinst)
@@ -662,14 +662,14 @@ func TestMachine_getOperand_Imm12_ER_SR_NR(t *testing.T) {
 func TestMachine_getOperand_MaybeNegatedImm12_ER_SR_NR(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		setup        func(*mockCompiler, ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode)
+		setup        func(*mockCompiler, *ssa.Builder, *machine) (def backend.SSAValueDefinition, mode extMode)
 		exp          operand
 		expNegated   bool
 		instructions []string
 	}{
 		{
 			name: "block param",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				blk := builder.CurrentBlock()
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
@@ -680,7 +680,7 @@ func TestMachine_getOperand_MaybeNegatedImm12_ER_SR_NR(t *testing.T) {
 		},
 		{
 			name: "const imm 12 no shift",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				cinst := builder.AllocateInstruction()
 				cinst.AsIconst32(0xfff)
 				builder.InsertInstruction(cinst)
@@ -692,7 +692,7 @@ func TestMachine_getOperand_MaybeNegatedImm12_ER_SR_NR(t *testing.T) {
 		},
 		{
 			name: "const negative imm 12 no shift",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				c := int32(-1)
 				cinst := builder.AllocateInstruction()
 				cinst.AsIconst32(uint32(c))
@@ -706,7 +706,7 @@ func TestMachine_getOperand_MaybeNegatedImm12_ER_SR_NR(t *testing.T) {
 		},
 		{
 			name: "const imm 12 with shift bit",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				cinst := builder.AllocateInstruction()
 				cinst.AsIconst32(0xabc_000)
 				builder.InsertInstruction(cinst)
@@ -718,7 +718,7 @@ func TestMachine_getOperand_MaybeNegatedImm12_ER_SR_NR(t *testing.T) {
 		},
 		{
 			name: "const negated imm 12 with shift bit",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
 				c := int32(-0xabc_000)
 				cinst := builder.AllocateInstruction()
 				cinst.AsIconst32(uint32(c))

@@ -21,7 +21,7 @@ type (
 
 		// StartBlock is called when the compilation of the given block is started.
 		// The order of this being called is the reverse post order of the ssa.BasicBlock(s) as we iterate with
-		// ssa.Builder BlockIteratorReversePostOrderBegin and BlockIteratorReversePostOrderEnd.
+		// *ssa.Builder BlockIteratorReversePostOrderBegin and BlockIteratorReversePostOrderEnd.
 		StartBlock(blk *ssa.BasicBlock)
 
 		// EndBlock is called when the compilation of the current block is finished.

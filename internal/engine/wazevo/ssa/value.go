@@ -18,12 +18,11 @@ type Opcode uint32
 // depending on Opcode.
 type Value struct {
 	// id is the unique ID of this instruction which ascends from 0 following the order of program.
-	id       int
-	opcode   Opcode
-	Args     []Var
-	ArgSlice []Var
-	Type     *types.Type
-	u1, u2   uint64
+	id     int
+	opcode Opcode
+	Args   []Var
+	Type   *types.Type
+	u1, u2 uint64
 
 	// Return is the (first) return value of this instruction.
 	// For branching instructions except for OpcodeBrTable, they hold BlockID to jump cast to Value.
@@ -79,7 +78,6 @@ func (i *Value) Lowered() bool {
 func resetValue(i *Value) {
 	*i = Value{}
 	i.Args = i.argStorage[:0]
-	i.ArgSlice = i.ArgSlice[:0]
 	i.Return = InvalidVar
 	i.Type = types.Invalid
 	i.sourceOffset = sourceOffsetUnknown
@@ -549,7 +547,7 @@ func (i *Value) AsImul(x, y Var) *Value {
 	return i
 }
 
-func (i *Value) Insert(b Builder) *Value {
+func (i *Value) Insert(b *Builder) *Value {
 	b.InsertInstruction(i)
 	return i
 }
@@ -1484,7 +1482,7 @@ func (i *Value) ExtendFromToBits() (from, to byte) {
 
 // Format returns a string representation of this instruction with the given builder.
 // For debugging purposes only.
-func (i *Value) Format(b Builder) string {
+func (i *Value) Format(b *Builder) string {
 	var instSuffix string
 	switch i.opcode {
 	case OpcodeExitWithCode:

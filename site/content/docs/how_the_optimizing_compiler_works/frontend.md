@@ -140,7 +140,7 @@ In the code, the terms *lower* or *lowering* are often used to indicate a mappin
 because such transformations usually correspond to targeting a lower abstraction level.
 
 - Basic Blocks are represented by the type `ssa.Block`.
-- The SSA form is constructed using an `ssa.Builder`. The `ssa.Builder` is instantiated
+- The SSA form is constructed using an `*ssa.Builder`. The `*ssa.Builder` is instantiated
   in the context of `wasm.Engine.CompileModule()`, more specifically in the method
   `frontend.Compiler.LowerToSSA()`.
 - The mapping between Wasm opcodes and the IR happens in `frontend/lower.go`,
@@ -239,7 +239,7 @@ expected to implement more advanced optimizations.
 
 ### Code
 
-Optimization passes are implemented by `ssa.Builder.RunPasses()`. An optimization
+Optimization passes are implemented by `(*ssa.Builder).RunPasses()`. An optimization
 pass is just a function that takes a ssa builder as a parameter.
 
 Passes iterate over the basic blocks, and, for each basic block, they iterate

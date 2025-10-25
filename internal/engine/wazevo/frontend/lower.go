@@ -3431,7 +3431,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 	c.loweringState.pc++
 }
 
-func (c *Compiler) lowerReturn(builder ssa.Builder) {
+func (c *Compiler) lowerReturn(builder *ssa.Builder) {
 	results := c.nPeekDup(c.results())
 	instr := builder.AllocateInstruction()
 

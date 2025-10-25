@@ -40,13 +40,13 @@ func Test_asImm32(t *testing.T) {
 func TestMachine_getOperand_Reg(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		setup        func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
+		setup        func(*mockCompiler, *ssa.Builder, *machine) backend.SSAValueDefinition
 		exp          operand
 		instructions []string
 	}{
 		{
 			name: "const instr",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				instr := builder.AllocateInstruction()
 				instr.AsIconst32(0xf00000f)
 				builder.InsertInstruction(instr)
@@ -58,7 +58,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 		},
 		{
 			name: "non const instr (single-return)",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				c := builder.AllocateInstruction()
 				sig := &types.Signature{Results: []*types.Type{types.I64}}
 				builder.DeclareSignature(sig)
@@ -72,7 +72,7 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 		},
 		{
 			name: "non const instr (multi-return)",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				c := builder.AllocateInstruction()
 				sig := &types.Signature{Results: []*types.Type{types.I64, types.F64, types.F64}}
 				builder.DeclareSignature(sig)
@@ -98,13 +98,13 @@ func TestMachine_getOperand_Reg(t *testing.T) {
 func TestMachine_getOperand_Imm32_Reg(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		setup        func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
+		setup        func(*mockCompiler, *ssa.Builder, *machine) backend.SSAValueDefinition
 		exp          operand
 		instructions []string
 	}{
 		{
 			name: "const imm 32",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				instr := builder.AllocateInstruction()
 				instr.AsIconst32(0xf00000f)
 				builder.InsertInstruction(instr)
@@ -134,13 +134,13 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 
 	for _, tc := range []struct {
 		name         string
-		setup        func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
+		setup        func(*mockCompiler, *ssa.Builder, *machine) backend.SSAValueDefinition
 		exp          operand
 		instructions []string
 	}{
 		{
 			name: "amode with block param",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				blk := builder.CurrentBlock()
 				ptr := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[ptr] = raxVReg
@@ -153,7 +153,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		},
 		{
 			name: "amode with iconst",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
 				instr := builder.AllocateInstruction()
 				instr.AsLoad(iconst.Return, 123, types.I64).Insert(builder)
@@ -167,7 +167,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		},
 		{
 			name: "amode with iconst and extend",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst := builder.AllocateInstruction().AsIconst32(0xffffff).Insert(builder)
 				uextend := builder.AllocateInstruction().AsUExtend(iconst.Return, 32, 64).Insert(builder)
 
@@ -186,7 +186,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		},
 		{
 			name: "amode with iconst and extend",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst := builder.AllocateInstruction().AsIconst32(456).Insert(builder)
 				uextend := builder.AllocateInstruction().AsUExtend(iconst.Return, 32, 64).Insert(builder)
 
@@ -205,7 +205,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		},
 		{
 			name: "amode with iconst and add",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				p := builder.CurrentBlock().AddParam(builder, types.I64)
 				iconst := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
 				iadd := builder.AllocateInstruction().AsIadd(iconst.Return, p).Insert(builder)
@@ -224,7 +224,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		},
 		{
 			name: "amode with iconst, block param and add",
-			setup: func(ctx *mockCompiler, builder ssa.Builder, m *machine) backend.SSAValueDefinition {
+			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
 				iconst1 := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
 				iconst2 := builder.AllocateInstruction().AsIconst64(123).Insert(builder)
 				iadd := builder.AllocateInstruction().AsIadd(iconst1.Return, iconst2.Return).Insert(builder)
@@ -282,7 +282,7 @@ L2:
 func Test_machine_lowerClz(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		setup    func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
+		setup    func(*mockCompiler, *ssa.Builder, *machine) backend.SSAValueDefinition
 		cpuFlags platform.CpuFeatureFlags
 		typ      *types.Type
 		exp      string
@@ -358,7 +358,7 @@ L2:
 func TestMachine_lowerCtz(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		setup    func(*mockCompiler, ssa.Builder, *machine) backend.SSAValueDefinition
+		setup    func(*mockCompiler, *ssa.Builder, *machine) backend.SSAValueDefinition
 		cpuFlags platform.CpuFeatureFlags
 		typ      *types.Type
 		exp      string

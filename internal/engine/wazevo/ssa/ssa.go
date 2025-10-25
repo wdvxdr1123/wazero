@@ -77,15 +77,15 @@ const valueIDInvalid VarID = math.MaxUint32
 var InvalidVar = Var{id: valueIDInvalid, typ: types.Invalid}
 
 // Format creates a debug string for this Value using the data stored in Builder.
-func (v Var) Format(b Builder) string {
-	if annotation, ok := b.(*builder).valueAnnotations[v.ID()]; ok {
+func (v Var) Format(b *Builder) string {
+	if annotation, ok := b.valueAnnotations[v.ID()]; ok {
 		return annotation
 	}
 	return fmt.Sprintf("v%d", v.ID())
 }
 
-func (v Var) formatWithType(b Builder) (ret string) {
-	if annotation, ok := b.(*builder).valueAnnotations[v.ID()]; ok {
+func (v Var) formatWithType(b *Builder) (ret string) {
+	if annotation, ok := b.valueAnnotations[v.ID()]; ok {
 		ret = annotation + ":" + v.Type().String()
 	} else {
 		ret = fmt.Sprintf("v%d:%s", v.ID(), v.Type())

@@ -7,8 +7,8 @@ type edgesCase map[BasicBlockID][]BasicBlockID
 
 // constructGraphFromEdges constructs a graph from edgesCase.
 // This comes in handy when we want to test the CFG related passes.
-func constructGraphFromEdges(edges edgesCase) (b *builder) {
-	b = NewBuilder().(*builder)
+func constructGraphFromEdges(edges edgesCase) (b *Builder) {
+	b = NewBuilder()
 
 	// Collect edges.
 	var maxID BasicBlockID

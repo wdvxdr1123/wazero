@@ -23,7 +23,7 @@ func formatEmittedInstructionsInCurrentBlock(m *machine) string {
 	return strings.Join(strs, "\n")
 }
 
-func newSetup() (ssa.Builder, *machine) {
+func newSetup() (*ssa.Builder, *machine) {
 	m := NewBackend().(*machine)
 	ssaB := ssa.NewBuilder()
 	backend.NewCompiler(context.Background(), m, ssaB)
@@ -32,7 +32,7 @@ func newSetup() (ssa.Builder, *machine) {
 	return ssaB, m
 }
 
-func newSetupWithMockContext() (*mockCompiler, ssa.Builder, *machine) {
+func newSetupWithMockContext() (*mockCompiler, *ssa.Builder, *machine) {
 	ctx := newMockCompilationContext()
 	m := NewBackend().(*machine)
 	m.SetCompiler(ctx)
@@ -59,7 +59,7 @@ type mockCompiler struct {
 	definitions map[ssa.Var]backend.SSAValueDefinition
 	sigs        map[types.SignatureID]*types.Signature
 	typeOf      map[regalloc.VRegID]*types.Type
-	ssaBuilder  ssa.Builder
+	ssaBuilder  *ssa.Builder
 	relocs      []backend.RelocationInfo
 	buf         []byte
 }
@@ -71,7 +71,7 @@ func (m *mockCompiler) GetFunctionABI(sig *types.Signature) *backend.FunctionABI
 	panic("implement me")
 }
 
-func (m *mockCompiler) SSABuilder() ssa.Builder { return m.ssaBuilder }
+func (m *mockCompiler) SSABuilder() *ssa.Builder { return m.ssaBuilder }
 
 func (m *mockCompiler) LoopNestingForestRoots() []ssa.BasicBlock { panic("TODO") }
 

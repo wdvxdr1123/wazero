@@ -22,7 +22,7 @@ import (
 //  2. we invert the brz and brnz if it makes the fallthrough more likely.
 //
 // This heuristic is done in maybeInvertBranches function.
-func layoutBlocks(b *builder) {
+func layoutBlocks(b *Builder) {
 	// We might end up splitting critical edges which adds more basic blocks,
 	// so we store the currently existing basic blocks in nonSplitBlocks temporarily.
 	// That way we can iterate over the original basic blocks while appending new ones into reversePostOrderedBasicBlocks.
@@ -241,7 +241,7 @@ invert:
 //   - https://nickdesaulniers.github.io/blog/2023/01/27/critical-edge-splitting/
 //
 // The returned basic block is the trampoline block which is inserted to split the critical edge.
-func (b *builder) splitCriticalEdge(pred, succ *BasicBlock, predIndex int) *BasicBlock {
+func (b *Builder) splitCriticalEdge(pred, succ *BasicBlock, predIndex int) *BasicBlock {
 	if succ.Pred[predIndex] != pred {
 		panic("BUG: predecessor info does not match the given predecessor")
 	}
