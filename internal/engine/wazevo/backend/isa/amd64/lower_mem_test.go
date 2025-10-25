@@ -49,7 +49,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 			name: "iadd const, param; offset != 0",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
 				iconst1 := b.AllocateInstruction().AsIconst32(1).Insert(b)
-				p := b.CurrentBlock().AddParam(b, types.I64)
+				p := b.CurrentBlock.AddParam(b, types.I64)
 				iadd := b.AllocateInstruction().AsIadd(iconst1.Return, p).Insert(b)
 				ptr = iadd.Return
 				offset = 3
@@ -64,8 +64,8 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		{
 			name: "iadd param, param; offset != 0",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
-				p1 := b.CurrentBlock().AddParam(b, types.I64)
-				p2 := b.CurrentBlock().AddParam(b, types.I64)
+				p1 := b.CurrentBlock.AddParam(b, types.I64)
+				p2 := b.CurrentBlock.AddParam(b, types.I64)
 				iadd := b.AllocateInstruction().AsIadd(p1, p2).Insert(b)
 				ptr = iadd.Return
 				offset = 3
@@ -81,7 +81,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		{
 			name: "huge offset",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
-				ptr = b.CurrentBlock().AddParam(b, types.I64)
+				ptr = b.CurrentBlock.AddParam(b, types.I64)
 				offset = 1 << 31
 				ctx.vRegMap[ptr] = raxVReg
 				ctx.definitions[ptr] = backend.SSAValueDefinition{V: ptr}
@@ -111,7 +111,7 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		{
 			name: "Ishl param64, const",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
-				p := b.CurrentBlock().AddParam(b, types.I64)
+				p := b.CurrentBlock.AddParam(b, types.I64)
 				iconst64 := b.AllocateInstruction().AsIconst64(2).Insert(b)
 				ishl := b.AllocateInstruction().AsIshl(p, iconst64.Return).Insert(b)
 				ctx.vRegMap[p] = raxVReg
@@ -128,8 +128,8 @@ func TestMachine_lowerToAddressMode(t *testing.T) {
 		{
 			name: "add Iconst, (Ishl param64, const)",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) (ptr ssa.Var, offset uint32) {
-				p1 := b.CurrentBlock().AddParam(b, types.I64)
-				p2 := b.CurrentBlock().AddParam(b, types.I64)
+				p1 := b.CurrentBlock.AddParam(b, types.I64)
+				p2 := b.CurrentBlock.AddParam(b, types.I64)
 				const2 := b.AllocateInstruction().AsIconst64(2).Insert(b)
 				ishl := b.AllocateInstruction().AsIshl(p1, const2.Return).Insert(b)
 				iadd := b.AllocateInstruction().AsIadd(p2, ishl.Return).Insert(b)
@@ -188,7 +188,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		{
 			name: "uextend const64",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
-				p := b.CurrentBlock().AddParam(b, types.I32)
+				p := b.CurrentBlock.AddParam(b, types.I32)
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
 				return b.AllocateInstruction().AsUExtend(p, 32, 64).Insert(b)
@@ -198,7 +198,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		{
 			name: "uextend param i32",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
-				p := b.CurrentBlock().AddParam(b, types.I32)
+				p := b.CurrentBlock.AddParam(b, types.I32)
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
 				return b.AllocateInstruction().AsUExtend(p, 32, 64).Insert(b)
@@ -217,7 +217,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		{
 			name: "sextend const64",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
-				p := b.CurrentBlock().AddParam(b, types.I32)
+				p := b.CurrentBlock.AddParam(b, types.I32)
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
 				return b.AllocateInstruction().AsSExtend(p, 32, 64).Insert(b)
@@ -227,7 +227,7 @@ func TestMachine_lowerAddendFromInstr(t *testing.T) {
 		{
 			name: "sextend param i32",
 			in: func(ctx *mockCompiler, b *ssa.Builder, m *machine) *ssa.Value {
-				p := b.CurrentBlock().AddParam(b, types.I32)
+				p := b.CurrentBlock.AddParam(b, types.I32)
 				ctx.vRegMap[p] = raxVReg
 				ctx.definitions[p] = backend.SSAValueDefinition{V: p}
 				return b.AllocateInstruction().AsSExtend(p, 32, 64).Insert(b)

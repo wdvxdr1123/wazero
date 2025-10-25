@@ -66,7 +66,7 @@ func (b *Builder) RunPasses() {
 
 // deadBlockElim searches the unreachable blocks, and sets the basicBlock.invalid flag true if so.
 func deadBlockElim(b *Builder) {
-	entryBlk := b.entryBlk()
+	entryBlk := b.EntryBlock()
 	b.blkStack = append(b.blkStack, entryBlk)
 	for len(b.blkStack) > 0 {
 		reachableBlk := b.blkStack[len(b.blkStack)-1]

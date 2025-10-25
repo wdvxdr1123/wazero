@@ -30,8 +30,9 @@ type Builder struct {
 
 	// reversePostOrderedBasicBlocks are the BasicBlock(s) ordered in the reverse post-order after passCalculateImmediateDominators.
 	reversePostOrderedBasicBlocks []*BasicBlock
-	currentBB                     *BasicBlock
-	returnBlk                     *BasicBlock
+
+	CurrentBlock *BasicBlock
+	returnBlk    *BasicBlock
 
 	// nextValueID is used by builder.AllocateValue.
 	nextValueID VarID
@@ -231,7 +232,7 @@ func (b *Builder) Idom(blk *BasicBlock) *BasicBlock {
 
 // InsertInstruction executes BasicBlock.InsertInstruction for the currently handled basic block.
 func (b *Builder) InsertInstruction(instr *Value) {
-	b.currentBB.insertInstruction(instr)
+	b.CurrentBlock.insertInstruction(instr)
 
 	if l := b.currentSourceOffset; l.Valid() {
 		// Emit the source offset info only when the instruction has side effect because
@@ -268,22 +269,12 @@ func (b *Builder) DefineVariable(variable Variable, value Var, block *BasicBlock
 // DefineVariableInCurrentBB is the same as DefineVariable except the definition is
 // inserted into the current BasicBlock. Alias to DefineVariable(x, y, CurrentBlock()).
 func (b *Builder) DefineVariableInCurrentBB(variable Variable, value Var) {
-	b.DefineVariable(variable, value, b.currentBB)
-}
-
-// SetCurrentBlock sets the instruction insertion target to the BasicBlock `b`.
-func (b *Builder) SetCurrentBlock(bb *BasicBlock) {
-	b.currentBB = bb
-}
-
-// CurrentBlock returns the currently handled BasicBlock which is set by the latest call to SetCurrentBlock.
-func (b *Builder) CurrentBlock() *BasicBlock {
-	return b.currentBB
+	b.DefineVariable(variable, value, b.CurrentBlock)
 }
 
 // EntryBlock returns the entry BasicBlock of the currently-compiled function.
 func (b *Builder) EntryBlock() *BasicBlock {
-	return b.entryBlk()
+	return b.basicBlocksPool.View(0)
 }
 
 // DeclareVariable declares a Variable of the given *types.Type.
@@ -304,7 +295,7 @@ func (b *Builder) allocateValue(typ *types.Type) (v Var) {
 // FindValueInLinearPath tries to find the latest definition of the given Variable in the linear path to the current BasicBlock.
 // If it cannot find the definition, or it's not sealed yet, it returns ValueInvalid.
 func (b *Builder) FindValueInLinearPath(variable Variable) Var {
-	return b.findValueInLinearPath(variable, b.currentBB)
+	return b.findValueInLinearPath(variable, b.CurrentBlock)
 }
 
 func (b *Builder) findValueInLinearPath(variable Variable, blk *BasicBlock) Var {
@@ -324,7 +315,7 @@ func (b *Builder) findValueInLinearPath(variable Variable, blk *BasicBlock) Var 
 
 // MustFindValue searches the latest definition of the given Variable and returns the result.
 func (b *Builder) MustFindValue(variable Variable) Var {
-	return b.findValue(variable.getType(), variable, b.currentBB)
+	return b.findValue(variable.getType(), variable, b.CurrentBlock)
 }
 
 // findValue recursively tries to find the latest definition of a `variable`. The algorithm is described in
@@ -584,18 +575,13 @@ func (b *Builder) resolveAliases(v []Var) []Var {
 	return v
 }
 
-// entryBlk returns the entry block of the function.
-func (b *Builder) entryBlk() *BasicBlock {
-	return b.basicBlocksPool.View(0)
-}
-
 // isDominatedBy returns true if the given block `n` is dominated by the given block `d`.
 // Before calling this, the builder must pass by passCalculateImmediateDominators.
 func (b *Builder) isDominatedBy(n *BasicBlock, d *BasicBlock) bool {
 	if len(b.dominators) == 0 {
 		panic("BUG: passCalculateImmediateDominators must be called before calling isDominatedBy")
 	}
-	ent := b.entryBlk()
+	ent := b.EntryBlock()
 	doms := b.dominators
 	for n != d && n != ent {
 		n = doms[n.id]

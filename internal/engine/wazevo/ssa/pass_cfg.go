@@ -24,7 +24,7 @@ func calculateImmediateDominators(b *Builder) {
 	// which is a reasonable assumption as long as SSA Builder is properly used.
 	//
 	// First we push blocks in postorder iteratively visit successors of the entry block.
-	entryBlk := b.entryBlk()
+	entryBlk := b.EntryBlock()
 	exploreStack := append(b.blkStack[:0], entryBlk)
 	// These flags are used to track the state of the block in the DFS traversal.
 	// We temporarily use the reversePostOrder field to store the state.
@@ -169,7 +169,7 @@ func subPassLoopDetection(b *Builder) {
 // buildLoopNestingForest builds the loop nesting forest for the function.
 // This must be called after branch splitting since it relies on the CFG.
 func buildLoopNestingForest(b *Builder) {
-	ent := b.entryBlk()
+	ent := b.EntryBlock()
 	doms := b.dominators
 	for _, blk := range b.reversePostOrderedBasicBlocks {
 		n := doms[blk.id]
@@ -241,7 +241,7 @@ func buildDominatorTree(b *Builder) {
 	st.time = 0
 
 	// Start building the sparse tree.
-	st.eulerTour(b.entryBlk(), 0)
+	st.eulerTour(b.EntryBlock(), 0)
 	st.buildSparseTable()
 }
 

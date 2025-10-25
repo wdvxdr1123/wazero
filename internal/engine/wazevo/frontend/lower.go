@@ -161,9 +161,9 @@ func (c *Compiler) lowerBody(entryBlk *ssa.BasicBlock) {
 	})
 
 	for c.loweringState.pc < len(c.wasmFunctionBody) {
-		blkBeforeLowering := c.ssaBuilder.CurrentBlock()
+		blkBeforeLowering := c.ssaBuilder.CurrentBlock
 		c.lowerCurrentOpcode()
-		blkAfterLowering := c.ssaBuilder.CurrentBlock()
+		blkAfterLowering := c.ssaBuilder.CurrentBlock
 		if blkBeforeLowering != blkAfterLowering {
 			// In Wasm, once a block exits, that means we've done compiling the block.
 			// Therefore, we finalize the known bounds at the end of the block for the exiting block.
@@ -686,19 +686,19 @@ func (c *Compiler) lowerCurrentOpcode() {
 			zero := builder.AllocateInstruction().AsIconst64(0).Insert(builder).Return
 			ifFillSizeZero := builder.AllocateInstruction().AsIcmp(fillSizeExt, zero, ssa.IntegerCmpCondEqual).
 				Insert(builder).Return
-			curBlock := builder.CurrentBlock()
+			curBlock := builder.CurrentBlock
 			curBlock.Kind = ssa.BlockIf
 			curBlock.ControlValue = ifFillSizeZero
 			curBlock.AddEdgeTo(followingBlk)
 			c.insertJumpToBlock(nil, beforeLoop)
 
 			// buf[0:8] = value
-			builder.SetCurrentBlock(beforeLoop)
+			builder.CurrentBlock = beforeLoop
 			builder.AllocateInstruction().AsStore(ssa.OpcodeStore, value, addr, 0).Insert(builder)
 			eight := builder.AllocateInstruction().AsIconst64(8).Insert(builder).Return
 			c.insertJumpToBlock([]ssa.Var{eight}, loopBlk)
 
-			builder.SetCurrentBlock(loopBlk)
+			builder.CurrentBlock = loopBlk
 			dstAddr := builder.AllocateInstruction().AsIadd(addr, loopVar).Insert(builder).Return
 
 			newLoopVar := builder.AllocateInstruction().AsIadd(loopVar, loopVar).Insert(builder).Return
@@ -711,13 +711,13 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			c.callMemmove(dstAddr, addr, count)
 
-			curBlock = builder.CurrentBlock()
+			curBlock = builder.CurrentBlock
 			curBlock.Kind = ssa.BlockIf
 			curBlock.ControlValue = newLoopVarLessThanFillSize
 			curBlock.AddEdgeTo(loopBlk, newLoopVar)
 
 			c.insertJumpToBlock(nil, followingBlk)
-			builder.SetCurrentBlock(followingBlk)
+			builder.CurrentBlock = followingBlk
 
 			builder.Seal(beforeLoop)
 			builder.Seal(loopBlk)
@@ -763,19 +763,19 @@ func (c *Compiler) lowerCurrentOpcode() {
 			ifFillSizeZero := builder.AllocateInstruction().AsIcmp(fillSize, zero, ssa.IntegerCmpCondEqual).
 				Insert(builder).Return
 
-			curBlock := builder.CurrentBlock()
+			curBlock := builder.CurrentBlock
 			curBlock.Kind = ssa.BlockIf
 			curBlock.ControlValue = ifFillSizeZero
 			curBlock.AddEdgeTo(followingBlk)
 			c.insertJumpToBlock(nil, beforeLoop)
 
 			// buf[0] = value
-			builder.SetCurrentBlock(beforeLoop)
+			builder.CurrentBlock = beforeLoop
 			builder.AllocateInstruction().AsStore(ssa.OpcodeIstore8, value, addr, 0).Insert(builder)
 			one := builder.AllocateInstruction().AsIconst64(1).Insert(builder).Return
 			c.insertJumpToBlock([]ssa.Var{one}, loopBlk)
 
-			builder.SetCurrentBlock(loopBlk)
+			builder.CurrentBlock = loopBlk
 			dstAddr := builder.AllocateInstruction().AsIadd(addr, loopVar).Insert(builder).Return
 
 			// chunk := ((i - 1) & 8191) + 1
@@ -795,12 +795,12 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 			c.callMemmove(dstAddr, addr, count)
 
-			curBlock = builder.CurrentBlock()
+			curBlock = builder.CurrentBlock
 			curBlock.Kind = ssa.BlockIf
 			curBlock.ControlValue = newLoopVarLessThanFillSize
 			curBlock.AddEdgeTo(loopBlk, newLoopVar)
 			c.insertJumpToBlock(nil, followingBlk)
-			builder.SetCurrentBlock(followingBlk)
+			builder.CurrentBlock = followingBlk
 
 			builder.Seal(beforeLoop)
 			builder.Seal(loopBlk)
@@ -1354,7 +1354,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		args = append(args, state.values[originalLen:]...)
 
 		// jump to the header of loop.
-		builder.CurrentBlock().AddEdgeTo(loopHeader, args...)
+		builder.CurrentBlock.AddEdgeTo(loopHeader, args...)
 
 		c.switchTo(originalLen, loopHeader)
 
@@ -1391,7 +1391,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		args := make([]ssa.Var, 0, len(bt.Params))
 		args = append(args, state.values[len(state.values)-len(bt.Params):]...)
 
-		curBlock := builder.CurrentBlock()
+		curBlock := builder.CurrentBlock
 		curBlock.ControlValue = v
 		curBlock.Kind = ssa.BlockIf
 		curBlock.AddEdgeTo(thenBlk)
@@ -1406,7 +1406,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			clonedArgs:                   args,
 		})
 
-		builder.SetCurrentBlock(thenBlk)
+		builder.CurrentBlock = thenBlk
 
 		// Then and Else (if exists) have only one predecessor.
 		builder.Seal(thenBlk)
@@ -1436,7 +1436,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 			state.push(arg)
 		}
 
-		builder.SetCurrentBlock(elseBlk)
+		builder.CurrentBlock = elseBlk
 
 	case wasm.OpcodeEnd:
 		if state.unreachableDepth > 0 {
@@ -1468,7 +1468,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 		case controlFrameKindIfWithoutElse:
 			// If this is the end of Then block, we have to emit the empty Else block.
 			elseBlk := ctrl.blk
-			builder.SetCurrentBlock(elseBlk)
+			builder.CurrentBlock = elseBlk
 			c.insertJumpToBlock(ctrl.clonedArgs, followingBlk)
 		}
 
@@ -1502,11 +1502,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 		var sealTargetBlk bool
 		if c.needListener && targetBlk.ReturnBlock() { // In this case, we have to call the listener before returning.
 			// Save the currently active block.
-			current := builder.CurrentBlock()
+			current := builder.CurrentBlock
 
 			// Allocate the trampoline block to the return where we call the listener.
 			targetBlk = builder.AllocateBasicBlock()
-			builder.SetCurrentBlock(targetBlk)
+			builder.CurrentBlock = targetBlk
 			sealTargetBlk = true
 
 			c.callListenerAfter()
@@ -1518,11 +1518,11 @@ func (c *Compiler) lowerCurrentOpcode() {
 			args = nil
 
 			// Revert the current block.
-			builder.SetCurrentBlock(current)
+			builder.CurrentBlock = current
 		}
 
 		// Insert the conditional jump to the target block.
-		curBlock := builder.CurrentBlock()
+		curBlock := builder.CurrentBlock
 		curBlock.Kind = ssa.BlockIf
 		curBlock.ControlValue = v
 		curBlock.AddEdgeTo(targetBlk, args...)
@@ -1537,7 +1537,7 @@ func (c *Compiler) lowerCurrentOpcode() {
 
 		// Now start translating the instructions after br_if.
 		builder.Seal(elseBlk) // Else of br_if has the current block as the only one successor.
-		builder.SetCurrentBlock(elseBlk)
+		builder.CurrentBlock = elseBlk
 
 	case wasm.OpcodeBrTable:
 		labels := state.tmpForBrTable[:0]
@@ -3672,7 +3672,7 @@ func (c *Compiler) lowerCallIndirect(typeIndex, tableIndex uint32) {
 
 func (c *Compiler) lowerTailCallReturn() {
 	builder := c.ssaBuilder
-	curBlock := builder.CurrentBlock()
+	curBlock := builder.CurrentBlock
 	if curBlock.Kind != ssa.BlockPlain {
 		// The current block is already terminated (e.g., by an exit), so no need to lower the return.
 		return
@@ -4117,7 +4117,7 @@ func (c *Compiler) insertJumpToBlock(args []ssa.Var, targetBlk *ssa.BasicBlock) 
 		}
 	}
 
-	block := c.ssaBuilder.CurrentBlock()
+	block := c.ssaBuilder.CurrentBlock
 	block.AddEdgeTo(targetBlk, args...)
 }
 
@@ -4144,7 +4144,7 @@ func (c *Compiler) switchTo(originalStackLen int, targetBlk *ssa.BasicBlock) {
 	// Now we should adjust the stack and start translating the continuation block.
 	c.loweringState.values = c.loweringState.values[:originalStackLen]
 
-	c.ssaBuilder.SetCurrentBlock(targetBlk)
+	c.ssaBuilder.CurrentBlock = targetBlk
 
 	// At this point, blocks params consist only of the Wasm-level parameters,
 	// (since it's added only when we are trying to resolve variable *inside* this block).
@@ -4173,7 +4173,7 @@ func (c *Compiler) lowerBrTable(labels []uint32, index ssa.Var) {
 	// We need trampoline blocks since depending on the target block structure, we might end up inserting moves before jumps,
 	// which cannot be done with br_table. Instead, we can do such per-block moves in the trampoline blocks.
 	// At the linking phase (very end of the backend), we can remove the unnecessary jumps, and therefore no runtime overhead.
-	currentBlk := builder.CurrentBlock()
+	currentBlk := builder.CurrentBlock
 	currentBlk.Kind = ssa.BlockJumpTable
 	for _, l := range labels {
 		// Args are always on the top of the stack. Note that we should not share the args slice
@@ -4188,7 +4188,7 @@ func (c *Compiler) lowerBrTable(labels []uint32, index ssa.Var) {
 
 		builder.Seal(trampoline)
 	}
-	builder.SetCurrentBlock(currentBlk)
+	builder.CurrentBlock = currentBlk
 	currentBlk.ControlValue = index
 }
 

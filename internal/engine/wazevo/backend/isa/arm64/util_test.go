@@ -28,7 +28,7 @@ func newSetup() (*ssa.Builder, *machine) {
 	ssaB := ssa.NewBuilder()
 	backend.NewCompiler(context.Background(), m, ssaB)
 	blk := ssaB.AllocateBasicBlock()
-	ssaB.SetCurrentBlock(blk)
+	ssaB.CurrentBlock = blk
 	return ssaB, m
 }
 
@@ -39,7 +39,7 @@ func newSetupWithMockContext() (*mockCompiler, *ssa.Builder, *machine) {
 	ssaB := ssa.NewBuilder()
 	ctx.ssaBuilder = ssaB
 	blk := ssaB.AllocateBasicBlock()
-	ssaB.SetCurrentBlock(blk)
+	ssaB.CurrentBlock = blk
 	return ctx, ssaB, m
 }
 

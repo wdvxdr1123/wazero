@@ -244,7 +244,7 @@ func (c *Compiler) LowerToSSA() {
 
 	// Set up the entry block.
 	entryBlock := builder.AllocateBasicBlock()
-	builder.SetCurrentBlock(entryBlock)
+	builder.CurrentBlock = entryBlock
 
 	// Functions always take two parameters in addition to Wasm-level parameters:
 	//
@@ -492,7 +492,7 @@ func (c *Compiler) finalizeKnownSafeBoundsAtTheEndOfBlock(bID ssa.BasicBlockID) 
 }
 
 func (c *Compiler) initializeCurrentBlockKnownBounds() {
-	currentBlk := c.ssaBuilder.CurrentBlock()
+	currentBlk := c.ssaBuilder.CurrentBlock
 	switch preds := len(currentBlk.Pred); preds {
 	case 0:
 	case 1:

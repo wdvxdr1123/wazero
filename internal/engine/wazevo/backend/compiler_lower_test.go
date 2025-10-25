@@ -19,7 +19,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 			name: "all consts",
 			setup: func(builder *ssa.Builder) (*compiler, []ssa.Var, *ssa.BasicBlock, func(t *testing.T)) {
 				entryBlk := builder.AllocateBasicBlock()
-				builder.SetCurrentBlock(entryBlk)
+				builder.CurrentBlock = entryBlk
 				i1 := builder.AllocateInstruction()
 				i1.AsIconst32(1)
 				i2 := builder.AllocateInstruction()
@@ -111,7 +111,7 @@ func TestCompiler_lowerBlockArguments(t *testing.T) {
 			name: "no overlap",
 			setup: func(builder *ssa.Builder) (*compiler, []ssa.Var, *ssa.BasicBlock, func(t *testing.T)) {
 				blk := builder.AllocateBasicBlock()
-				builder.SetCurrentBlock(blk)
+				builder.CurrentBlock = blk
 				i32 := blk.AddParam(builder, types.I32)
 				add := builder.AllocateInstruction()
 				add.AsIadd(i32, i32)

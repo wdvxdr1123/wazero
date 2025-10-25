@@ -296,7 +296,7 @@ func Test_offsetFitsInAddressModeKindRegSignedImm9(t *testing.T) {
 func TestMachine_collectAddends(t *testing.T) {
 	v1000, v2000 := regalloc.VReg(1000).SetRegType(regalloc.RegTypeInt), regalloc.VReg(2000).SetRegType(regalloc.RegTypeInt)
 	addParam := func(ctx *mockCompiler, b *ssa.Builder, typ *types.Type) ssa.Var {
-		p := b.CurrentBlock().AddParam(b, typ)
+		p := b.CurrentBlock.AddParam(b, typ)
 		ctx.vRegMap[p] = v1000
 		ctx.definitions[p] = backend.SSAValueDefinition{V: p}
 		return p

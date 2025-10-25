@@ -141,7 +141,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		{
 			name: "amode with block param",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				ptr := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[ptr] = raxVReg
 				ctx.definitions[ptr] = backend.SSAValueDefinition{V: ptr}
@@ -206,7 +206,7 @@ func Test_machine_getOperand_Mem_Imm32_Reg(t *testing.T) {
 		{
 			name: "amode with iconst and add",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) backend.SSAValueDefinition {
-				p := builder.CurrentBlock().AddParam(builder, types.I64)
+				p := builder.CurrentBlock.AddParam(builder, types.I64)
 				iconst := builder.AllocateInstruction().AsIconst64(456).Insert(builder)
 				iadd := builder.AllocateInstruction().AsIadd(iconst.Return, p).Insert(builder)
 
@@ -339,7 +339,7 @@ L2:
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, b, m := newSetupWithMockContext()
 			m.nextLabel = 1
-			p := b.CurrentBlock().AddParam(b, tc.typ)
+			p := b.CurrentBlock.AddParam(b, tc.typ)
 			m.cpuFeatures = tc.cpuFlags
 
 			ctx.vRegMap[p] = raxVReg
@@ -413,7 +413,7 @@ L2:
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, b, m := newSetupWithMockContext()
 			m.nextLabel = 1
-			p := b.CurrentBlock().AddParam(b, tc.typ)
+			p := b.CurrentBlock.AddParam(b, tc.typ)
 			m.cpuFeatures = tc.cpuFlags
 
 			ctx.vRegMap[p] = raxVReg

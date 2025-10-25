@@ -39,7 +39,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 		{
 			name: "block param - no extend",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
 				def = backend.SSAValueDefinition{V: v}
@@ -50,7 +50,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 		{
 			name: "block param - zero extend",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				v := blk.AddParam(builder, types.I32)
 				ctx.vRegMap[v] = regToVReg(x4)
 				def = backend.SSAValueDefinition{V: v}
@@ -62,7 +62,7 @@ func TestMachine_getOperand_NR(t *testing.T) {
 		{
 			name: "block param - sign extend",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				v := blk.AddParam(builder, types.I32)
 				ctx.vRegMap[v] = regToVReg(x4)
 				def = backend.SSAValueDefinition{V: v}
@@ -122,7 +122,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 	ishlWithConstAmount := func(
 		ctx *mockCompiler, builder *ssa.Builder, m *machine,
 	) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
-		blk := builder.CurrentBlock()
+		blk := builder.CurrentBlock
 		// (p1+p2) << amount
 		p1 := blk.AddParam(builder, types.I64)
 		p2 := blk.AddParam(builder, types.I64)
@@ -168,7 +168,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		{
 			name: "block param",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
 				def = backend.SSAValueDefinition{V: v}
@@ -179,7 +179,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 		{
 			name: "ishl but not const amount",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				// (p1+p2) << p3
 				p1 := blk.AddParam(builder, types.I64)
 				p2 := blk.AddParam(builder, types.I64)
@@ -217,7 +217,7 @@ func TestMachine_getOperand_SR_NR(t *testing.T) {
 			setup: func(
 				ctx *mockCompiler, builder *ssa.Builder, m *machine,
 			) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				// (p1+p2) << amount
 				p1 := blk.AddParam(builder, types.I32)
 				p2 := blk.AddParam(builder, types.I32)
@@ -338,7 +338,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 	t.Run("block param", func(t *testing.T) {
 		runner(testCase{
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
 				def = backend.SSAValueDefinition{V: v}
@@ -367,7 +367,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 		} {
 			runner(testCase{
 				setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
-					blk := builder.CurrentBlock()
+					blk := builder.CurrentBlock
 					v := blk.AddParam(builder, types.I64)
 					ext := builder.AllocateInstruction()
 					if c.signed {
@@ -575,7 +575,7 @@ func TestMachine_getOperand_ER_SR_NR(t *testing.T) {
 			t.Run(c.name, func(t *testing.T) {
 				runner(testCase{
 					setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode, verify func(t *testing.T)) {
-						blk := builder.CurrentBlock()
+						blk := builder.CurrentBlock
 						v := blk.AddParam(builder, types.I64)
 						ext := builder.AllocateInstruction()
 						if c.signed {
@@ -616,7 +616,7 @@ func TestMachine_getOperand_Imm12_ER_SR_NR(t *testing.T) {
 		{
 			name: "block param",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
 				def = backend.SSAValueDefinition{V: v}
@@ -670,7 +670,7 @@ func TestMachine_getOperand_MaybeNegatedImm12_ER_SR_NR(t *testing.T) {
 		{
 			name: "block param",
 			setup: func(ctx *mockCompiler, builder *ssa.Builder, m *machine) (def backend.SSAValueDefinition, mode extMode) {
-				blk := builder.CurrentBlock()
+				blk := builder.CurrentBlock
 				v := blk.AddParam(builder, types.I64)
 				ctx.vRegMap[v] = regToVReg(x4)
 				def = backend.SSAValueDefinition{V: v}

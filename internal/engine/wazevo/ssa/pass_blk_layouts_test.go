@@ -9,7 +9,7 @@ import (
 
 func Test_maybeInvertBranch(t *testing.T) {
 	insertJump := func(b *Builder, src, dst *BasicBlock) {
-		b.SetCurrentBlock(src)
+		b.CurrentBlock = src
 		if src.Kind == BlockPlain && len(src.Succ) != 0 {
 			panic("BUG: multiple jumps in a plain block")
 		}
@@ -19,7 +19,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 	}
 
 	insertBrz := func(b *Builder, src, dst *BasicBlock) {
-		b.SetCurrentBlock(src)
+		b.CurrentBlock = src
 		vinst := b.AllocateInstruction().AsIconst32(0)
 		b.InsertInstruction(vinst)
 		if src.Kind == BlockIfNot || src.Kind == BlockIf {
@@ -51,7 +51,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 			name: "no conditional branch with previous instruction",
 			setup: func(b *Builder) (now, next *BasicBlock, verify func(t *testing.T)) {
 				now, next = b.allocateBasicBlock(), b.allocateBasicBlock()
-				b.SetCurrentBlock(now)
+				b.CurrentBlock = now
 				prev := b.AllocateInstruction()
 				prev.AsIconst64(1)
 				b.InsertInstruction(prev)
@@ -141,7 +141,7 @@ func Test_maybeInvertBranch(t *testing.T) {
 
 func TestBuilder_LayoutBlocks(t *testing.T) {
 	insertJump := func(b *Builder, src, dst *BasicBlock, vs ...Var) {
-		b.SetCurrentBlock(src)
+		b.CurrentBlock = src
 		if src.Kind == BlockPlain && len(src.Succ) != 0 {
 			panic("BUG: multiple jumps in a plain block")
 		}
@@ -151,7 +151,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 	}
 
 	insertIf := func(b *Builder, src, dst *BasicBlock, condVal Var, vs ...Var) {
-		b.SetCurrentBlock(src)
+		b.CurrentBlock = src
 		vinst := b.AllocateInstruction().AsIconst32(0)
 		b.InsertInstruction(vinst)
 		if src.Kind == BlockIfNot {
@@ -204,7 +204,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 			// 2 ---------
 			setup: func(b *Builder) {
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
-				b.SetCurrentBlock(b0)
+				b.CurrentBlock = b0
 				c := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c)
 				insertIf(b, b0, b2, c.Return)
@@ -241,7 +241,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b1)
 				insertJump(b, b1, b2)
-				b.SetCurrentBlock(b2)
+				b.CurrentBlock = b2
 				c := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c)
 				insertIf(b, b2, b1, c.Return)
@@ -277,7 +277,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b1)
 				insertJump(b, b1, b2)
-				b.SetCurrentBlock(b2)
+				b.CurrentBlock = b2
 				c := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c)
 				insertIf(b, b2, b3, c.Return)
@@ -317,14 +317,14 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b0, b1, b2, b3, b4, b5 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(),
 					b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b1)
-				b.SetCurrentBlock(b0)
+				b.CurrentBlock = b0
 				c1 := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c1)
 				insertIf(b, b1, b2, c1.Return)
 				insertJump(b, b1, b3)
 				insertJump(b, b3, b4)
 				insertJump(b, b2, b4)
-				b.SetCurrentBlock(b4)
+				b.CurrentBlock = b4
 				c2 := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c2)
 				insertIf(b, b4, b1, c2.Return)
@@ -365,13 +365,13 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b0, b1, b2, b3, b4 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(),
 					b.allocateBasicBlock(), b.allocateBasicBlock()
 				insertJump(b, b0, b1)
-				b.SetCurrentBlock(b1)
+				b.CurrentBlock = b1
 				c1 := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c1)
 				insertIf(b, b1, b2, c1.Return)
 				insertJump(b, b1, b3)
 
-				b.SetCurrentBlock(b2)
+				b.CurrentBlock = b2
 				c2 := b.AllocateInstruction().AsIconst32(0)
 				b.InsertInstruction(c2)
 				insertIf(b, b2, b1, c2.Return)
@@ -403,18 +403,18 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				p := b0.AddParam(b, types.I32)
 				retval := b1.AddParam(b, types.I32)
 
-				b.SetCurrentBlock(b0)
+				b.CurrentBlock = b0
 				{
 					arg := b.AllocateInstruction().AsIconst32(1000).Insert(b).Return
 					insertIf(b, b0, b1, p, arg)
 					insertJump(b, b0, b2)
 				}
-				b.SetCurrentBlock(b1)
+				b.CurrentBlock = b1
 				{
 					args := []Var{retval}
 					b.AllocateInstruction().AsReturn(args).Insert(b)
 				}
-				b.SetCurrentBlock(b2)
+				b.CurrentBlock = b2
 				{
 					arg := b.AllocateInstruction().AsIconst32(1).Insert(b).Return
 					insertJump(b, b2, b1, arg)
@@ -433,18 +433,18 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 				b.currentSignature = &types.Signature{Results: []*types.Type{types.I32}}
 				b0, b1, b2, b3 := b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock(), b.allocateBasicBlock()
 
-				b.SetCurrentBlock(b0)
+				b.CurrentBlock = b0
 				funcParam := b0.AddParam(b, types.I32)
 				b2Param := b2.AddParam(b, types.I32)
 				insertJump(b, b0, b2, funcParam)
 
-				b.SetCurrentBlock(b1)
+				b.CurrentBlock = b1
 				{
 					returnParam := b1.AddParam(b, types.I32)
 					insertJump(b, b1, b.returnBlk, returnParam)
 				}
 
-				b.SetCurrentBlock(b2)
+				b.CurrentBlock = b2
 				{
 					c := b.AllocateInstruction().AsIconst32(100).Insert(b)
 					cmp := b.AllocateInstruction().
@@ -454,7 +454,7 @@ func TestBuilder_LayoutBlocks(t *testing.T) {
 					insertJump(b, b2, b3)
 				}
 
-				b.SetCurrentBlock(b3)
+				b.CurrentBlock = b3
 				{
 					one := b.AllocateInstruction().AsIconst32(1).Insert(b)
 					minusOned := b.AllocateInstruction().AsIsub(b2Param, one.Return).Insert(b)

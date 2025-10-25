@@ -16,7 +16,7 @@ func newSetupWithMockContext() (*mockCompiler, *ssa.Builder, *machine) {
 	m.SetCompiler(ctx)
 	ssaB := ssa.NewBuilder()
 	blk := ssaB.AllocateBasicBlock()
-	ssaB.SetCurrentBlock(blk)
+	ssaB.CurrentBlock = blk
 	return ctx, ssaB, m
 }
 

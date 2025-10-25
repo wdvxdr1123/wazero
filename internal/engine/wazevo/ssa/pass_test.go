@@ -34,7 +34,7 @@ func TestBuilder_passes(t *testing.T) {
 						middle1, middle2 := b.AllocateBasicBlock(), b.AllocateBasicBlock()
 						end := b.AllocateBasicBlock()
 
-						b.SetCurrentBlock(entry)
+						b.CurrentBB = entry
 						{
 							brz := b.AllocateInstruction()
 							brz.AsBrz(value, nil, middle1)
@@ -45,14 +45,14 @@ func TestBuilder_passes(t *testing.T) {
 							b.InsertInstruction(jmp)
 						}
 
-						b.SetCurrentBlock(middle1)
+						b.CurrentBB = middle1
 						{
 							jmp := b.AllocateInstruction()
 							jmp.AsJump(nil, end)
 							b.InsertInstruction(jmp)
 						}
 
-						b.SetCurrentBlock(middle2)
+						b.CurrentBB = middle2
 						{
 							jmp := b.AllocateInstruction()
 							jmp.AsJump(nil, end)
@@ -61,13 +61,13 @@ func TestBuilder_passes(t *testing.T) {
 
 						{
 							unreachable := b.AllocateBasicBlock()
-							b.SetCurrentBlock(unreachable)
+							b.CurrentBB = unreachable
 							jmp := b.AllocateInstruction()
 							jmp.AsJump(nil, end)
 							b.InsertInstruction(jmp)
 						}
 
-						b.SetCurrentBlock(end)
+						b.CurrentBB = end
 						{
 							jmp := b.AllocateInstruction()
 							jmp.AsJump(nil, middle1)
@@ -121,7 +121,7 @@ func TestBuilder_passes(t *testing.T) {
 						loopHeader.AddParam(b, types.I32)
 						var1 := b.DeclareVariable(types.I32)
 
-						b.SetCurrentBlock(entry)
+						b.CurrentBB = entry
 						{
 							constInst := b.AllocateInstruction()
 							constInst.AsIconst32(0xff)
@@ -136,7 +136,7 @@ func TestBuilder_passes(t *testing.T) {
 						}
 						b.Seal(entry)
 
-						b.SetCurrentBlock(loopHeader)
+						b.CurrentBB = loopHeader
 						{
 							// At this point, loop is not sealed, so PHI will be added to this header. However, the only
 							// input to the PHI is iConst above, so there must be an alias to iConst from the PHI value.
@@ -158,7 +158,7 @@ func TestBuilder_passes(t *testing.T) {
 						}
 						b.Seal(loopHeader)
 
-						b.SetCurrentBlock(end)
+						b.CurrentBB = end
 						{
 							ret := b.AllocateInstruction()
 							ret.AsReturn(nil)
@@ -202,7 +202,7 @@ func TestBuilder_passes(t *testing.T) {
 					setup: func(b *builder) func(*testing.T) {
 						entry, end := b.AllocateBasicBlock(), b.AllocateBasicBlock()
 
-						b.SetCurrentBlock(entry)
+						b.CurrentBB = entry
 						iconstRefThriceInst := b.AllocateInstruction()
 						iconstRefThriceInst.AsIconst32(3)
 						b.InsertInstruction(iconstRefThriceInst)
@@ -226,7 +226,7 @@ func TestBuilder_passes(t *testing.T) {
 						jmp.AsJump(nil, end)
 						b.InsertInstruction(jmp)
 
-						b.SetCurrentBlock(end)
+						b.CurrentBB = end
 						aliasedRefOnceVal := b.allocateValue(refOnceVal.Type())
 						b.alias(aliasedRefOnceVal, refOnceVal)
 
@@ -295,7 +295,7 @@ func TestBuilder_passes(t *testing.T) {
 					postPass: deadcode,
 					setup: func(b *builder) (verifier func(t *testing.T)) {
 						entry := b.AllocateBasicBlock()
-						b.SetCurrentBlock(entry)
+						b.CurrentBB = entry
 
 						i32Param := entry.AddParam(b, types.I32)
 						i64Param := entry.AddParam(b, types.I64)
