@@ -674,7 +674,6 @@ func (b *builder) alias(dst, src Var) {
 // resolveArgumentAlias resolves the alias of the arguments of the given instruction.
 func (b *builder) resolveArgumentAlias(instr *Value) {
 	instr.Args = b.resolveAliases(instr.Args)
-	instr.ArgSlice = b.resolveAliases(instr.ArgSlice)
 }
 
 // resolveAlias resolves the alias of the given value.

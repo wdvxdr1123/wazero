@@ -300,7 +300,7 @@ func deadcode(b *builder) {
 		// Before we walk, we need to resolve the alias first.
 		b.resolveArgumentAlias(live)
 
-		for _, v := range append(live.Args, live.ArgSlice...) {
+		for _, v := range live.Args {
 			if !v.Valid() {
 				continue
 			}
@@ -336,7 +336,7 @@ func deadcode(b *builder) {
 
 			// If the value alive, we can be sure that arguments are used definitely.
 			// Hence, we can increment the value reference counts.
-			for _, v := range append(cur.Args, cur.ArgSlice...) {
+			for _, v := range cur.Args {
 				if !v.Valid() {
 					continue
 				}
